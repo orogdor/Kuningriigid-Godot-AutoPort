@@ -1,0 +1,11 @@
+; Godot 4.4+ AutoPort rules inspector (not a complete game)
+config_version=5
+
+[application]
+config/name="Kuningriigid Godot AutoPort"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
