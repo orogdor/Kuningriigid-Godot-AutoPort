@@ -1,11 +1,56 @@
 # Kuningriigid → Godot AutoPort
 
-Independent automated data and rules porting pipeline for [orogdor/Kuningriigid](https://github.com/orogdor/Kuningriigid).
+**Eraldi tööriistaprojekt** veebimängu [orogdor/Kuningriigid](https://github.com/orogdor/Kuningriigid) mängureeglite kontrollitavaks automaatseks ülekandmiseks Godot 4 mootorisse.
 
-This repository never modifies the original Three.js game or the existing Godot port.
+See projekt **ei muuda** Three.js veebimängu ega olemasolevat Godoti arendusharu. Lähtekoodi loetakse avalikust `main` harust. Praegune 0.1.0 on automaatne **andmeport**, mitte valmis JS → GDScript funktsioonide konverter, 3D mäng ega Androidi APK.
 
-**Phase 1:** statically export 15 classes of game data, verify against the source and load them into Godot 4. This is a data bridge, **not** a complete JS-to-GDScript conversion or a playable APK.
+## Esimene töövõimeline osa
 
-Once the workflow is installed, use **Actions → Sync Three.js rules to Godot** to generate a versioned source snapshot.
+`tools/port.mjs` loeb ja ekspordib 15 rühma mänguandmeid:
+- 111 V118 tehnoloogiapuu kirjet (tingimused ja ajastud);
+- V125 uued tehnoloogiad ja tootmisreformid;
+- kaubad, erikauba tootmishooned ja seitsme ajastu linnatarbed;
+- kuue ajastu materjalihinnad ning tehnoloogia-ajastu vastendused;
+- pronksiaja minimaalne kestus ja müüride rahvaarvulävendid;
+- teaduse algväärtused ja Eureka osakaal.
 
-Requirements: Node.js 22+, Godot 4.4+ for the optional preview.
+Genereeritud JSON-andmed asuvad `game/data/generated/`. Iga väljundiga käib kaasas algse faili SHA-256, genereeritud faili räsi, algse GitHubi commit ja tabeli nimi. `tools/verify-parity.mjs` kontrollib nende võrdsust sõltumatult.
+
+Konverter **ei käivita** lähteprojekti JavaScripti; see tunneb ainult staatilisi literaale ja keeldub programmiavaldistest, muutuja viidetest ning tundmatutest sõltuvustest. Nii ei saa töövoog märkamatult tõlkida vale andmestruktuuri.
+
+## Käivitamine oma arvutis
+
+Vajalik: Node.js 20+ (soovitatavalt 22+), Git; Godot 4.4+ ainult näidisvaate avamiseks.
+
+```bash
+git clone https://github.com/orogdor/Kuningriigid.git upstream
+npm test
+npm run port -- --source upstream --out game/data/generated
+npm run parity -- --source upstream --out game/data/generated
+```
+
+Ava `game/project.godot`, et näha eksporditud tabelite lugemist toimivas Godoti stseenis. See ei ole veel mängitav kampaania.
+
+## GitHub Actions
+
+`.github/workflows/sync-upstream.yml` käivitub töövoo käsitsi avamisel, uue repositooriumi `main` haru koodimuudatusel ja iga päev:
+
+1. Checkout sellest projektist ja avaliku Three.js mängu `main` harust.
+2. Käivita Node.js turva-, stabiilsus- ja terviklustestid.
+3. Ekspordi 15 andmerühma täpselt viidatud lähtecommitist.
+4. Kontrolli lähte-väljundandmete võrdsust ja sõltuvusi.
+5. Kontrolli Godot 4.4.1 skriptide importi ja peastseeni laadimist.
+6. Commit'i genereeritud andmed **ainult siia reposse**, kui andmed muutusid.
+7. Lisa genereeritud reeglifailid GitHub Actionsi artefaktina.
+
+Automaattöövoog on kavandatud nii, et algse mängu reeglite muutumisel ebaõnnestub vale teisendus nähtavalt, mitte ei muudeta mängu vaikselt.
+
+## Järgmised etapid
+
+1. **Puhas arvutusloogika:** majanduse, teaduse ja toiduvaru funktsioonide pariteeditestid Node.js ja GDScripti vahel.
+2. **Simulatsiooniseisundi teisendus:** linna varud, asunikud, elanikkond, uurimistöö, kaubandus ja AI.
+3. **200 käigu võrdlus:** kontrollitavad identsed lähteseisud ja mängutulemused.
+4. **Godoti visuaalid:** detailkaart, maailmakaart, 3D hooned, mobiili UI ja üksused.
+5. **Android:** alles seejärel APK ning uuendussüsteem ja telefonitestid.
+
+**Oluline:** kontrolltabelite edukas import ei tähenda, et kogu Three.js mängumehaanika oleks Godotisse üle kantud. Ka käsitsi Godoti-spetsiifilist tööd jääb vaja.
