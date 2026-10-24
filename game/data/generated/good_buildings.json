@@ -1,0 +1,125 @@
+{
+  "chocolatier": {
+    "age": 5,
+    "input": {
+      "cocoa": 2,
+      "water": 1
+    },
+    "name": "Šokolaadivabrik",
+    "out": "chocolate"
+  },
+  "cocoa_farm": {
+    "age": 5,
+    "deposit": "cocoa",
+    "name": "Kakaoistandus",
+    "out": "cocoa"
+  },
+  "coffee_farm": {
+    "age": 5,
+    "deposit": "coffee",
+    "name": "Kohviistandus",
+    "out": "coffee"
+  },
+  "dairy": {
+    "age": 3,
+    "input": {
+      "grain": 2,
+      "water": 1
+    },
+    "name": "Juustukoda",
+    "out": "cheese"
+  },
+  "dye_garden": {
+    "age": 4,
+    "deposit": "dyes",
+    "name": "Värvitaimeaed",
+    "out": "dyes"
+  },
+  "electronics_factory": {
+    "age": 6,
+    "input": {
+      "copper": 1,
+      "power": 1,
+      "rubber": 1
+    },
+    "name": "Elektroonikatehas",
+    "out": "electronics"
+  },
+  "flax_farm": {
+    "age": 1,
+    "deposit": "flax",
+    "name": "Linapõld",
+    "out": "flax"
+  },
+  "gem_mine": {
+    "age": 2,
+    "deposit": "gems",
+    "name": "Vääriskivikaevandus",
+    "out": "gems"
+  },
+  "jeweler": {
+    "age": 2,
+    "input": {
+      "copper": 1,
+      "gems": 1
+    },
+    "name": "Juveliir",
+    "out": "jewelry"
+  },
+  "orchard": {
+    "age": 2,
+    "deposit": "fruit",
+    "name": "Viljapuuaed",
+    "out": "fruit"
+  },
+  "perfumery": {
+    "age": 4,
+    "input": {
+      "dyes": 1,
+      "spices": 1,
+      "water": 1
+    },
+    "name": "Parfüümikoda",
+    "out": "perfume"
+  },
+  "rubber_farm": {
+    "age": 6,
+    "deposit": "rubber",
+    "name": "Kautšukiistandus",
+    "out": "rubber"
+  },
+  "silk_farm": {
+    "age": 3,
+    "deposit": "silk",
+    "name": "Siidikasvandus",
+    "out": "silk"
+  },
+  "silk_weaver": {
+    "age": 3,
+    "input": {
+      "silk": 2
+    },
+    "name": "Siidikudumiskoda",
+    "out": "silkcloth"
+  },
+  "spice_garden": {
+    "age": 4,
+    "deposit": "spices",
+    "name": "Vürtsiaed",
+    "out": "spices"
+  },
+  "vegetable_garden": {
+    "age": 1,
+    "deposit": "grain",
+    "name": "Köögiviljaaed",
+    "out": "vegetables"
+  },
+  "weaver": {
+    "age": 1,
+    "input": {
+      "flax": 2
+    },
+    "name": "Kangakoda",
+    "out": "cloth"
+  }
+}

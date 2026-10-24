@@ -1,0 +1,29 @@
+{
+  "bronze": {
+    "bread": 15,
+    "stone": 25,
+    "wood": 35
+  },
+  "civics": {
+    "bread": 50,
+    "iron": 20,
+    "plank": 75
+  },
+  "industrialization": {
+    "iron": 50,
+    "plank": 120
+  },
+  "iron": {
+    "bread": 30,
+    "plank": 50,
+    "stone": 50
+  },
+  "modernity": {
+    "machines": 17.5,
+    "steel": 35
+  },
+  "renaissance": {
+    "iron": 35,
+    "plank": 85
+  }
+}

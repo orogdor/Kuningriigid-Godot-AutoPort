@@ -1,0 +1,96 @@
+{
+  "berries": {
+    "age": 0,
+    "food": true,
+    "name": "Marjad"
+  },
+  "cheese": {
+    "age": 3,
+    "food": true,
+    "name": "Juust"
+  },
+  "chocolate": {
+    "age": 5,
+    "luxury": true,
+    "name": "Šokolaad"
+  },
+  "cloth": {
+    "age": 1,
+    "luxury": true,
+    "name": "Linane kangas"
+  },
+  "cocoa": {
+    "age": 5,
+    "name": "Kakao"
+  },
+  "coffee": {
+    "age": 5,
+    "food": true,
+    "name": "Kohv"
+  },
+  "dyes": {
+    "age": 4,
+    "name": "Värvitaimed"
+  },
+  "electronics": {
+    "age": 6,
+    "luxury": true,
+    "name": "Elektroonika"
+  },
+  "fish": {
+    "age": 0,
+    "food": true,
+    "name": "Kala"
+  },
+  "flax": {
+    "age": 1,
+    "name": "Lina"
+  },
+  "fruit": {
+    "age": 2,
+    "food": true,
+    "name": "Puuviljad"
+  },
+  "gems": {
+    "age": 2,
+    "name": "Vääriskivid"
+  },
+  "jewelry": {
+    "age": 2,
+    "luxury": true,
+    "name": "Ehted"
+  },
+  "meat": {
+    "age": 0,
+    "food": true,
+    "name": "Liha"
+  },
+  "perfume": {
+    "age": 4,
+    "luxury": true,
+    "name": "Parfüüm"
+  },
+  "rubber": {
+    "age": 6,
+    "name": "Kautšuk"
+  },
+  "silk": {
+    "age": 3,
+    "name": "Siid"
+  },
+  "silkcloth": {
+    "age": 3,
+    "luxury": true,
+    "name": "Siidkangas"
+  },
+  "spices": {
+    "age": 4,
+    "food": true,
+    "name": "Vürtsid"
+  },
+  "vegetables": {
+    "age": 1,
+    "food": true,
+    "name": "Köögiviljad"
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "agricultural_science": {
+    "age": 4,
+    "name": "Agricultural Science",
+    "requires": [
+      "seed_selection",
+      "experimental_science"
+    ],
+    "turns": 8,
+    "unlocks": "Field trials improve yields by 10%"
+  },
+  "automated_supply": {
+    "age": 6,
+    "name": "Automated Supply Chains",
+    "requires": [
+      "computing",
+      "rail_freight"
+    ],
+    "turns": 10,
+    "unlocks": "Digital logistics: +10% factory throughput"
+  },
+  "bronze_survey": {
+    "age": 1,
+    "name": "Land Surveying",
+    "requires": [
+      "math_measure"
+    ],
+    "turns": 5,
+    "unlocks": "Surveyed fields and mines: +4% resource output"
+  },
+  "cannon_supply": {
+    "age": 4,
+    "name": "Artillery Supply",
+    "requires": [
+      "firearms",
+      "field_artillery"
+    ],
+    "turns": 8,
+    "unlocks": "Ordnance warehouses: +6% iron and gunpowder output"
+  },
+  "crop_rotation_v125": {
+    "age": 2,
+    "name": "Crop Rotation",
+    "requires": [
+      "manure_fertilization"
+    ],
+    "turns": 6,
+    "unlocks": "Crop rotation improves harvests by 9%"
+  },
+  "factory_logistics": {
+    "age": 5,
+    "name": "Factory Logistics",
+    "requires": [
+      "industrialization",
+      "mechanics"
+    ],
+    "turns": 9,
+    "unlocks": "Flow production reduces bottlenecks: +12% steel and machinery"
+  },
+  "field_channels": {
+    "age": 1,
+    "name": "Field Channels",
+    "requires": [
+      "canal_irrigation"
+    ],
+    "turns": 5,
+    "unlocks": "Canal maintenance: +8% farm production"
+  },
+  "garrison_system": {
+    "age": 3,
+    "name": "Permanent Garrisons",
+    "requires": [
+      "castle_building"
+    ],
+    "turns": 7,
+    "unlocks": "Organized defense: +5% weapons and iron output"
+  },
+  "grain_storage": {
+    "age": 0,
+    "name": "Grain Storage",
+    "requires": [
+      "pottery"
+    ],
+    "turns": 3,
+    "unlocks": "Clay-lined grain stores: +5% food production"
+  },
+  "guild_accounts": {
+    "age": 3,
+    "name": "Guild Accounting",
+    "requires": [
+      "guilds",
+      "writing"
+    ],
+    "turns": 7,
+    "unlocks": "Workshops track stocks: +6% plank and iron output"
+  },
+  "harbor_cranes": {
+    "age": 4,
+    "name": "Harbor Cranes",
+    "requires": [
+      "ocean_sailing",
+      "mechanics"
+    ],
+    "turns": 8,
+    "unlocks": "Mechanized docks: +7% lumber and planks"
+  },
+  "iron_markets": {
+    "age": 2,
+    "name": "Regional Markets",
+    "requires": [
+      "commerce",
+      "iron"
+    ],
+    "turns": 5,
+    "unlocks": "Town and countryside exchange: +5% material output"
+  },
+  "medieval_hospitals": {
+    "age": 3,
+    "name": "Town Hospitals",
+    "requires": [
+      "medieval_healing"
+    ],
+    "turns": 6,
+    "unlocks": "Public medicine supports towns: +4% food and water"
+  },
+  "merchant_banking": {
+    "age": 4,
+    "name": "Merchant Banking",
+    "requires": [
+      "renaissance",
+      "city_trade"
+    ],
+    "turns": 8,
+    "unlocks": "Merchant credit and ledgers: +5% workshops"
+  },
+  "military_supply": {
+    "age": 2,
+    "name": "Military Supply Trains",
+    "requires": [
+      "iron",
+      "wheel"
+    ],
+    "turns": 6,
+    "unlocks": "Wagon supply depots: +6% iron and wood output"
+  },
+  "modern_cartography": {
+    "age": 4,
+    "name": "Modern Cartography",
+    "requires": [
+      "astronomy",
+      "printing"
+    ],
+    "turns": 8,
+    "unlocks": "Better survey maps: +7% mineral production"
+  },
+  "power_grid": {
+    "age": 6,
+    "name": "Grid Management",
+    "requires": [
+      "electricity",
+      "electronics"
+    ],
+    "turns": 10,
+    "unlocks": "Coordinated electric grid: +10% power generation"
+  },
+  "public_utilities": {
+    "age": 5,
+    "name": "Public Utilities",
+    "requires": [
+      "industrial_education",
+      "sanitation"
+    ],
+    "turns": 9,
+    "unlocks": "Water and power infrastructure: +8% output"
+  },
+  "rail_freight": {
+    "age": 5,
+    "name": "Rail Freight Management",
+    "requires": [
+      "railways",
+      "factory_logistics"
+    ],
+    "turns": 9,
+    "unlocks": "Bulk supply shipments: +12% machinery production"
+  },
+  "regional_roads": {
+    "age": 2,
+    "name": "Regional Road Networks",
+    "requires": [
+      "bridges",
+      "road_construction"
+    ],
+    "turns": 5,
+    "unlocks": "Connected towns: +6% stone and plank output"
+  },
+  "sanitation": {
+    "age": 3,
+    "name": "Urban Sanitation",
+    "requires": [
+      "civics",
+      "city_trade"
+    ],
+    "turns": 7,
+    "unlocks": "Clean water channels: +8% water production"
+  },
+  "steel_standards": {
+    "age": 5,
+    "name": "Steel Standards",
+    "requires": [
+      "steelmaking",
+      "chemistry"
+    ],
+    "turns": 9,
+    "unlocks": "Consistent metallurgy: +15% steel output"
+  },
+  "town_charters": {
+    "age": 3,
+    "name": "Town Charters",
+    "requires": [
+      "guilds",
+      "civics"
+    ],
+    "turns": 7,
+    "unlocks": "Municipal administration: +4% of all basic outputs"
+  },
+  "trade_roads": {
+    "age": 1,
+    "name": "Trade Roads",
+    "requires": [
+      "commerce",
+      "wheel"
+    ],
+    "turns": 5,
+    "unlocks": "Maintained wagon routes: +7% wood and construction materials"
+  },
+  "village_council": {
+    "age": 0,
+    "name": "Village Councils",
+    "requires": [
+      "settlement"
+    ],
+    "turns": 3,
+    "unlocks": "Early settlement administration: +3% food and water production"
+  },
+  "water_machinery": {
+    "age": 3,
+    "name": "Water-Powered Machinery",
+    "requires": [
+      "watermills",
+      "iron_crafts"
+    ],
+    "turns": 6,
+    "unlocks": "Waterwheels power grain mills and saws: +8%"
+  }
+}

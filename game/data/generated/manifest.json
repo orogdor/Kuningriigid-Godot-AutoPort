@@ -1,0 +1,129 @@
+{
+  "counts": {
+    "era_tiers": 6,
+    "good_buildings": 17,
+    "goods": 20,
+    "reform_technologies": 26,
+    "technologies": 111
+  },
+  "format": 1,
+  "procedural_not_ported": [
+    "Three.js rendering",
+    "navigation and animation",
+    "economy tick functions",
+    "city construction runtime",
+    "research progression",
+    "battle simulation",
+    "AI decisions"
+  ],
+  "source_branch": "main",
+  "source_commit": "681c0793fb6922b335926d353b66d297799b25a7",
+  "source_repository": "https://github.com/orogdor/Kuningriigid",
+  "tables": {
+    "bronze_fortify_pop": {
+      "export": "BRONZE_FORTIFY_POP_V160",
+      "file": "bronze_fortify_pop.json",
+      "path": "bronze-city-balance-v160.js",
+      "sha256": "7ee29791fc17e986b97128845622b077fb45e349fdb80523fac9dba879b4ad60",
+      "source_sha256": "6969f00c9c3eaf49ef4ae92775fea3ed04fb12353e7981c36fa09b35631005f3"
+    },
+    "bronze_full_wall_pop": {
+      "export": "BRONZE_FULL_WALL_POP_V160",
+      "file": "bronze_full_wall_pop.json",
+      "path": "bronze-city-balance-v160.js",
+      "sha256": "64aeb9975f234becd55bb4635e6e2f2da7a6b7bf0a896f0c07763bdfbfb31420",
+      "source_sha256": "6969f00c9c3eaf49ef4ae92775fea3ed04fb12353e7981c36fa09b35631005f3"
+    },
+    "bronze_min_turns": {
+      "export": "MIN_BRONZE_TURNS_V160",
+      "file": "bronze_min_turns.json",
+      "path": "bronze-city-balance-v160.js",
+      "sha256": "d867d3f88fa20d7cb936ecd93651adeedf473a6177218cd0987f462ff5511cb6",
+      "source_sha256": "6969f00c9c3eaf49ef4ae92775fea3ed04fb12353e7981c36fa09b35631005f3"
+    },
+    "era_costs": {
+      "export": "ERA_MATERIALS",
+      "file": "era_costs.json",
+      "path": "era-economy.js",
+      "sha256": "2a7c92454864bb163c095618c405dcae1eae3c13aff95cfedd0ada926e8df739",
+      "source_sha256": "c55b87bbad07a045c83695f1c5553a871a5241e39e938894dbb25a4f3f8bd579"
+    },
+    "era_techs": {
+      "export": "ERA_TECHS",
+      "file": "era_techs.json",
+      "path": "era-economy.js",
+      "sha256": "1259ac5047ee534f30ca5d3819c4e00491c4a4cf5efae758c290c1dfbdf1b658",
+      "source_sha256": "c55b87bbad07a045c83695f1c5553a871a5241e39e938894dbb25a4f3f8bd579"
+    },
+    "eureka_fraction": {
+      "export": "EUREKA_FRACTION",
+      "file": "eureka_fraction.json",
+      "path": "science.js",
+      "sha256": "5cc6fa2f7a5b9dc411e81c7a7c1e3f49198012d5266868748e6ca47f77a10b5b",
+      "source_sha256": "aac091b5391e91e78bcec08743732afcaa26ecae4350b90111c0e9b2e2a038bd"
+    },
+    "food_needs": {
+      "export": "NEEDS",
+      "file": "food_needs.json",
+      "path": "city-needs-v87.js",
+      "sha256": "0a1bc8aff19255b7605c3b06445a0c4d20ef3297bbeda1bafdcba34d7f4b43e8",
+      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+    },
+    "good_buildings": {
+      "export": "GOOD_BUILDINGS",
+      "file": "good_buildings.json",
+      "path": "city-needs-v87.js",
+      "sha256": "23a1e4c2c453ab91072250de4704b7723dd3c4a31997bb1e35c9c4920c68eb3d",
+      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+    },
+    "goods": {
+      "export": "GOODS",
+      "file": "goods.json",
+      "path": "city-needs-v87.js",
+      "sha256": "99529fc51f49020bb3dc00f07995980d3b1342e09eebed11101527c20447d6f4",
+      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+    },
+    "production_reforms": {
+      "export": "PRODUCTION_REFORMS_V125",
+      "file": "production_reforms.json",
+      "path": "technology-reforms-v125.js",
+      "sha256": "6089cd806c883466f73c2d5bd95bce099d12cfbcc96f16668b386e2adca35727",
+      "source_sha256": "c3514fcec25f72c39b27443f3efd0e17634c6ba1ca2ccf1206867d1ee3ed8767"
+    },
+    "science_per_city": {
+      "export": "SCIENCE_PER_CITY",
+      "file": "science_per_city.json",
+      "path": "science.js",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "source_sha256": "aac091b5391e91e78bcec08743732afcaa26ecae4350b90111c0e9b2e2a038bd"
+    },
+    "science_per_resident": {
+      "export": "SCIENCE_PER_RESIDENT",
+      "file": "science_per_resident.json",
+      "path": "science.js",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "source_sha256": "aac091b5391e91e78bcec08743732afcaa26ecae4350b90111c0e9b2e2a038bd"
+    },
+    "science_per_turn": {
+      "export": "SCIENCE_PER_TURN",
+      "file": "science_per_turn.json",
+      "path": "science.js",
+      "sha256": "917df3320d778ddbaa5c5c7742bc4046bf803c36ed2b050f30844ed206783469",
+      "source_sha256": "aac091b5391e91e78bcec08743732afcaa26ecae4350b90111c0e9b2e2a038bd"
+    },
+    "tech_reforms": {
+      "export": "TECHS_V125",
+      "file": "tech_reforms.json",
+      "path": "technology-reforms-v125.js",
+      "sha256": "87063373d458e654066ef0faa8beca3fd4677bc6bcb1827ca2a494fbf5a9f979",
+      "source_sha256": "c3514fcec25f72c39b27443f3efd0e17634c6ba1ca2ccf1206867d1ee3ed8767"
+    },
+    "tech_tree": {
+      "export": "TECH_TREE_V118",
+      "file": "tech_tree.json",
+      "path": "tech-tree-data-v118.js",
+      "sha256": "72fb1e89b3a42576f645d26f53c11e96508af3ee19684dbb58d5c4525e457199",
+      "source_sha256": "bd5168e0cc8dbcf79ea92924cf96fb10311ea1db81e81ae60c0d3a96a762e959"
+    }
+  }
+}

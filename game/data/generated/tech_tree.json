@@ -1,0 +1,920 @@
+{
+  "agriculture": {
+    "age": 0,
+    "name": "Põlluharimine",
+    "requires": [
+      "stone_tools",
+      "water"
+    ]
+  },
+  "ancient_artillery": {
+    "age": 2,
+    "name": "Antiikne heiterelvastus",
+    "requires": [
+      "early_siege_engineering",
+      "math_measure",
+      "woodworking"
+    ]
+  },
+  "animal_husbandry": {
+    "age": 0,
+    "name": "Loomade kodustamine",
+    "requires": [
+      "hunting"
+    ]
+  },
+  "antler_picks": {
+    "age": 0,
+    "name": "Sarvkirkad",
+    "requires": [
+      "stone_tools",
+      "hunting"
+    ]
+  },
+  "archery": {
+    "age": 0,
+    "name": "Vibude valmistamine",
+    "requires": [
+      "hunting",
+      "ropes"
+    ]
+  },
+  "armor_craft": {
+    "age": 3,
+    "name": "Keskaegne soomussepatöö",
+    "requires": [
+      "smithing",
+      "medieval_crafts"
+    ]
+  },
+  "astronomy": {
+    "age": 4,
+    "name": "Täppisastronoomia",
+    "requires": [
+      "math_measure",
+      "navigation"
+    ]
+  },
+  "automated_mining": {
+    "age": 6,
+    "name": "Kaevandamise andurjuhtimine",
+    "requires": [
+      "computing",
+      "mechanized_cutters"
+    ]
+  },
+  "aviation": {
+    "age": 6,
+    "name": "Lennundus",
+    "requires": [
+      "combustion",
+      "experimental_science",
+      "mechanics"
+    ]
+  },
+  "bridges": {
+    "age": 1,
+    "name": "Sillaehitus",
+    "requires": [
+      "woodworking",
+      "masonry",
+      "ropes"
+    ]
+  },
+  "bronze": {
+    "age": 1,
+    "name": "Tinaga legeerimine ja pronksivalu",
+    "requires": [
+      "copper_smelting",
+      "copper_tin",
+      "stone_crafts"
+    ]
+  },
+  "bronze_chisels": {
+    "age": 1,
+    "name": "Pronkspeitlid",
+    "requires": [
+      "bronze_crafts"
+    ]
+  },
+  "bronze_crafts": {
+    "age": 1,
+    "name": "Pronksriistad ja ehitus",
+    "requires": [
+      "stone_crafts",
+      "woodworking"
+    ]
+  },
+  "canal_irrigation": {
+    "age": 1,
+    "name": "Põldude kanalniisutus",
+    "requires": [
+      "water",
+      "agriculture",
+      "masonry"
+    ]
+  },
+  "castle_building": {
+    "age": 3,
+    "name": "Linnuseehitus",
+    "requires": [
+      "stone_fortifications",
+      "medieval_crafts"
+    ]
+  },
+  "cellaring": {
+    "age": 1,
+    "name": "Toidukeldrid",
+    "requires": [
+      "storage",
+      "masonry"
+    ]
+  },
+  "chemistry": {
+    "age": 4,
+    "name": "Katsekeemia",
+    "requires": [
+      "experimental_science",
+      "smelting"
+    ]
+  },
+  "city_fortifications": {
+    "age": 3,
+    "name": "Linnade kindlustamine",
+    "requires": [
+      "castle_building",
+      "city_trade"
+    ]
+  },
+  "city_trade": {
+    "age": 3,
+    "name": "Linnakaubandus",
+    "requires": [
+      "commerce",
+      "road_construction"
+    ]
+  },
+  "civics": {
+    "age": 3,
+    "name": "Keskaegne ühiskonnakorraldus",
+    "requires": [
+      "writing",
+      "iron_crafts",
+      "commerce"
+    ]
+  },
+  "combustion": {
+    "age": 5,
+    "name": "Sisepõlemismootor",
+    "requires": [
+      "petroleum",
+      "mechanics"
+    ]
+  },
+  "commerce": {
+    "age": 1,
+    "name": "Linnaturg ja kaubandus",
+    "requires": [
+      "writing",
+      "storage"
+    ]
+  },
+  "computing": {
+    "age": 6,
+    "name": "Arvutustehnika",
+    "requires": [
+      "electronics",
+      "math_measure"
+    ]
+  },
+  "copper_smelting": {
+    "age": 0,
+    "name": "Vasesulatus — vaseaja üleminek",
+    "requires": [
+      "copper_tin",
+      "pottery"
+    ]
+  },
+  "copper_tin": {
+    "age": 0,
+    "name": "Vasemaagi tundmine",
+    "requires": [
+      "antler_picks",
+      "stone_wedges"
+    ]
+  },
+  "crossbows": {
+    "age": 3,
+    "name": "Keskaegne ristvibuvägi",
+    "requires": [
+      "archery",
+      "smithing",
+      "woodworking"
+    ]
+  },
+  "drainage_adits": {
+    "age": 2,
+    "name": "Kaevanduse kuivenduskäigud",
+    "requires": [
+      "iron_pickaxes",
+      "water"
+    ]
+  },
+  "dynamite_mining": {
+    "age": 5,
+    "name": "Dünamiidiga kaevandamine",
+    "requires": [
+      "chemistry",
+      "shaft_timbering"
+    ]
+  },
+  "early_siege_engineering": {
+    "age": 2,
+    "name": "Kaetud rammid ja piiramistornid",
+    "requires": [
+      "wheel",
+      "stone_fortifications",
+      "warfare"
+    ]
+  },
+  "electricity": {
+    "age": 5,
+    "name": "Elektritootmine ja elektrivõrk",
+    "oneOf": [
+      "steam_engine",
+      "watermills"
+    ],
+    "requires": [
+      "electromagnetism"
+    ]
+  },
+  "electromagnetism": {
+    "age": 5,
+    "name": "Elektromagnetism",
+    "requires": [
+      "experimental_science",
+      "math_measure",
+      "mechanics"
+    ]
+  },
+  "electronics": {
+    "age": 6,
+    "name": "Elektroonika",
+    "requires": [
+      "electromagnetism",
+      "modern_science"
+    ]
+  },
+  "experimental_science": {
+    "age": 4,
+    "name": "Katsemeetod ja loodusteadused",
+    "requires": [
+      "philosophy",
+      "math_measure"
+    ]
+  },
+  "field_artillery": {
+    "age": 4,
+    "name": "Välisuurtükid",
+    "requires": [
+      "gunpowder",
+      "smithing",
+      "mechanics"
+    ]
+  },
+  "fire_use": {
+    "age": 0,
+    "name": "Tule kasutamine ja põletus",
+    "requires": []
+  },
+  "firearms": {
+    "age": 4,
+    "name": "Arkebuusid ja musketid",
+    "requires": [
+      "gunpowder",
+      "smithing"
+    ]
+  },
+  "fishing": {
+    "age": 0,
+    "name": "Kalapüük",
+    "requires": []
+  },
+  "food_automation": {
+    "age": 6,
+    "name": "Toidutootmise automatiseerimine",
+    "requires": [
+      "electronics",
+      "mechanical_reaper",
+      "electricity"
+    ]
+  },
+  "forestry": {
+    "age": 1,
+    "name": "Metsade teadlik majandamine",
+    "requires": [
+      "woodworking",
+      "bronze_crafts"
+    ]
+  },
+  "fortifications": {
+    "age": 0,
+    "name": "Puidust kaitserajatised",
+    "requires": [
+      "settlement",
+      "woodworking"
+    ]
+  },
+  "guilds": {
+    "age": 3,
+    "name": "Käsitöögildid",
+    "requires": [
+      "commerce",
+      "iron_crafts"
+    ]
+  },
+  "gunpowder": {
+    "age": 3,
+    "name": "Püssirohu alused",
+    "requires": [
+      "fire_use",
+      "smelting",
+      "learning"
+    ]
+  },
+  "heavy_plough": {
+    "age": 3,
+    "name": "Raske hõlmader",
+    "requires": [
+      "iron_ploughshare",
+      "animal_husbandry"
+    ]
+  },
+  "horse_windlass": {
+    "age": 3,
+    "name": "Hobujõul kaevandusvints",
+    "requires": [
+      "ore_baskets",
+      "wheel",
+      "animal_husbandry"
+    ]
+  },
+  "horsemanship": {
+    "age": 2,
+    "name": "Ratsaväe väljaõpe",
+    "requires": [
+      "animal_husbandry",
+      "warfare",
+      "smithing"
+    ]
+  },
+  "hunting": {
+    "age": 0,
+    "name": "Jahipidamine",
+    "requires": []
+  },
+  "industrial_education": {
+    "age": 5,
+    "name": "Tehniline kõrgharidus",
+    "requires": [
+      "experimental_science",
+      "printing",
+      "mechanics"
+    ]
+  },
+  "industrialization": {
+    "age": 5,
+    "name": "Masintootmine ja tööstuskorraldus",
+    "oneOf": [
+      "printing",
+      "city_trade"
+    ],
+    "requires": [
+      "experimental_science",
+      "mechanics"
+    ]
+  },
+  "iron": {
+    "age": 2,
+    "name": "Rauasulatuse alused",
+    "requires": [
+      "bronze_crafts",
+      "copper_smelting"
+    ]
+  },
+  "iron_crafts": {
+    "age": 2,
+    "name": "Raudriistad ja töökojad",
+    "requires": [
+      "smithing",
+      "bronze_crafts"
+    ]
+  },
+  "iron_pickaxes": {
+    "age": 2,
+    "name": "Raudkirkad",
+    "requires": [
+      "smithing",
+      "bronze_chisels"
+    ]
+  },
+  "iron_ploughshare": {
+    "age": 2,
+    "name": "Rauast adratera",
+    "requires": [
+      "smithing",
+      "agriculture"
+    ]
+  },
+  "iron_scythes": {
+    "age": 2,
+    "name": "Raudvikatid",
+    "requires": [
+      "smithing",
+      "stone_sickles"
+    ]
+  },
+  "knighthood": {
+    "age": 3,
+    "name": "Rüütlivägi",
+    "requires": [
+      "horsemanship",
+      "armor_craft"
+    ]
+  },
+  "learning": {
+    "age": 0,
+    "name": "Õpetuse ja teadmiste edasiandmine",
+    "requires": [
+      "settlement"
+    ]
+  },
+  "manure_fertilization": {
+    "age": 1,
+    "name": "Sõnnikuga väetamine",
+    "requires": [
+      "agriculture",
+      "animal_husbandry"
+    ]
+  },
+  "masonry": {
+    "age": 0,
+    "name": "Kivitahumine",
+    "requires": [
+      "stone_wedges",
+      "stone_crafts"
+    ]
+  },
+  "math_measure": {
+    "age": 1,
+    "name": "Arvutamine ja mõõtmine",
+    "requires": [
+      "writing"
+    ]
+  },
+  "mechanical_reaper": {
+    "age": 5,
+    "name": "Mehaaniline viljalõikaja",
+    "requires": [
+      "heavy_plough",
+      "mechanics",
+      "seed_selection"
+    ]
+  },
+  "mechanics": {
+    "age": 4,
+    "name": "Mehaanika ja hammasülekanded",
+    "requires": [
+      "guilds",
+      "watermills",
+      "math_measure"
+    ]
+  },
+  "mechanized_cutters": {
+    "age": 6,
+    "name": "Mehhaniseeritud kaevanduskombainid",
+    "requires": [
+      "electricity",
+      "pneumatic_drills"
+    ]
+  },
+  "medieval_crafts": {
+    "age": 3,
+    "name": "Meistrite ehituskunst",
+    "requires": [
+      "iron_crafts",
+      "masonry"
+    ]
+  },
+  "medieval_healing": {
+    "age": 3,
+    "name": "Korraldatud ravitöö",
+    "requires": [
+      "learning",
+      "writing"
+    ]
+  },
+  "milling": {
+    "age": 0,
+    "name": "Käsijahvatus ja leivategu",
+    "requires": [
+      "agriculture",
+      "stone_tools"
+    ]
+  },
+  "mineral_fertilizers": {
+    "age": 5,
+    "name": "Mineraalväetised",
+    "requires": [
+      "chemistry",
+      "seed_selection"
+    ]
+  },
+  "modern_science": {
+    "age": 6,
+    "name": "Moodne teadus ja uurimislaborid",
+    "requires": [
+      "electricity",
+      "industrial_education"
+    ]
+  },
+  "modernity": {
+    "age": 6,
+    "name": "Moodsa riigi taristu",
+    "oneOf": [
+      "railways",
+      "combustion"
+    ],
+    "requires": [
+      "electricity",
+      "industrial_education"
+    ]
+  },
+  "monasticism": {
+    "age": 3,
+    "name": "Kloostrid ja käsikirjakultuur",
+    "requires": [
+      "writing",
+      "learning"
+    ]
+  },
+  "navigation": {
+    "age": 1,
+    "name": "Rannikunavigatsioon",
+    "requires": [
+      "shipbuilding",
+      "math_measure"
+    ]
+  },
+  "nets_traps": {
+    "age": 0,
+    "name": "Püünised ja kalavõrgud",
+    "oneOf": [
+      "hunting",
+      "fishing"
+    ],
+    "requires": [
+      "ropes"
+    ]
+  },
+  "ocean_sailing": {
+    "age": 3,
+    "name": "Kaugsõidupurjetamine",
+    "requires": [
+      "navigation",
+      "medieval_crafts",
+      "math_measure"
+    ]
+  },
+  "oil_drilling": {
+    "age": 5,
+    "name": "Naftapuurimine",
+    "requires": [
+      "powered_hoists",
+      "drainage_adits"
+    ]
+  },
+  "ore_baskets": {
+    "age": 1,
+    "name": "Maagi tõstekorvid",
+    "requires": [
+      "antler_picks",
+      "ropes"
+    ]
+  },
+  "petroleum": {
+    "age": 5,
+    "name": "Nafta rafineerimine",
+    "requires": [
+      "oil_drilling",
+      "chemistry"
+    ]
+  },
+  "philosophy": {
+    "age": 2,
+    "name": "Filosoofia ja teaduste korraldus",
+    "requires": [
+      "writing",
+      "math_measure",
+      "learning"
+    ]
+  },
+  "pneumatic_drills": {
+    "age": 5,
+    "name": "Suruõhupuurid",
+    "requires": [
+      "steam_engine",
+      "iron_pickaxes"
+    ]
+  },
+  "pottery": {
+    "age": 0,
+    "name": "Savitöö ja keraamika",
+    "requires": [
+      "fire_use",
+      "stone_tools"
+    ]
+  },
+  "powered_hoists": {
+    "age": 4,
+    "name": "Hammasülekandega maagitõstukid",
+    "requires": [
+      "horse_windlass",
+      "mechanics"
+    ]
+  },
+  "precision_farming": {
+    "age": 6,
+    "name": "Täppisviljelus ja juhitav niisutus",
+    "requires": [
+      "computing",
+      "seed_selection",
+      "canal_irrigation"
+    ]
+  },
+  "printing": {
+    "age": 4,
+    "name": "Trükipress ja liikuvad trükitüübid",
+    "requires": [
+      "writing",
+      "guilds",
+      "woodworking"
+    ]
+  },
+  "railways": {
+    "age": 5,
+    "name": "Raudteetransport",
+    "requires": [
+      "steam_engine",
+      "smithing"
+    ]
+  },
+  "renaissance": {
+    "age": 4,
+    "name": "Renessanss",
+    "oneOf": [
+      "scholasticism",
+      "city_trade"
+    ],
+    "requires": [
+      "philosophy"
+    ]
+  },
+  "rifles": {
+    "age": 5,
+    "name": "Vintpüsside masstootmine",
+    "requires": [
+      "firearms",
+      "steelmaking",
+      "mechanics"
+    ]
+  },
+  "road_construction": {
+    "age": 1,
+    "name": "Teedeehitus",
+    "requires": [
+      "wheel",
+      "masonry"
+    ]
+  },
+  "ropes": {
+    "age": 0,
+    "name": "Nöörid ja köied",
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "scholasticism": {
+    "age": 3,
+    "name": "Ülikoolid ja kõrgem haridus",
+    "requires": [
+      "philosophy",
+      "writing"
+    ]
+  },
+  "seed_selection": {
+    "age": 4,
+    "name": "Koordineeritud seemnekasvatus",
+    "requires": [
+      "three_field_rotation",
+      "learning"
+    ]
+  },
+  "settlement": {
+    "age": 0,
+    "name": "Püsiasustus ja kogukonnakorraldus",
+    "oneOf": [
+      "hunting",
+      "fishing",
+      "agriculture"
+    ],
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "shaft_timbering": {
+    "age": 3,
+    "name": "Toestatud süvašahtid",
+    "requires": [
+      "drainage_adits",
+      "woodworking",
+      "iron_pickaxes"
+    ]
+  },
+  "shipbuilding": {
+    "age": 1,
+    "name": "Rannikulaevade ehitus",
+    "requires": [
+      "woodworking",
+      "ropes",
+      "fishing"
+    ]
+  },
+  "siege_engineering": {
+    "age": 3,
+    "name": "Täiustatud piiramisrelvad",
+    "requires": [
+      "early_siege_engineering",
+      "medieval_crafts"
+    ]
+  },
+  "smelting": {
+    "age": 2,
+    "name": "Täiustatud rauasulatus",
+    "requires": [
+      "iron",
+      "pottery"
+    ]
+  },
+  "smithing": {
+    "age": 2,
+    "name": "Raua sepistamine",
+    "requires": [
+      "smelting",
+      "bronze_crafts"
+    ]
+  },
+  "steam_engine": {
+    "age": 5,
+    "name": "Aurumasin",
+    "requires": [
+      "smelting",
+      "mechanics",
+      "waterwheel_pumps"
+    ]
+  },
+  "steelmaking": {
+    "age": 5,
+    "name": "Terase masstootmine",
+    "requires": [
+      "smelting",
+      "chemistry"
+    ]
+  },
+  "stone_crafts": {
+    "age": 0,
+    "name": "Kiviaja töökojad",
+    "requires": [
+      "stone_tools",
+      "woodworking"
+    ]
+  },
+  "stone_fortifications": {
+    "age": 1,
+    "name": "Kivist kindlustused",
+    "requires": [
+      "fortifications",
+      "masonry"
+    ]
+  },
+  "stone_sickles": {
+    "age": 0,
+    "name": "Tulekivisirbid",
+    "requires": [
+      "agriculture"
+    ]
+  },
+  "stone_tools": {
+    "age": 0,
+    "name": "Kivitööriistad",
+    "requires": []
+  },
+  "stone_wedges": {
+    "age": 0,
+    "name": "Kivikiilud",
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "storage": {
+    "age": 0,
+    "name": "Varude säilitamine",
+    "requires": [
+      "pottery",
+      "settlement"
+    ]
+  },
+  "three_field_rotation": {
+    "age": 3,
+    "name": "Kolmeväljasüsteem",
+    "requires": [
+      "agriculture",
+      "manure_fertilization"
+    ]
+  },
+  "warfare": {
+    "age": 0,
+    "name": "Sõdalaste väljaõpe",
+    "oneOf": [
+      "hunting",
+      "settlement"
+    ],
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "water": {
+    "age": 0,
+    "name": "Kaevud ja veevarustus",
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "water_meadows": {
+    "age": 4,
+    "name": "Niisutatavad luhaniidud",
+    "requires": [
+      "canal_irrigation",
+      "watermills"
+    ]
+  },
+  "watermills": {
+    "age": 2,
+    "name": "Vesiveskid",
+    "requires": [
+      "milling",
+      "wheel",
+      "woodworking"
+    ]
+  },
+  "waterwheel_pumps": {
+    "age": 4,
+    "name": "Vesirattaga kaevanduspumbad",
+    "requires": [
+      "watermills",
+      "drainage_adits",
+      "mechanics"
+    ]
+  },
+  "wheel": {
+    "age": 1,
+    "name": "Ratas ja veovankrid",
+    "requires": [
+      "woodworking",
+      "animal_husbandry"
+    ]
+  },
+  "windmills": {
+    "age": 3,
+    "name": "Tuuleveskid",
+    "requires": [
+      "watermills",
+      "woodworking"
+    ]
+  },
+  "woodworking": {
+    "age": 0,
+    "name": "Puusepatöö alused",
+    "requires": [
+      "stone_tools"
+    ]
+  },
+  "writing": {
+    "age": 1,
+    "name": "Kirjakunst",
+    "requires": [
+      "storage",
+      "learning"
+    ]
+  }
+}

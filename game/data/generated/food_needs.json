@@ -1,0 +1,30 @@
+[
+  {
+    "food": 2,
+    "luxury": 0
+  },
+  {
+    "food": 3,
+    "luxury": 1
+  },
+  {
+    "food": 4,
+    "luxury": 2
+  },
+  {
+    "food": 5,
+    "luxury": 3
+  },
+  {
+    "food": 6,
+    "luxury": 4
+  },
+  {
+    "food": 7,
+    "luxury": 5
+  },
+  {
+    "food": 8,
+    "luxury": 6
+  }
+]
