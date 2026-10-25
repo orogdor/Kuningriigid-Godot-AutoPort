@@ -1055,7 +1055,8 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     can_build=capital
     district_id=district
     combined_city=can_build and Continuous.active(world,city_state,selected)
-    shown_district_tiles=Continuous.visible(world,city_state,selected) if combined_city else []
+    shown_district_tiles.clear()
+    if combined_city:shown_district_tiles=Continuous.visible(world,city_state,selected)
     combined_bounds=Continuous.bounds(shown_district_tiles,selected) if combined_city else {}
     if controller!=null:
         controller.call("set_city_bounds",combined_bounds)
