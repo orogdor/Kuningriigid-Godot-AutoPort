@@ -72,3 +72,40 @@ Käivitaja küsib igal avamisel avalikust GitHub Releases API-st viimast väljal
 Automaatne ehitus: `.github/workflows/build-apps.yml` ekspordib Godot 4.4.1 abil Windowsi EXE, Androidi test-APK ja PCK, lisab kontrollsummad ning avaldab GitHub Releases'i. Lisaks kontrollib see lõpetatud ajastatud veebimängu sünkroonimist ja jätab muutumata lähtekoodi korral kordusväljalaske tegemata.
 
 **Piirangud:** Androidi test-APK allkirjastatakse iga CI ehituse ajutise debug-võtmega. Sisupaketi uuendamine ei vaja uut APK paigaldamist, kuid uue APK versiooni installimine eelmise peale võib allkirja erinevuse tõttu nõuda vana APK eemaldamist. Päris ametlikuks APK uuendamiseks tuleb seadistada püsiv, salajas hoitav allkirjastamisvõti GitHubi Secrets'isse; seda ei tohi repositooriumis avaldada. Windowsi ja Androidi koodiga seotud mootoriparandused nõuavad mõnikord uue APK/EXE käsitsi paigaldamist. Praegune mängusisu on endiselt pordi kontrollrakendus.
+
+## AutoPort 0.4 — Windowsi väike käivitaja ja päris failistruktuur
+
+Uus [Windowsi `Kuningriigid.exe`](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/latest) on **ligikaudu 5,7 MiB käivitaja**, mitte 93 MB sisseehitatud mootor. Esmakäivitus vajab internetti: programm võtab GitHubi viimasest väljalaskest `Windows-files.json` ja eraldi `Kuningriigid-Engine.exe` (u 149 MiB), salvestab Godoti mootori oma `runtime` kausta ning laeb 29 projekti lähtefaili üle ükshaaval koos SHA-256 kontrolliga.
+
+Iga järgnev avamine kontrollib GitHubi uusimat väljalaset. Muutumata failid kopeeritakse eelmisest versioonist; ainult muutunud allalaetavad failid võetakse kinnitatud Git-commit'ist. Lõpetamata uuendus ei asenda töötavat versiooni ja ilma internetita saab käivitada eelmise kohapeal olemas oleva versiooni. Windowsis kasutatakse lahtiseid `.gd`, `.tscn`, `.godot` ja `.json` faile; Android jääb praegu senisele pakitud `.pck` uuendusele.
+
+Pärast esmakäivitust loob käivitaja oma EXE kõrvale sellise kataloogistruktuuri:
+
+```text
+Kuningriigid.exe                     # väike Windowsi käivitaja
+Kuningriigid-Data/
+  active.json                        # viimati edukalt paigaldatud versioon
+  runtime/
+    <godot-sha256>/
+      Godot.exe                      # mootor, laaditakse esimesel korral
+  versions/
+    <repo-commit-sha>/
+      manifest.json                  # kohaliku mängu failiräside loend
+      game/
+        project.godot
+        main.tscn
+        content.tscn
+        scripts/
+          content.gd
+          logic_v02.gd
+          ...
+        data/
+          generated/
+            tech_tree.json
+            goods.json
+            ...
+```
+
+GitHub Actions ehitab EXE ja Androidi APK, genereerib Windowsi manifesti ning avaldab mootorifaili ja APK/PCK eraldi. [Esimene edukas 0.4 väljalase](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/tag/v0.4.16) sisaldab kuut faili: väike EXE, Windowsi mootor, manifest, APK, PCK ja kontrollsummad. Kui EXE on kirjutuskaitstud kataloogis (näiteks Program Files), ei pruugi kohapealsete failide loomine õnnestuda; käivita alguses tavalisest kirjutusõigusega kaustast.
+
+**Piirang:** kinnitatud on GitHub Actionsi Windowsi käivitaja koostamine, 29-failise manifesti genereerimine, Godoti impordi test ning APK ehitamine. Tegelikku esmakäivitust Windowsi graafilisel töölaual tuleb veel eraldi kontrollida. Godoti port ise näitab praegu reeglite eelvaadet, mitte veel mängitavat maailma.
