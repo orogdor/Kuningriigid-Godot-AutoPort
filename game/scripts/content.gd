@@ -3,6 +3,7 @@ extends Control
 ## Live source-derived production definitions; one button press = one game minute.
 const City = preload("res://scripts/city_sim_v05.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
+const WorldMap = preload("res://scripts/world_map_v06.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -14,6 +15,8 @@ const RESOURCE_LABELS: Dictionary = {
     "vegetables":"Köögiviljad","gold":"Kuld","fish":"Kala","meat":"Liha"
 }
 var city: Dictionary = {}
+var city_scroll: ScrollContainer
+var world_view: Control
 var recipes: Dictionary = {}
 var stat_text: Label
 var population_bar: ProgressBar
@@ -40,6 +43,21 @@ func _ready() -> void:
     timer.timeout.connect(func(): _advance(1))
     add_child(timer)
     _refresh()
+    # World map replaces the previous 0.5 text-only entry view.
+    world_view = WorldMap.new()
+    add_child(world_view)
+    world_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    world_view.open_city_requested.connect(_show_city)
+    city_scroll.hide()
+
+func _show_city() -> void:
+    if world_view != null:world_view.hide()
+    if city_scroll != null:city_scroll.show()
+    _refresh()
+
+func _show_world() -> void:
+    if city_scroll != null:city_scroll.hide()
+    if world_view != null:world_view.show()
 
 func _load_city() -> Dictionary:
     if FileAccess.file_exists(SAVE_PATH):
@@ -72,6 +90,7 @@ func _button(text: String, callback: Callable) -> Button:
 
 func _setup_ui() -> void:
     var scroll := ScrollContainer.new()
+    city_scroll=scroll
     scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(scroll)
     var margin := MarginContainer.new()
@@ -97,6 +116,7 @@ func _setup_ui() -> void:
     controls.add_theme_constant_override("h_separation",8)
     controls.add_theme_constant_override("v_separation",8)
     body.add_child(controls)
+    controls.add_child(_button("Maailmakaart",_show_world))
     controls.add_child(_button("+1 käik",func(): _advance(1)))
     controls.add_child(_button("+10 käiku",func(): _advance(10)))
     controls.add_child(_button("+200 käiku",func(): _advance(200)))
@@ -129,7 +149,7 @@ func _setup_ui() -> void:
     body.add_child(construction_rows)
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.5 ulatus: ühe linna varud, ehitised, töötajad, tootmine, tarbimine ja kasv. Maailmakaart, maardlad, füüsiline kaubavedu, AI ja sõjad tulevad hiljem."
+    note.text="0.6: maailmakaardi proovivaade ja 0.5 linnamajandus on ühendatud. Maardlad, füüsiline kaubavedu, AI ja sõjad tulevad hiljem."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
