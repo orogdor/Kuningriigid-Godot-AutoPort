@@ -273,10 +273,10 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
         realm["shortageTurns"] = shortage
     realm["growthProgress"] = progress
     if Trade.has_outpost(state) and not bool(state.get("satellite_town",false)):
-        # An independently developing satellite uses the same source-derived
-        # buildings/population/economy logic, but owns its own stock and workers.
-        # The satellite has no trade_v15 field, so this recursion ends here.
+        # One independent settlement, using its own economy and resources.
         var satellite: Dictionary=Trade.ensure_city(state)
+        if bool(state["trade_v15"].get("ai_enabled",false)):
+            _satellite_ai_tick(satellite,defs)
         tick(satellite,defs)
     Trade.tick(state)
 
@@ -297,3 +297,71 @@ static func snapshot(state: Dictionary) -> Dictionary:
         "growthNeed":float(realm.get("growthNeed",0)),"employed":float(realm.get("employed",0)),
         "marketVarieties":int(realm.get("marketFoodVarietiesV137",0)),
         "marketBonus":float(realm.get("marketFoodBonusV137",0)),"buildings":buildings_out}
+
+static func _satellite_ai_tick(town: Dictionary, defs: Dictionary) -> void:
+    # Scoped to an explicitly enabled second-city AI; never alters base 0.5
+    # economic parity or orders unwanted automatic international purchases.
+    if not bool(town.get("satellite_town",false)):return
+    var tick_number: int=int(float(town.get("time",0.0))/DT)
+    if tick_number<int(town.get("ai_next_turn",0)):return
+    town["ai_next_turn"]=tick_number+3
+    for building in town.get("buildings",[]):
+        if not bool(building.get("ready",false)):
+            return # Finish current worksite before starting another.
+    var buildings: Array=town.get("buildings",[])
+    var stock: Dictionary=town["realms"][0]["resources"]
+    var realm: Dictionary=town["realms"][0]
+    var counts: Dictionary={}
+    for b in buildings:
+        if bool(b.get("ready",false)):
+            var kind: String=String(b.get("type",""))
+            counts[kind]=int(counts.get(kind,0))+1
+    var candidate: String=""
+    # Basic survival and building progression based on needs.
+    if int(counts.get("lumber",0))<1:
+        candidate="lumber"
+    elif int(counts.get("well",0))<1:
+        candidate="well"
+    elif int(counts.get("house",0))<1 or (housing_capacity(buildings)-float(realm.get("pop",3)))<1.0:
+        candidate="house"
+    elif int(counts.get("quarry",0))<1:
+        candidate="quarry"
+    elif int(counts.get("farm",0))<1:
+        candidate="farm"
+    elif int(counts.get("warehouse",0))<1:
+        candidate="warehouse"
+    else:
+        # Grow buildings gradually in proportion to demand, not indefinitely.
+        if int(counts.get("house",0))<mini(5,int(realm.get("pop",3))/2):
+            candidate="house"
+        elif int(counts.get("farm",0))<mini(2,int(realm.get("pop",3))/7):
+            candidate="farm"
+    if candidate=="":return
+    var recipes: Dictionary=defs.get("buildings",{})
+    if not recipes.has(candidate):return
+    var recipe: Dictionary=recipes[candidate]
+    if int(recipe.get("age",0))>int(town.get("age",0)):return
+    if not can_afford(stock,recipe.get("cost",{})):return
+    for needed in recipe.get("requires",[]):
+        if int(counts.get(String(needed),0))<1:return
+    # The AI uses the same legal town lots and physical builders as the user.
+    Spatial.initialize(town)
+    var placed: bool=false
+    for radius in [2,3,4,5,6]:
+        for dz in range(-radius,radius+1):
+            for dx in range(-radius,radius+1):
+                if maxi(absi(dx),absi(dz))!=radius:continue
+                var point:=Vector2(float(dx)*Spatial.STEP,float(dz)*Spatial.STEP)
+                if not Spatial.can_place(town,point):continue
+                town["pending_site"]={"x":point.x,"z":point.y}
+                var result: String=build(town,candidate)
+                town.erase("pending_site")
+                if result=="":
+                    var notes: Array=town.get("ai_log",[])
+                    notes.append({"turn":tick_number,"type":candidate,"x":point.x,"z":point.y})
+                    if notes.size()>20:notes.pop_front()
+                    town["ai_log"]=notes
+                    placed=true
+                    break
+            if placed:break
+        if placed:break
