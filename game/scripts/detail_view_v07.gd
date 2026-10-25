@@ -76,7 +76,7 @@ func _ready() -> void:
     camera.fov=58.0
     camera.current=true
     scene_root.add_child(camera)
-    controller.attach_camera(camera)
+    controller.call("attach_camera",camera)
     construction_root=Node3D.new()
     construction_root.name="PlacedBuildings"
     scene_root.add_child(construction_root)
