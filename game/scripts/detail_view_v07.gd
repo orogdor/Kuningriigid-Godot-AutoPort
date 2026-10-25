@@ -8,6 +8,7 @@ signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
+const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
@@ -23,6 +24,8 @@ var construction_root: Node3D
 var resource_root: Node3D
 var worker_root: Node3D
 var plot_root: Node3D
+var roads_root: Node3D
+var previous_worker_positions: Dictionary={}
 var pending_build: String = ""
 var controller: SubViewportContainer
 var info: Label
@@ -40,7 +43,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.8 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.9 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -96,6 +99,9 @@ func _ready() -> void:
     plot_root=Node3D.new()
     plot_root.name="BuildGrid"
     scene_root.add_child(plot_root)
+    roads_root=Node3D.new()
+    roads_root.name="EmergentFootpaths"
+    scene_root.add_child(roads_root)
     actions=HFlowContainer.new()
     actions.add_theme_constant_override("h_separation",6)
     actions.add_theme_constant_override("v_separation",6)
@@ -280,6 +286,7 @@ func refresh_buildings() -> void:
         _refresh_resource_meshes()
         _refresh_worker_meshes()
         _refresh_grid()
+        _refresh_roads()
     _refresh_actions()
     _refresh_info()
 
@@ -306,18 +313,34 @@ func _refresh_worker_meshes() -> void:
     var sim: Dictionary=city_state.get("detail_sim",{})
     for i in range(sim.get("workers",[]).size()):
         var person: Dictionary=sim["workers"][i]
+        var p:=Vector3(float(person["x"]),0.0,float(person["z"]))
+        var previous: Vector3=previous_worker_positions.get(i,p)
         var body:=Node3D.new()
         body.name="Worker_"+str(i)
         worker_root.add_child(body)
-        var p:=Vector3(float(person["x"]),0.0,float(person["z"]))
-        _cylinder(body,p+Vector3(0,1.3,0),0.55,2.2,Color("#9c6f4a"),"WorkerBody")
+        body.position=previous
+        _cylinder(body,Vector3(0,1.3,0),0.55,2.2,Color("#9c6f4a"),"WorkerBody")
         var head:=SphereMesh.new()
         head.radius=0.6
         head.height=1.2
-        _mesh(body,head,p+Vector3(0,2.95,0),Color("#dfba94"),"WorkerHead")
+        _mesh(body,head,Vector3(0,2.95,0),Color("#dfba94"),"WorkerHead")
         if float(person.get("carry",0))>0:
-            _box(body,p+Vector3(0.8,1.9,0),Vector3(1.3,1.4,1.1),
+            _box(body,Vector3(0.8,1.9,0),Vector3(1.3,1.4,1.1),
                 Color("#74563b") if person["kind"]=="wood" else Color("#8f9798"),"Cargo")
+        if not previous.is_equal_approx(p):
+            body.create_tween().tween_property(body,"position",p,0.68).set_trans(Tween.TRANS_SINE)
+        previous_worker_positions[i]=p
+
+func _refresh_roads() -> void:
+    if roads_root==null:return
+    for old in roads_root.get_children():old.queue_free()
+    var sim: Dictionary=city_state.get("detail_sim",{})
+    for tile in Paths.road_tiles(sim):
+        var amount: float=float(tile["strength"])
+        var shade:=Color("#927451") if amount<8.0 else Color("#ab9165")
+        _box(roads_root,Vector3(float(tile["x"]),0.11,float(tile["z"])),
+            Vector3(7.5+minf(1.0,amount*0.07),0.06,7.5+minf(1.0,amount*0.07)),
+            shade,"Footpath")
 
 func _refresh_grid() -> void:
     if plot_root==null:return
@@ -361,6 +384,8 @@ func _refresh_info() -> void:
         text_line+=" | Metsas %.0f puitu | Maardlates %.0f kivi | Töölisi %d" % [
             Spatial.count_remaining(city_state,"wood"),Spatial.count_remaining(city_state,"stone"),
             sim.get("workers",[]).size()]
+        var streets: Dictionary=Paths.roads_summary(sim)
+        text_line+=" | Sissekäidud teeruutusid %d" % int(streets["tiles"])
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -382,7 +407,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="Vali hoone ja klõpsa rohelisel ehitusalal; töölised viivad puidu ja kivi lattu."
+    note.text="Töölised leiavad tee ümber hoonete; kasutatud käiguradadest tekivad ja hääbuvad teed."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
 
@@ -407,11 +432,12 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     city_state=city
     can_build=capital
     pending_build=""
+    previous_worker_positions.clear()
     if can_build:Spatial.initialize(city_state)
     if scene_root==null:return
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child==roads_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         child.queue_free()
     var tile: Dictionary=World.cell(world,c,r)
