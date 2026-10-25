@@ -110,11 +110,14 @@ static func build(state: Dictionary, building_type: String) -> String:
         # Wood/stone/planks were already paid by spend() above. 0.12
         # tracks their delivery without deducting the same materials twice.
         var prepaid: Dictionary={}
-        for material in ["wood","stone","plank"]:
-            if float(cost.get(material,0))>0.0:
+        for material in cost.keys():
+            # Food is consumed on ordering; every other positive cost is a
+            # prepaid material to be physically transported to the site.
+            if String(material)!="bread" and float(cost[material])>0.0:
                 prepaid[material]=float(cost[material])
         new_site["supply_total"]=prepaid
         new_site["supply_delivered"]={}
+        new_site["priority"]="normal"
     state["buildings"].append(new_site)
     return ""
 
