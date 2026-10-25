@@ -52,7 +52,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.17 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.19 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -517,7 +517,7 @@ func _ground_clicked(pos: Vector3) -> void:
 func select_building(kind: String) -> void:
     if not can_build or not _can_build(kind):return
     pending_build=kind
-    if info!=null:info.text="EHITUS: "+kind+" — klõpsa rohelisel ehitusruudul; parem hiir pöörab kaamerat"
+    if info!=null:info.text="EHITUS: "+kind+" — puuduta rohelist ehitusruutu; üks sõrm pöörab, kaks sõrme suumivad ja nihutavad"
 
 func _refresh_info() -> void:
     if info==null:return
@@ -573,7 +573,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.17: teisel linnal saab sisse lülitada ehitus-AI ning linnade vahel on läbitav maailmakaardi kaubatee."
+    note.text="0.19: 3D kaamera kahe sõrme suum ja nihutamine; 0.17 teise linna AI ja kaubateed säilivad."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
