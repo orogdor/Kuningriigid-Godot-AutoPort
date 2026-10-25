@@ -6,6 +6,7 @@ const Logic = preload("res://scripts/logic_v02.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v12.gd")
 const Freight = preload("res://scripts/freight_v14.gd")
+const Transit = preload("res://scripts/district_transit_v26.gd")
 const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
@@ -244,6 +245,10 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
         Construction.tick(state,recipes)
         Spatial.tick(state)
         Freight.tick(state)
+        # v0.26 district agents use their own 10m A* local grids and 20m
+        # physical gates, then deliver the same shared-warehouse stock.
+        if state.has("transport_v26"):
+            Transit.tick(state,recipes)
     state["time"] = float(state.get("time",0)) + DT
     var cap: float = housing_capacity(buildings)
     var food_need: float = floor(pop * 0.60 * 100.0 + 0.5) / 100.0
