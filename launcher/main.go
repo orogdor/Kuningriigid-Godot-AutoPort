@@ -15,7 +15,6 @@ import (
  "os/exec"
  "path/filepath"
  "regexp"
- "runtime"
  "strings"
  "time"
 )
@@ -239,7 +238,12 @@ func run()error{
  if updateErr!=nil{fmt.Fprintln(os.Stderr,"Update unavailable:",updateErr)}
  if err=start(base,updated);err==nil{return nil}
  if updated!=state {
-  if err=start(base,state);err==nil{return nil}
+  if err=start(base,state);err==nil {
+   // Roll back active selection when a newly installed version cannot start.
+   previous,_:=json.MarshalIndent(state,"","  ")
+   _=atomicWrite(filepath.Join(base,"active.json"),previous)
+   return nil
+  }
  }
  if updateErr!=nil{return fmt.Errorf("GitHub: %v; game not available offline",updateErr)}
  return errors.New("no working game version; try again with internet")
@@ -249,6 +253,5 @@ func main(){
   showFatal("Kuningriigid ei käivitu:
 "+err.Error())
   os.Exit(1)
+
  }
- _=runtime.GOOS
-}
