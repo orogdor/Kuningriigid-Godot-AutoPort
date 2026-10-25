@@ -310,3 +310,14 @@ Maailmakaart joonistab linna ruudud kuldsega ja kõrvuti liidetud ruutude vahele
 **Teadlik piirang 0.25-s:** töötajate ja kaubavankrite detailne 3D liikumine on seni ühe algse ruudu põhine. Naaberruudul saab maja tellida ja see kuulub ühisesse linna majandusse, kuid 3D tööjõutransport ja katkematu teevõrk kahe detailkaardi vahel vajavad järgmist suuremat portimisetappi. Naaberruudu avamine ei kirjuta enam üle algse linna salvestatud kohaliku maastiku andmeid.
 
 `game/tests/world_districts_v25.gd` kontrollib kasvupiirangut, liitmiskulu, topeltliitmise tõkestamist, külgepidi ühendust, kuldseid maailmakaardi ülekatteid, 3D hoonete eristamist, salvestust ning vanade linnade ühilduvust. GitHub Actionsi automaatne Androidi APK ja Windowsi EXE ehitus käivitab testi koos kõigi varasemate testidega. Väljalaskemärgis on `v0.25.<run_number>`.
+
+
+## AutoPort 0.26 — füüsilised linnaosadevahelised liikujad
+
+Naaberruudud on nüüd ühendatud ühe **liikumisvõrguga**, mitte ainult maailmakaardile joonistatud teedega. `game/scripts/district_transit_v26.gd` hoiab linnale kuuluvate maailmaruutude graafi ning iga rändava töölise, ehitaja ja kaubavankri linnaosa ja kohalikke 3D koordinaate. Igas detailruudus kasutatakse 10-meetrise A* ruudustiku takistusreegleid; naaberruutu pääseb ainult külgepidi ühise tee värava kaudu. Väravast üle sõitmine kulutab eraldi 20 m teepikkuse ja vähemalt ühe mängukäigu. Jõest või hoonest läbimatud väljumised ei ole võimalikud ning süsteem proovib alternatiivseid läbitavaid väravapunkte.
+
+Uue linnaosa hoonetest pärit valmis kaup läheb esmalt füüsilisele vankrile. Kaup lisatakse pealinna ühislattu **alles vankri saabumisel**, seda jälgitakse kaubabilansis ja see säilib salvestuses. Ehitustööde juba tellimisel mahaarvatud materjalid liiguvad ehitusplatsile samuti vankritega. Ehitusmeeskond peab linnaosa väravast ja kohalikest tänavatest läbi jõudma enne töö lõpetamist. Uue linnaosa metsamaja ja kivimurru töölised reisivad oma töökohta ja kasutavad sealseid eraldi piiratud puidu/kivi ressursipaiku. Pealinna vana A* töövoog säilib ning vanades salvestustes puuduv transpordikiht aktiveerub alles päriselt liidetud linnaosade puhul.
+
+3D vaates näidatakse selle linnaosa kohal olevat liikuvat töölist või kaubavankrit ja väravani viivat teelõiku. Maailmakaardil on linnaosadevahelised tänavad ning liikujate tegeliku ruudu ja kohaliku asukoha järgi muutuvad markerid. 0.26 ei renderda veel kogu mitmest maailmaruudust koosnevat maastikku korraga ühes 3D kaameras; liikumise füüsiline võrk on ühine, vahetatavate detailvaadetega.
+
+`game/tests/district_transit_v26.gd` kontrollib läbitavaid naaberruutude vahelisi marsruute, vähemalt ühe mängukäigu pikkust väravaületust, päris kaupa kandvat 3D vankrit, kaubakoguse säilimist igal käigul, ehitusmaterjalide ette tasumist, ehitajate töö valmimist ja marsruutide salvestamist. Test on osa mõlemast CI töövoost. Väljalase on `v0.26.<run_number>`.
