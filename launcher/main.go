@@ -248,10 +248,9 @@ func run()error{
  if updateErr!=nil{return fmt.Errorf("GitHub: %v; game not available offline",updateErr)}
  return errors.New("no working game version; try again with internet")
 }
-func main(){
- if err:=run();err!=nil{
-  showFatal("Kuningriigid ei käivitu:
-"+err.Error())
+func main() {
+ if err := run(); err != nil {
+  showFatal("Kuningriigid ei käivitu:\n" + err.Error())
   os.Exit(1)
-
  }
+}
