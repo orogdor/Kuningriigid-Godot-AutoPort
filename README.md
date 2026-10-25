@@ -231,3 +231,12 @@ Teise linna asutamine linnamajanduse menüüs lülitab nüüd sisse **ehitus-AI*
 Automaatkontroll `game/tests/world_trade_v17.gd` kontrollib, et tee on külgnev ja kuiv, kauba väärtus kandub õigel käigul ainult sihtlinna, vanad saadetised säilitavad ETA, AI tellib teise linna esimese ehitise oma materjalidest, kasutajaliidese AI lüliti säilib salvestuses ning kaubatee ja karavanid kuvatakse maailmakaardil. Säilivad ka kõik varasemad pariteedi-, logistika- ja 0.16 kahe linna ehitustestid.
 
 **Piirangud:** tegemist on piiratud teise linna ehitus-AI-ga, mitte täisväärtusliku strateegilise riigi-AI-ga. Tee on esialgu maismaa ruutude järjestus, mitte realistlik vankritega läbiv sõidetav kogu maailma 3D tee. Linnadevahelised teehooldus- ja transpordihinnad ning merevedu vajavad veel arendust.
+
+
+## AutoPort 0.18 — maailmakaardi mobiilsed puutežestid
+
+Androidi Godoti maailmakaardil on nüüdsest kahe sõrme näpistusega suumimine ning kahe sõrme samaaegne liigutamine panoraamimiseks. Suum ankurdatakse sõrmede keskpunkti: kaardi asukoht ei hüppa žesti ajal. Ühe sõrmega saab endiselt kaarti nihutada ja lühikese puudutusega ruudu valida. Pärast kahe sõrme žesti ei tekita kummagi sõrme lahtilaskmine juhuslikku kaardiruudu valikut.
+
+`game/tests/world_v06_ui.gd` käivitab päris Godoti ekraanil sünteetilised kahe sõrme puudutus-, lohistamis- ja vabastussündmused ning kontrollib suumi suurenemist, valiku säilimist, järgmist ühe sõrme puudutust ja ühe sõrmega panoraamimist. Kontroll käivitub nii lähtereglite sünkroonimisel kui ka Windowsi EXE / Androidi APK väljalaske ehitamisel. Need muudatused ei muuda 0.17 majandust, karavanide ETA-d ega salvestusskeemi.
+
+**Piirang:** testid kontrollivad Godoti puutežestide loogikat headless-keskkonnas. Füüsilise Androidi seadme multitouch-käitumise käsitsi valideerimine on eraldi vajalik. 3D detailkaardi kaamera kasutab endiselt varasemat ühe sõrme pööramisrežiimi.
