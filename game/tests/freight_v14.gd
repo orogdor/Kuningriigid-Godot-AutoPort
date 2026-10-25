@@ -115,8 +115,22 @@ func _test() -> void:
     if vehicles==null or vehicles.get_node_or_null("GoodsWagon_1")==null:
         fail("visible freight wagon not placed in Godot scene")
         return
-    if vehicles.get_node("GoodsWagon_1").get_node_or_null("VisibleGoodsCargo")==null:
-        fail("transport unit did not show physical cargo")
+    # 0.22 requires the wagon to reach the building door before loading.
+    # Confirm both the real cargo state and its rendered 3D mesh at pickup.
+    var cargo_3d_seen: bool=false
+    for check_turn in range(9):
+        var wagon: Node=vehicles.get_node_or_null("GoodsWagon_1")
+        var loaded: bool=false
+        for hauler in screen.city["detail_sim"].get("haulers",[]):
+            if int(hauler.get("id",-1))==1 and float(hauler.get("load",0.0))>0.0:
+                loaded=true
+        if loaded and wagon!=null and wagon.get_node_or_null("VisibleGoodsCargo")!=null:
+            cargo_3d_seen=true
+            break
+        screen._advance(1)
+        await process_frame
+    if not cargo_3d_seen:
+        fail("loaded freight was not shown by the physical 3D wagon")
         return
     if not FileAccess.file_exists("user://autoport_city_v05.json"):
         fail("transporting goods prevented city saving")
