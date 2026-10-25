@@ -33,7 +33,8 @@ static func ground(sim: Dictionary,x: float,z: float) -> float:
         Vector2i(int(record["c"]),int(record["r"])),record.get("segments",[]),x,z)
 
 static func _endpoints(s: Dictionary) -> Array[Vector2]:
-    return [Vector2(float(s["ax"]),float(s["az"])),Vector2(float(s["bx"]),float(s["bz"]))]
+    var result: Array[Vector2]=[Vector2(float(s["ax"]),float(s["az"])),Vector2(float(s["bx"]),float(s["bz"]))]
+    return result
 
 static func underwater(sim: Dictionary,pos: Vector2) -> bool:
     if not enabled(sim):
