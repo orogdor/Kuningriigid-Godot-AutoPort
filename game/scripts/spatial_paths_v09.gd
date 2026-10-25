@@ -195,6 +195,32 @@ static func find_path(state: Dictionary, start: Vector2, destination: Vector2, h
 
 ## Road meshes follow traffic: connect adjacent heavily travelled cells
 ## without paving through blocked houses or cutting prohibited corners.
+## 0.24: a single flood-fill for all visible building entrances is much
+## cheaper than running an independent A* for every house every refresh.
+static func connected_cells(state: Dictionary, start: Vector2, home_index: int=0) -> Dictionary:
+    var origin: Vector2i=grid(start)
+    var sim: Dictionary=state.get("detail_sim",{})
+    var occupied: Dictionary=occupancy(state,home_index)
+    var visited: Dictionary={cell_key(origin):true}
+    var frontier: Array[Vector2i]=[origin]
+    var head: int=0
+    while head<frontier.size():
+        var node: Vector2i=frontier[head]
+        head+=1
+        for direction in DIRS:
+            var next: Vector2i=node+direction
+            var key: String=cell_key(next)
+            if visited.has(key) or _blocked_fast(sim,next,occupied):continue
+            if Terrain.too_steep(sim,node,next):continue
+            if direction.x!=0 and direction.y!=0:
+                var side_x:=node+Vector2i(direction.x,0)
+                var side_y:=node+Vector2i(0,direction.y)
+                if _blocked_fast(sim,side_x,occupied) or _blocked_fast(sim,side_y,occupied):continue
+                if Terrain.too_steep(sim,node,side_x) or Terrain.too_steep(sim,node,side_y):continue
+            visited[key]=true
+            frontier.append(next)
+    return visited
+
 static func road_links(state: Dictionary) -> Array:
     var sim: Dictionary=state.get("detail_sim",{})
     var traffic: Dictionary={}
