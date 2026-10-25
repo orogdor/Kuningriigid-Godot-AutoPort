@@ -12,7 +12,7 @@ on:
       - 'game/main.tscn'
       - '.github/workflows/**'
   schedule:
-    - cron: '17 4 * * *'
+    - cron: '17 2,8,14,20 * * *' # Poll upstream 4 times daily
 
 permissions:
   contents: write
@@ -50,10 +50,17 @@ jobs:
       - name: Verify full static rule parity against upstream
         working-directory: port
         run: npm run parity -- --source ../upstream --out game/data/generated
+      - name: Generate JS reference results for six actual gameplay formulas
+        working-directory: port
+        shell: bash
+        run: |
+          UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
+          node tools/generate-logic-fixtures.mjs --source ../upstream --out game/tests/logic_parity_cases.json --commit "$UPSTREAM_SHA"
       - name: Validate Godot 4 import and headless launch
         working-directory: port
         shell: bash
         run: |
+          test -f game/project.godot
           curl -fLsS --retry 3 \
             https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip \
             -o /tmp/godot.zip
@@ -61,6 +68,10 @@ jobs:
           chmod +x /tmp/godot/Godot_v4.4.1-stable_linux.x86_64
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
+      - name: Verify upstream JavaScript gameplay matches native Godot
+        working-directory: port
+        run: |
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/logic_parity.gd
       - name: Save generated rules to AutoPort repository only
         working-directory: port
         shell: bash
