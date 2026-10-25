@@ -30,7 +30,7 @@ func set_city_bounds(bounds: Dictionary) -> void:
     max_x=float(bounds.get("xmax",112.5))
     min_z=float(bounds.get("zmin",-97.5))
     max_z=float(bounds.get("zmax",97.5))
-    max_distance=maxf(180.0,float(bounds.get("span",180.0))*1.35)
+    max_distance=180.0 if bounds.is_empty() else maxf(180.0,float(bounds.get("span",180.0))*1.35)
     look_at.x=clampf(look_at.x,min_x,max_x)
     look_at.z=clampf(look_at.z,min_z,max_z)
     distance=clampf(distance,MIN_DISTANCE,max_distance)
