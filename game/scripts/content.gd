@@ -197,7 +197,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.20",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.21",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -260,7 +260,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.20: ehitise paigutuse eelvaade ja värviline ruudustik; 0.19 kaameražestid ning 0.17 kaubandus säilivad."
+    note.text="0.21: pööratav 3D hoone eelvaade ning salvestatav suund; varasemad majanduse ja kaubanduse reeglid säilivad."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -331,9 +331,9 @@ func _build(kind: String) -> void:
     if detail_view != null and detail_view.visible:
         detail_view.refresh_buildings()
 
-func _build_at(kind: String, x: float, z: float) -> void:
+func _build_at(kind: String, x: float, z: float, rotation: int=0) -> void:
     var active: Dictionary=_detail_state()
-    active["pending_site"]={"x":x,"z":z}
+    active["pending_site"]={"x":x,"z":z,"rotation":rotation}
     _build(kind)
     active.erase("pending_site")
     _save()
