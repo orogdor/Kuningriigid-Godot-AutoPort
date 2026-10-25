@@ -52,7 +52,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.16 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.17 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -573,7 +573,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.16: avatud linnal on oma töölised, ehitusplatsid, laovaru ja tootmine. Kaubakaravanid ühendavad kaks päris linna."
+    note.text="0.17: teisel linnal saab sisse lülitada ehitus-AI ning linnade vahel on läbitav maailmakaardi kaubatee."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
