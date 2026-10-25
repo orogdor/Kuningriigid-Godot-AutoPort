@@ -251,6 +251,7 @@ func _setup_ui() -> void:
     var trading:=HFlowContainer.new()
     body.add_child(trading)
     trading.add_child(_button("Asuta teine linn",_found_trade_city))
+    trading.add_child(_button("Teise linna ehitus-AI sees/väljas",_toggle_satellite_ai))
     trading.add_child(_button("Ava teise linna 3D detailkaart",_open_satellite))
     trading.add_child(_button("Saada 15 puitu teise linna",func(): _trade_send("outpost","wood",15.0)))
     trading.add_child(_button("Saada 5 puitu teise linna",func(): _trade_send("outpost","wood",5.0)))
@@ -264,9 +265,21 @@ func _setup_ui() -> void:
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
 
+func _toggle_satellite_ai() -> void:
+    if not Trade.has_outpost(city):
+        event_message="Asuta enne teine linn."
+    else:
+        var trade: Dictionary=city["trade_v15"]
+        trade["ai_enabled"]=not bool(trade.get("ai_enabled",false))
+        event_message="Teise linna ehitus-AI: sees" if bool(trade["ai_enabled"]) else "Teise linna ehitus-AI: väljas"
+    _save()
+    _refresh()
+
 func _found_trade_city() -> void:
     event_message=Trade.found(city)
-    if event_message=="":event_message="Teine linn (kaubapunkt) asutati."
+    if event_message=="":
+        city["trade_v15"]["ai_enabled"]=true
+        event_message="Teine linn asutati. Ehitus-AI on sees."
     _sync_trade_map()
     _save()
     _refresh()
@@ -385,6 +398,10 @@ func _refresh() -> void:
             satellite_label.text="Teise linna elanikud %d / %.0f | Ehitised %d | Puit %.0f | Vesi %.0f | Leib %.0f | Käik %d" % [
                 int(sr["pop"]),City.housing_capacity(satellite["buildings"]),satellite["buildings"].size(),
                 float(ss.get("wood",0)),float(ss.get("water",0)),float(ss.get("bread",0)),int(float(satellite["time"])/60)]
+            satellite_label.text+=" | Ehitus-AI %s" % ("sees" if bool(city["trade_v15"].get("ai_enabled",false)) else "väljas")
+            var history: Array=satellite.get("ai_log",[])
+            if not history.is_empty():
+                satellite_label.text+=" | Viimati: "+String(history[history.size()-1]["type"])
         else:satellite_label.text="Teise linna iseseisev majandus avaneb pärast asutamist."
     population_bar.max_value=maxf(1.0,cap)
     population_bar.value=pop
