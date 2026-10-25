@@ -93,6 +93,15 @@ func _test() -> void:
         Terrain28.height(river_world,adjacent,end_b.x,end_b.y)):
         fail("riverbed height is not continuous at the joint")
         return
+    # A river must not leak into a dry neighbor: removing the adjoining
+    # river flag must remove the outgoing border ribbon.
+    var isolated: Dictionary=river_world.duplicate(true)
+    var dry_index: int=adjacent.y*World.COLS+adjacent.x
+    isolated["cells"][dry_index]["river"]=false
+    for segment in Terrain28.segments(isolated,home):
+        if (segment["end"] as Vector2).is_equal_approx(end_a):
+            fail("river visually crossed into a dry neighboring district")
+            return
     # The complete 3D scene keeps the same MeshInstance3D over repeated
     # turns, and keeps the same building instance if its state did not change.
     var city: Dictionary=ui.city
