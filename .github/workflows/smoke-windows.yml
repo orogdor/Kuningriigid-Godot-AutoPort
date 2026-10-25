@@ -11,6 +11,10 @@ on:
     workflows: ["Build Android APK, Windows EXE and auto-update content"]
     types: [completed]
 
+concurrency:
+  group: autoport-windows-smoke
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
