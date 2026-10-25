@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "port": "node tools/port.mjs",
-    "parity": "node tools/verify-parity.mjs",\n    "logic:fixtures": "node tools/generate-logic-fixtures.mjs"
+    "parity": "node tools/verify-parity.mjs",
+    "logic:fixtures": "node tools/generate-logic-fixtures.mjs"
   },
   "engines": {
     "node": ">=20"
