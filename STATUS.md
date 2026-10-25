@@ -1,6 +1,6 @@
-# AutoPort staatus — 24.10.2026
+# AutoPort staatus — 25.10.2026
 
-**AutoPort 0.1.0 on uues GitHubi repositooriumis käivitatud ja kontrollitud.**
+**AutoPort 0.2.0: reeglite automaatimport ja kuue päris mängufunktsiooni kontroll Godotis.**
 
 - Repositoorium: https://github.com/orogdor/Kuningriigid-Godot-AutoPort
 - Algne mäng: https://github.com/orogdor/Kuningriigid, ainult lugemine (muudatusi ei tehta).
@@ -12,9 +12,9 @@
 - Sõltumatu allika-väljundi võrdsuskontroll: **edukas**, koos SHA-256 failiräsidega.
 - Godot 4.4.1 headless import ja rakenduse käivitamine: **edukas**.
 - GitHub Actionsi allalaaditav artefakt: `kuningriigid-godot-rules`.
-- Automatiseeritud igapäevane kontroll: `04:17 UTC`; saadaval ka käsitsi `workflow_dispatch`.
+- Automaatsed upstream-kontrollid: `02:17`, `08:17`, `14:17` ja `20:17 UTC`; lisaks käsitsi `workflow_dispatch` (GitHubi ajastaja võib viibida).\n- Kuus GDScripti mängufunktsiooni (linnamahud, asunikud, armeed, teadus ja linnakasv).\n- JS vs Godot: 864 deterministlikku juhtumit, edukas töövoog: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/40169211794\n- Konkureerivate commit'ide puhul korduskatse ilma force-push'ita.
 - Vana Godoti port ja veebimäng: muutmata.
 
-**Piirangud:** tegemist on statsionaarsete reeglite andmepordiga; tegelik Three.js majandus-, AI- ja teadusloogika ei ole veel automaatselt GDScripti tõlgitud. Godoti näidisvaade on ainult reeglite kontroll, mitte mängitav kampaania. Android APK puudub.
+**Piirangud:** kuus eraldiseisvat funktsiooni on üle kantud ja testitud, kuid kogu majandustsükkel, AI otsused, tehnoloogiapuu edenemine ega mängu visualiseerimine ei ole automaatselt tõlgitud. Godoti näidisvaade on ainult reeglite kontroll, mitte mängitav kampaania. Android APK puudub.
 
-**Järgmine etapp:** iseseisvate majandus- ja teadusfunktsioonide ülekandmine koos samade sisendite väljundpariteedi testidega originaal-JavaScripti ning Godoti vahel.
+**Järgmine etapp:** ühendada need funktsioonid tõelise Godoti simulatsiooniseisundiga ning lisada linnade ressursside tootmine ja tarbimine, koos samade sisenditega JavaScripti ja Godoti võrdlustestidega.
