@@ -21,11 +21,32 @@ static func found(state: Dictionary) -> String:
         "resources":{"wood":8.0,"stone":2.0,"bread":6.0,"grain":0.0,
             "flour":0.0,"plank":0.0,"water":12.0}},
         "caravans":[],"next_id":0,"delivered":0.0,"trips":0}
+    ensure_city(state)
     return ""
+
+static func ensure_city(state: Dictionary) -> Dictionary:
+    if not has_outpost(state):return {}
+    var trade: Dictionary=state["trade_v15"]
+    var outpost: Dictionary=trade["outpost"]
+    if not outpost.has("city"):
+        # Upgrade a v0.15 trading post WITHOUT minting any supplies.
+        # The old independent warehouse is moved into the settlement realm.
+        var existing: Dictionary=outpost.get("resources",{}).duplicate(true)
+        outpost["city"]={"time":float(state.get("time",0.0)),"age":0,
+            "city_name":"Teine linn","satellite_town":true,
+            "buildings":[{"type":"hall","team":0,"x":0.0,"z":0.0,
+                "hp":1200,"ready":true,"timer":0.0,"progress":0.0}],
+            "realms":[{"pop":3,"resources":existing,"growthProgress":0.0,
+                "shortageTurns":0,"tech":0}],"cargo":[],"ended":false}
+    var town: Dictionary=outpost["city"]
+    # Keep 0.15 stock readers working while the realm's resources are canonical.
+    outpost["resources"]=town["realms"][0]["resources"]
+    trade["version"]=maxi(2,int(trade.get("version",1)))
+    return town
 
 static func stock(state: Dictionary, place: String) -> Dictionary:
     if place=="capital":return state["realms"][0]["resources"]
-    return state["trade_v15"]["outpost"]["resources"]
+    return ensure_city(state)["realms"][0]["resources"]
 
 static func send(state: Dictionary, destination: String, kind: String, quantity: float) -> String:
     if not has_outpost(state):return "Asuta kõigepealt teine linn"
@@ -46,6 +67,7 @@ static func send(state: Dictionary, destination: String, kind: String, quantity:
 
 static func tick(state: Dictionary) -> void:
     if not has_outpost(state):return
+    ensure_city(state)
     var trade: Dictionary=state["trade_v15"]
     var outstanding: Array=[]
     for caravan in trade["caravans"]:
@@ -64,7 +86,8 @@ static func tick(state: Dictionary) -> void:
 static func overview(state: Dictionary) -> String:
     if not has_outpost(state):return "Teist linna veel pole (0.15 kaubapunkti prototüüp)."
     var data: Dictionary=state["trade_v15"]
-    var outpost: Dictionary=data["outpost"]["resources"]
-    return "Teise linna ladu: puit %.0f, kivi %.0f, leib %.0f | Teel %d karavani | Saabunud %d" % [
-        float(outpost.get("wood",0)),float(outpost.get("stone",0)),float(outpost.get("bread",0)),
+    var satellite: Dictionary=ensure_city(state)
+    var outpost: Dictionary=satellite["realms"][0]["resources"]
+    return "Teine linn: elanikke %d, hooneid %d | Ladu: puit %.0f, kivi %.0f, leib %.0f | Teel %d karavani | Saabunud %d" % [
+        int(satellite["realms"][0]["pop"]),satellite["buildings"].size(),float(outpost.get("wood",0)),float(outpost.get("stone",0)),float(outpost.get("bread",0)),
         data["caravans"].size(),int(data.get("trips",0))]
