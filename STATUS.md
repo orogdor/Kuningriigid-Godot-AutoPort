@@ -21,3 +21,12 @@
 **Piirangud:** kuus eraldiseisvat funktsiooni on üle kantud ja testitud, kuid kogu majandustsükkel, AI otsused, tehnoloogiapuu edenemine ega mängu visualiseerimine ei ole automaatselt tõlgitud. Godoti näidisvaade on ainult reeglite kontroll, mitte mängitav kampaania. Android APK puudub.
 
 **Järgmine etapp:** ühendada need funktsioonid tõelise Godoti simulatsiooniseisundiga ning lisada linnade ressursside tootmine ja tarbimine, koos samade sisenditega JavaScripti ja Godoti võrdlustestidega.
+
+## AutoPort 0.3 — 25.10.2026
+
+- Esimene edukas APK + EXE + PCK väljalase: [v0.3.4](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/tag/v0.3.4).
+- Edukas ehitustöövoog: [GitHub Actions #40170001781](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/40170001781).
+- Android: ARM64 debug-allkirjaga APK, Windows: x64 EXE, mõlemas käivitumisel GitHubi kontrollitud PCK sisupaketi uuendus.
+- Võrgu puudumisel kasutatakse viimast SHA-256-kontrollitud salvestatud paketti või kaasas olevat eelvaadet.
+- Võrgust laaditud kood ei ole APK/EXE enda binaaruuendus. Androidi hilisemate APK uuenduste ühilduvaks allkirjastamiseks tuleb kasutusele võtta salajane püsikeystore.
+- Järgmine mehaaniline etapp: portida päris linnade tootmis- ja tarbimistsükkel. Täismängu kasutajaliidest veel pole.
