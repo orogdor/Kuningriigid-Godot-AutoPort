@@ -24,10 +24,16 @@ func _test() -> void:
     await process_frame
     await process_frame
     ui._reset()
-    var city: Dictionary=ui.city
     var world: Dictionary=ui.world_view.world.duplicate(true)
     var home: Vector2i=Districts.origin(world)
+    # The spatial simulation is initialized on first opening the capital.
+    # Earlier 0.29 test omitted this and crashed before assertions started.
+    ui._show_detail(home.x,home.y)
+    await process_frame
+    var city: Dictionary=ui.city
     var neighbor:=home+Vector2i(1,0)
+    if neighbor.x>=World.COLS:
+        neighbor=home+Vector2i(-1,0)
     # Inject a controlled, connected straight river. Only these two
     # adjacent world tiles need a river; no brittle random-map assumptions.
     for p in [home,neighbor]:
