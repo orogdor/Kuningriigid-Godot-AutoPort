@@ -240,3 +240,12 @@ Androidi Godoti maailmakaardil on nüüdsest kahe sõrme näpistusega suumimine 
 `game/tests/world_v06_ui.gd` käivitab päris Godoti ekraanil sünteetilised kahe sõrme puudutus-, lohistamis- ja vabastussündmused ning kontrollib suumi suurenemist, valiku säilimist, järgmist ühe sõrme puudutust ja ühe sõrmega panoraamimist. Kontroll käivitub nii lähtereglite sünkroonimisel kui ka Windowsi EXE / Androidi APK väljalaske ehitamisel. Need muudatused ei muuda 0.17 majandust, karavanide ETA-d ega salvestusskeemi.
 
 **Piirang:** testid kontrollivad Godoti puutežestide loogikat headless-keskkonnas. Füüsilise Androidi seadme multitouch-käitumise käsitsi valideerimine on eraldi vajalik. 3D detailkaardi kaamera kasutab endiselt varasemat ühe sõrme pööramisrežiimi.
+
+
+## AutoPort 0.19 — 3D detailkaardi mobiilikaamera
+
+Godot 4 3D detailkaardi juhtimine on nüüd puuteekraanil eristatud: **üks sõrm lohistades pöörab** kaamerat, **üks lühike puudutus valib ehituskoha** ning **kahe sõrme näpistus suumib** ja **kahe sõrme koos nihutamine liigutab kaamera vaate keskpunkti**. Suumi ja nihutamise fookus säilib sõrmede keskpunkti all asuva maapinna punkti järgi. Kaamera kaugus on piiratud vahemikku 15–180 m ja vaate keskpunkt piiratakse detailala piiresse. Hiire parema nupuga pööramine ja rattaga suumimine jäävad alles.
+
+Kahe sõrme vabastamine, sõrmede järjekorra muutumine ega orb-mouse-up sündmus ei käivita ehitise paigutamist. Uus `game/tests/detail_camera_v19.gd` katsetab reaalsesse 3D detailvaatesse ühendatud Godoti kaamera sünteetilisi Androidi puutesündmusi: kahe sõrme sisse-välja suum, suumifookuse säilimine, 3D panoraam, puudutuse ohutu lõppemine, ühe sõrme ehituskoha valimine ja kaamera pööramine. Kontroll lisatakse nii `sync-upstream.yml` kui ka `build-apps.yml` töövoogudesse.
+
+**Väljalase:** 0.19 GitHub Actions'i väljalaskemärgis on `v0.19.<run_number>` ja kasutajaliidese kuvatav versioon on 0.19. Varasem 0.18 maailmakaardi kahe sõrme juhtimine ning 0.17 kaubakaravanid, AI ja salvestusvorming säilivad. Uued Godoti puutetestid vajavad veel CI läbimist ja füüsilisel Androidi seadmel kontrollimist. Godoti versioon ei ole endiselt kogu Three.js strateegiamängu täielik port.
