@@ -323,24 +323,35 @@ func _render_neighbors() -> void:
             part.add_child(resources)
         var props: Node3D=part.get_node("DistrictResources") as Node3D
         props.visible=tile!=active_tile
-        if tile!=active_tile and props.get_child_count()==0:
+        if tile!=active_tile:
             var sim: Dictionary=Transit._local_state(city_state,
                 local_home if district=="" else district).get("detail_sim",{})
             var offset: Vector3=Continuous.offset(tile,selected)
-            var far: bool=Terrain28.distant_props(controller.look_at,offset)
-            var max_props: int=5 if far else 14
-            var resource_count: int=0
+            var level: int=Visuals30.detail_level(controller.look_at,offset)
+            var resource_key: String=""
+            var drawn: int=0
+            var desired_limit: int=Visuals30.resource_limit(level)
             for deposit in sim.get("sites",[]):
-                if resource_count>=max_props:break
+                if drawn>=desired_limit:break
                 if float(deposit.get("remaining",0))<=0.0:continue
-                var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
-                p.y=Terrain28.height(world,tile,p.x,p.z)
-                if String(deposit.get("kind",""))=="wood":
-                    _tree(props,p,0.65)
-                else:
-                    _rock(props,p,0.7)
-                resource_count+=1
-                prop_builds+=1
+                resource_key+=str(deposit.get("id",drawn))+":"
+                drawn+=1
+            if int(props.get_meta("visual_lod",-1))!=level or String(props.get_meta("resource_key",""))!=resource_key:
+                for old in props.get_children():old.free()
+                props.set_meta("visual_lod",level)
+                props.set_meta("resource_key",resource_key)
+                var resource_count: int=0
+                for deposit in sim.get("sites",[]):
+                    if resource_count>=desired_limit:break
+                    if float(deposit.get("remaining",0))<=0.0:continue
+                    var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
+                    p.y=Terrain28.height(world,tile,p.x,p.z)
+                    if String(deposit.get("kind",""))=="wood":
+                        _tree(props,p,0.65)
+                    else:
+                        _rock(props,p,0.7)
+                    resource_count+=1
+                    prop_builds+=1
         # Reuse unchanged buildings; only rebuild a mesh when its stage,
         # readiness or durable visual details actually changed.
         var current_buildings: Dictionary={}
@@ -408,19 +419,24 @@ func _render_neighbors() -> void:
         for child in part.get_children():
             if bool(child.get_meta("is_agent",false)) and not live_agents.has(child.name):
                 child.free()
-    # Shared physical 20m border gateways, generated only once per scene.
-    var number: int=0
-    for tile in shown_district_tiles:
-        for direction in [Vector2i(1,0),Vector2i(0,1)]:
-            var other: Vector2i=tile+direction
-            if not shown_district_tiles.has(other):continue
-            number+=1
-            var street_label: String="ContinuousStreet_"+str(number)
-            if combined_root.get_node_or_null(street_label)!=null:continue
-            var midpoint: Vector3=(Continuous.offset(tile,selected)+Continuous.offset(other,selected))*0.5
-            var shape:=Vector3(22.0,0.13,5.5) if direction.x!=0 else Vector3(5.5,0.13,22.0)
-            _box(combined_root,midpoint+Vector3(0,0.16,0),shape,
-                Color("#c3a371"),street_label)
+    # Shared roads use the *same* safe gate chosen by 0.26 A* transport,
+    # including a noncentral alternative when the center is blocked.
+    # No street may appear at an impassable world-tile boundary.
+    var current_signature: String=Visuals30.static_signature(city_state,world)
+    if current_signature!=street_cache_signature:
+        for old in combined_root.get_children():
+            if String(old.name).begins_with("ContinuousStreet_"):old.free()
+        var links: Array=Visuals30.connections(city_state,world,selected,shown_district_tiles)
+        var i: int=0
+        for link in links:
+            i+=1
+            var midpoint: Vector3=link["middle"]
+            var along_x: bool=bool(link["east_west"])
+            var length: float=float(link["length"])+0.7
+            var shape:=Vector3(length,0.13,5.5) if along_x else Vector3(5.5,0.13,length)
+            _box(combined_root,midpoint,shape,Color("#c3a371"),
+                "ContinuousStreet_"+str(i))
+        street_cache_signature=current_signature
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
