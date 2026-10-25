@@ -65,6 +65,12 @@ jobs:
           node tools/generate-city-v05-fixtures.mjs --source ../upstream \
             --definitions game/data/generated/city_buildings.json \
             --fixtures game/tests/city_v05_fixtures.json --commit "$UPSTREAM_SHA"
+      - name: Generate original JavaScript world layout parity fixtures
+        working-directory: port
+        run: |
+          UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
+          node tools/generate-world-v06-fixtures.mjs --source ../upstream \
+            --out game/tests/world_v06_fixtures.json --commit "$UPSTREAM_SHA"
       - name: Validate Godot 4 import and headless launch
         working-directory: port
         shell: bash
@@ -86,6 +92,8 @@ jobs:
         run: |
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_parity.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_ui.gd
       - name: Save generated rules to AutoPort repository only
         working-directory: port
         shell: bash
