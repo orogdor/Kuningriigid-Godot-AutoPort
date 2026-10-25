@@ -50,6 +50,7 @@ static func assign(state: Dictionary) -> void:
     var pop_limit: int=maxi(0,int(state["realms"][0].get("pop",0)))
     var ordered: Array=[]
     for i in range(1,buildings.size()):
+        if String(buildings[i].get("district",""))!="":continue # v0.26 inter-district physical builders
         if _quota(buildings[i])>0:ordered.append(i)
     # Keep an established crew instead of spawning an additional avatar
     # every time the city's population increases mid-construction.
