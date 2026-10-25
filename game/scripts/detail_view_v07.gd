@@ -3,9 +3,11 @@ extends Control
 ## World elevation/coastal context follows 0.6 cells; not yet 1:1 Three.js meshes.
 signal return_requested
 signal build_requested(kind: String)
+signal build_at_requested(kind: String, x: float, z: float)
 signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
+const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
@@ -18,6 +20,10 @@ var can_build: bool = false
 var city_state: Dictionary = {}
 var scene_root: Node3D
 var construction_root: Node3D
+var resource_root: Node3D
+var worker_root: Node3D
+var plot_root: Node3D
+var pending_build: String = ""
 var controller: SubViewportContainer
 var info: Label
 var actions: HFlowContainer
@@ -34,7 +40,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.7 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.8 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -77,9 +83,19 @@ func _ready() -> void:
     camera.current=true
     scene_root.add_child(camera)
     controller.call("attach_camera",camera)
+    controller.connect("ground_clicked",_ground_clicked)
     construction_root=Node3D.new()
     construction_root.name="PlacedBuildings"
     scene_root.add_child(construction_root)
+    resource_root=Node3D.new()
+    resource_root.name="PhysicalResources"
+    scene_root.add_child(resource_root)
+    worker_root=Node3D.new()
+    worker_root.name="MovingWorkers"
+    scene_root.add_child(worker_root)
+    plot_root=Node3D.new()
+    plot_root.name="BuildGrid"
+    scene_root.add_child(plot_root)
     actions=HFlowContainer.new()
     actions.add_theme_constant_override("h_separation",6)
     actions.add_theme_constant_override("v_separation",6)
@@ -183,13 +199,13 @@ func _surface(cell: Dictionary) -> void:
         for i in range(tree_count):
             var x: float=rng.randf_range(-108,108)
             var z: float=rng.randf_range(-92,92)
-            if can_build and absf(x)<55.0 and absf(z)<55.0:continue
+            if can_build:continue
             _tree(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.7,1.35))
         var rocks: int=25 if selected_biome=="hills" else 8
         for i in range(rocks):
             var x: float=rng.randf_range(-109,109)
             var z: float=rng.randf_range(-89,89)
-            if can_build and absf(x)<47 and absf(z)<47:continue
+            if can_build:continue
             _rock(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.8,1.6))
     if bool(cell.get("river",false)):
         _box(scene_root,Vector3(0,0.03,25),Vector3(SURFACE_WIDTH,0.08,8),
@@ -254,16 +270,82 @@ func refresh_buildings() -> void:
         var buildings: Array=city_state.get("buildings",[])
         for i in range(buildings.size()):
             var building: Dictionary=buildings[i]
-            var ix: int=i%5
-            var iz: int=i/5
-            var pos:=Vector3((ix-2)*26.0,0.0,(iz-2)*27.0)
+            var fallback:=Vector2(float((i%5-2)*26),float((i/5-2)*27))
+            var pos:=Vector3(float(building.get("x",fallback.x)),0.0,float(building.get("z",fallback.y)))
             var holder:=Node3D.new()
             holder.name=String(building.get("type","building"))+"_"+str(i)
             construction_root.add_child(holder)
             _building(holder,String(building.get("type","house")),pos,bool(building.get("ready",false)))
             rendered_buildings+=1
+        _refresh_resource_meshes()
+        _refresh_worker_meshes()
+        _refresh_grid()
     _refresh_actions()
     _refresh_info()
+
+func _refresh_resource_meshes() -> void:
+    if resource_root==null:return
+    for old in resource_root.get_children():old.queue_free()
+    var sim: Dictionary=city_state.get("detail_sim",{})
+    for deposit in sim.get("sites",[]):
+        var remaining: float=float(deposit.get("remaining",0))
+        if remaining<=0.0:continue
+        var pos:=Vector3(float(deposit["x"]),0.0,float(deposit["z"]))
+        var node:=Node3D.new()
+        node.name="Deposit_"+str(deposit["id"])
+        resource_root.add_child(node)
+        if String(deposit["kind"])=="wood":
+            _tree(node,pos,clampf(remaining/35.0,0.3,1.1))
+        else:
+            for i in range(3):
+                _rock(node,pos+Vector3((i-1)*1.9,0,((i%2)*2-1)*1.4),clampf(remaining/45.0,0.4,1.0))
+
+func _refresh_worker_meshes() -> void:
+    if worker_root==null:return
+    for old in worker_root.get_children():old.queue_free()
+    var sim: Dictionary=city_state.get("detail_sim",{})
+    for i in range(sim.get("workers",[]).size()):
+        var person: Dictionary=sim["workers"][i]
+        var body:=Node3D.new()
+        body.name="Worker_"+str(i)
+        worker_root.add_child(body)
+        var p:=Vector3(float(person["x"]),0.0,float(person["z"]))
+        _cylinder(body,p+Vector3(0,1.3,0),0.55,2.2,Color("#9c6f4a"),"WorkerBody")
+        var head:=SphereMesh.new()
+        head.radius=0.6
+        head.height=1.2
+        _mesh(body,head,p+Vector3(0,2.95,0),Color("#dfba94"),"WorkerHead")
+        if float(person.get("carry",0))>0:
+            _box(body,p+Vector3(0.8,1.9,0),Vector3(1.3,1.4,1.1),
+                Color("#74563b") if person["kind"]=="wood" else Color("#8f9798"),"Cargo")
+
+func _refresh_grid() -> void:
+    if plot_root==null:return
+    for old in plot_root.get_children():old.queue_free()
+    if not can_build:return
+    for z in range(-7,8):
+        for x in range(-7,8):
+            var point:=Vector2(float(x)*Spatial.STEP,float(z)*Spatial.STEP)
+            if not Spatial.can_place(city_state,point):continue
+            var square:=BoxMesh.new()
+            square.size=Vector3(8,0.035,8)
+            _mesh(plot_root,square,Vector3(point.x,0.08,point.y),
+                Color(0.2,0.8,0.55,0.16),"BuildPlot")
+
+func _ground_clicked(pos: Vector3) -> void:
+    if not can_build or pending_build=="":return
+    var snapped: Vector2=Spatial.snap(Vector2(pos.x,pos.z))
+    if not Spatial.can_place(city_state,snapped):
+        if info!=null:info.text="Ehituskoht on hõivatud või väljaspool linna: "+str(snapped)
+        return
+    var kind: String=pending_build
+    pending_build=""
+    build_at_requested.emit(kind,snapped.x,snapped.y)
+
+func select_building(kind: String) -> void:
+    if not can_build or not _can_build(kind):return
+    pending_build=kind
+    if info!=null:info.text="EHITUS: "+kind+" — klõpsa rohelisel ehitusruudul; parem hiir pöörab kaamerat"
 
 func _refresh_info() -> void:
     if info==null:return
@@ -275,6 +357,10 @@ func _refresh_info() -> void:
             int(realm.get("pop",3)),float(resources.get("wood",0)),
             float(resources.get("stone",0)),float(resources.get("water",0)),
             int(float(city_state.get("time",0))/60.0)]
+        var sim: Dictionary=city_state.get("detail_sim",{})
+        text_line+=" | Metsas %.0f puitu | Maardlates %.0f kivi | Töölisi %d" % [
+            Spatial.count_remaining(city_state,"wood"),Spatial.count_remaining(city_state,"stone"),
+            sim.get("workers",[]).size()]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -293,10 +379,10 @@ func _refresh_actions() -> void:
         var button:=Button.new()
         button.text="Ehita "+kind
         button.disabled=not _can_build(kind)
-        button.pressed.connect(func(): build_requested.emit(kind))
+        button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="Hooned kasutavad 0.5 linnamajanduse kulusid ja ehitusaega"
+    note.text="Vali hoone ja klõpsa rohelisel ehitusalal; töölised viivad puidu ja kivi lattu."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
 
@@ -320,10 +406,12 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     selected=Vector2i(c,r)
     city_state=city
     can_build=capital
+    pending_build=""
+    if can_build:Spatial.initialize(city_state)
     if scene_root==null:return
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         child.queue_free()
     var tile: Dictionary=World.cell(world,c,r)
