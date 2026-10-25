@@ -3,6 +3,7 @@ $repo = "orogdor/Kuningriigid-Godot-AutoPort"
 $root = Join-Path $env:RUNNER_TEMP "AutoPortWindowsSmoke"
 $download = Join-Path $root "download"
 $env:KUNINGRIIGID_HOME = Join-Path $root "Kuningriigid-Data"
+$env:KUNINGRIIGID_VERIFY_ONLY = "1"
 New-Item -ItemType Directory -Force $download | Out-Null
 
 Write-Host "Downloading small Windows launcher from latest GitHub release..."
@@ -27,7 +28,11 @@ function Start-And-Wait-Launcher {
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
             throw "Launcher timed out"
         }
-        if ($p.ExitCode -ne 0) { throw "Launcher exit code $($p.ExitCode)" }
+        if ($p.ExitCode -ne 0) {
+            $errfile = Join-Path $env:KUNINGRIIGID_HOME "last-error.txt"
+            if (Test-Path $errfile) { throw "Launcher error: $(Get-Content $errfile -Raw)" }
+            throw "Launcher exit code $($p.ExitCode)"
+        }
     } finally {
         if ($Offline) {
             Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
@@ -62,6 +67,12 @@ foreach ($path in @(
 )) {
     if (-not (Test-Path $path)) { throw "Missing separated game file: $path" }
 }
+
+Write-Host "RUNNING INSTALLED GODOT PROJECT IN HEADLESS MODE"
+$p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--editor", "--quit") -PassThru -Wait
+if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit code $($p.ExitCode)" }
+$p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
+if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
 $count = (Get-ChildItem -Path $game -Recurse -File | Measure-Object).Count
 if ($count -lt 20) { throw "Expected game directory with many distinct files; found $count" }
