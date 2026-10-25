@@ -4,11 +4,13 @@ extends Control
 signal return_requested
 signal build_requested(kind: String)
 signal build_at_requested(kind: String, x: float, z: float)
+signal bridge_requested(x: float)
 signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
@@ -25,6 +27,7 @@ var resource_root: Node3D
 var worker_root: Node3D
 var plot_root: Node3D
 var roads_root: Node3D
+var bridge_root: Node3D
 var previous_worker_positions: Dictionary={}
 var pending_build: String = ""
 var controller: SubViewportContainer
@@ -43,7 +46,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.9 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.10 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -102,6 +105,9 @@ func _ready() -> void:
     roads_root=Node3D.new()
     roads_root.name="EmergentFootpaths"
     scene_root.add_child(roads_root)
+    bridge_root=Node3D.new()
+    bridge_root.name="RiverBridges"
+    scene_root.add_child(bridge_root)
     actions=HFlowContainer.new()
     actions.add_theme_constant_override("h_separation",6)
     actions.add_theme_constant_override("v_separation",6)
@@ -155,6 +161,8 @@ func _rock(parent: Node3D, pos: Vector3, factor: float) -> void:
     m.rotation_degrees=Vector3(0,37,18)
 
 func _elevation(x: float, z: float, base: float, plain: bool) -> float:
+    if plain and city_state.has("detail_sim"):
+        return Terrain.elevation(city_state["detail_sim"],x,z)
     if plain:return 0.0
     # Mild relief. Full web-game detail-sample parity belongs to a future port.
     var wave: float=sin(x*0.046+selected.x*0.2)*cos(z*0.064+selected.y*0.1)
@@ -214,8 +222,11 @@ func _surface(cell: Dictionary) -> void:
             if can_build:continue
             _rock(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.8,1.6))
     if bool(cell.get("river",false)):
-        _box(scene_root,Vector3(0,0.03,25),Vector3(SURFACE_WIDTH,0.08,8),
-            Color("#56b4d1"),"RiverPreview")
+        _box(scene_root,Vector3(0,-0.26,25),Vector3(SURFACE_WIDTH,0.13,14),
+            Color("#419abb"),"RiverWater")
+        for bank_z in [17.0,33.0]:
+            _box(scene_root,Vector3(0,0.06,bank_z),Vector3(SURFACE_WIDTH,0.25,1.7),
+                Color("#978766"),"RiverBank")
 
 func _is_coastal(cell: Dictionary) -> bool:
     var c: int=int(cell.get("c",-1))
@@ -287,10 +298,11 @@ func refresh_buildings() -> void:
         _refresh_worker_meshes()
         _refresh_grid()
         _refresh_roads()
+        _refresh_bridges()
     else:
         # Changing from the capital to an unowned tile must not leave
         # the old town's 3D workers, paths or resources on screen.
-        for group in [resource_root,worker_root,plot_root,roads_root]:
+        for group in [resource_root,worker_root,plot_root,roads_root,bridge_root]:
             if group!=null:
                 for child in group.get_children():
                     child.queue_free()
@@ -344,11 +356,34 @@ func _refresh_roads() -> void:
     for old in roads_root.get_children():old.queue_free()
     var sim: Dictionary=city_state.get("detail_sim",{})
     for tile in Paths.road_tiles(sim):
+        if Terrain.river_lane(sim,float(tile["x"]),float(tile["z"])) and Terrain.crossing_kind(sim,int(roundf(float(tile["x"])/Terrain.CELL)))=="":
+            continue
         var amount: float=float(tile["strength"])
         var shade:=Color("#927451") if amount<8.0 else Color("#ab9165")
-        _box(roads_root,Vector3(float(tile["x"]),0.11,float(tile["z"])),
+        _box(roads_root,Vector3(float(tile["x"]),Terrain.elevation(sim,float(tile["x"]),float(tile["z"]))+0.11,float(tile["z"])),
             Vector3(7.5+minf(1.0,amount*0.07),0.06,7.5+minf(1.0,amount*0.07)),
             shade,"Footpath")
+
+func _refresh_bridges() -> void:
+    if bridge_root==null:return
+    for old in bridge_root.get_children():old.queue_free()
+    var sim: Dictionary=city_state.get("detail_sim",{})
+    if not Terrain.river_at(sim,0.0,0.0):return
+    # Shallow stone fords are visible at the same places as A* crossings.
+    for x_cell in Terrain.FORDS:
+        var xf: float=float(x_cell)*Terrain.CELL
+        _box(bridge_root,Vector3(xf,-0.06,25),Vector3(8.2,0.20,18),
+            Color("#a49b82"),"StoneFord")
+    for bridge in sim.get("bridges",[]):
+        var x: float=float(bridge["x"])*Terrain.CELL
+        _box(bridge_root,Vector3(x,0.62,25),Vector3(8.5,0.45,22),
+            Color("#856648"),"TimberBridge")
+        for side in [-4.0,4.0]:
+            _box(bridge_root,Vector3(x+side,2.1,25),Vector3(0.45,0.6,22),
+                Color("#775333"),"BridgeRail")
+            for end_z in [15.0,35.0]:
+                _box(bridge_root,Vector3(x+side,1.35,end_z),Vector3(0.7,2.8,0.7),
+                    Color("#735238"),"BridgePost")
 
 func _refresh_grid() -> void:
     if plot_root==null:return
@@ -365,6 +400,14 @@ func _refresh_grid() -> void:
 
 func _ground_clicked(pos: Vector3) -> void:
     if not can_build or pending_build=="":return
+    if pending_build=="bridge":
+        var x_cell: int=int(roundf(pos.x/Terrain.CELL))
+        if not Terrain.can_place_bridge(city_state.get("detail_sim",{}),x_cell):
+            if info!=null:info.text="Sild tuleb ehitada jõe lubatud kohta X = -30 või +30 m"
+            return
+        pending_build=""
+        bridge_requested.emit(float(x_cell)*Terrain.CELL)
+        return
     var snapped: Vector2=Spatial.snap(Vector2(pos.x,pos.z))
     if not Spatial.can_place(city_state,snapped):
         if info!=null:info.text="Ehituskoht on hõivatud või väljaspool linna: "+str(snapped)
@@ -392,6 +435,8 @@ func _refresh_info() -> void:
         text_line+=" | Metsas %.0f puitu | Maardlates %.0f kivi | Töölisi %d" % [
             Spatial.count_remaining(city_state,"wood"),Spatial.count_remaining(city_state,"stone"),
             sim.get("workers",[]).size()]
+        if Terrain.river_at(sim,0,0):
+            text_line+=" | Sildu %d" % sim.get("bridges",[]).size()
         var streets: Dictionary=Paths.roads_summary(sim)
         text_line+=" | Sissekäidud teeruutusid %d" % int(streets["tiles"])
     else:
@@ -408,6 +453,13 @@ func _refresh_actions() -> void:
     turn.text="+10 käiku"
     turn.pressed.connect(func(): turns_requested.emit(10))
     actions.add_child(turn)
+    if Terrain.river_at(city_state.get("detail_sim",{}),0.0,0.0):
+        var bridge_button:=Button.new()
+        bridge_button.text="Ehita sild (28 puitu, 18 kivi)"
+        bridge_button.pressed.connect(func():
+            pending_build="bridge"
+            info.text="SILD: klõpsa jõe kohal X = -30 m või +30 m")
+        actions.add_child(bridge_button)
     for kind in ["house","lumber","well","quarry","farm"]:
         var button:=Button.new()
         button.text="Ehita "+kind
@@ -441,11 +493,16 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     can_build=capital
     pending_build=""
     previous_worker_positions.clear()
-    if can_build:Spatial.initialize(city_state)
+    if can_build:
+        Spatial.initialize(city_state)
+        var terrain_sim: Dictionary=city_state["detail_sim"]
+        var current_tile: Dictionary=World.cell(world,c,r)
+        terrain_sim["terrain"]=String(current_tile.get("biome","plains"))
+        terrain_sim["river"]=bool(current_tile.get("river",false))
     if scene_root==null:return
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child==roads_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child==roads_root or child==bridge_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         child.queue_free()
     var tile: Dictionary=World.cell(world,c,r)
