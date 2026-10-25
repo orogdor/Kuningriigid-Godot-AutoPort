@@ -133,6 +133,7 @@ static func tick(state: Dictionary) -> void:
         var typ: String=String(b.get("type",""))
         if typ not in ["lumber","quarry"] or not bool(b.get("ready",false)):
             continue
+        if String(b.get("district",""))!="":continue # v0.26 separate resource collectors
         if not existing.has(i):
             var doorway: Vector2=Access.entrance(b)
             workers.append({"building":i,"kind":"wood" if typ=="lumber" else "stone",
@@ -144,6 +145,7 @@ static func tick(state: Dictionary) -> void:
         var idx: int=int(agent["building"])
         if idx>=builds.size():continue
         var b: Dictionary=builds[idx]
+        if String(b.get("district",""))!="":continue
         if not bool(b.get("ready",false)) or float(b.get("assigned",0.0))<=0.0:
             continue
         var current:=Vector2(float(agent.get("x",0)),float(agent.get("z",0)))
