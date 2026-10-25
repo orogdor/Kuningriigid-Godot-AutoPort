@@ -630,8 +630,10 @@ func select_building(kind: String) -> void:
     if not can_build or not _can_build(kind):return
     pending_build=kind
     placement_rotation=0
-    placement_cell=Vector2(INF,INF)
-    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — näed 3D eelvaadet. Pööra 90° nuppudega ja puuduta rohelist ruutu."
+    # Touchscreens have no hover cursor. Put the preview on the closest free
+    # plot immediately; it is only a visual suggestion, not an auto-build.
+    placement_cell=Spatial.next_free(city_state)
+    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — eelvaade lähimal vabal ruudul. Pööra 90° nuppudega või vali teine roheline ruut."
     _refresh_grid()
     _refresh_actions()
 
