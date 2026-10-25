@@ -51,7 +51,9 @@ static func height_from_segments(seed_value: int,tile: Vector2i,rivers: Array,x:
         elevation*=clampf((absf(x)-2.0)/6.0,0.0,1.0)
     var river_distance: float=INF
     for segment in rivers:
-        river_distance=minf(river_distance,_distance_to_segment(Vector2(x,z),segment["start"],segment["end"]))
+        var start: Vector2=segment["start"] if segment.has("start") else Vector2(float(segment["ax"]),float(segment["az"]))
+        var finish: Vector2=segment["end"] if segment.has("end") else Vector2(float(segment["bx"]),float(segment["bz"]))
+        river_distance=minf(river_distance,_distance_to_segment(Vector2(x,z),start,finish))
     if river_distance<RIVER_BANK:
         var blend: float=1.0-clampf((river_distance-RIVER_HALF_WIDTH)/(RIVER_BANK-RIVER_HALF_WIDTH),0.0,1.0)
         elevation=lerpf(elevation,-0.42,blend)
