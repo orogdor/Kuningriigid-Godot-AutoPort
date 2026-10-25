@@ -4,6 +4,7 @@ extends Control
 const City = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
+const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const WorldMap = preload("res://scripts/world_map_v06.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
@@ -27,6 +28,7 @@ var population_bar: ProgressBar
 var workshop_rows: VBoxContainer
 var construction_rows: VBoxContainer
 var info_text: Label
+var trade_label: Label
 var auto_button: Button
 var timer: Timer
 var event_message: String = "Alusta kiviaegse linna rajamist."
@@ -134,7 +136,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.14",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.15",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -178,11 +180,34 @@ func _setup_ui() -> void:
     construction_rows.add_theme_constant_override("separation",4)
     body.add_child(construction_rows)
     body.add_child(HSeparator.new())
+    body.add_child(_heading("Kahe linna kaubandus (prototüüp)",20))
+    trade_label=_heading("",15)
+    trade_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    body.add_child(trade_label)
+    var trading:=HFlowContainer.new()
+    body.add_child(trading)
+    trading.add_child(_button("Asuta teine linn",_found_trade_city))
+    trading.add_child(_button("Saada 5 puitu teise linna",func(): _trade_send("outpost","wood",5.0)))
+    trading.add_child(_button("Saada 5 leiba teise linna",func(): _trade_send("outpost","bread",5.0)))
+    trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
+    body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.14: toodetud kaubad liiguvad vankritega töökojast ja talust lattu. AI, teed ja sõjad tulevad hiljem."
+    note.text="0.15: vankrid veavad nüüd ka sisendmaterjale ja kaubakaravanid ühendavad kaks eraldi ladu. Teise linna ehitus ja AI pole veel üle toodud."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
+
+func _found_trade_city() -> void:
+    event_message=Trade.found(city)
+    if event_message=="":event_message="Teine linn (kaubapunkt) asutati."
+    _save()
+    _refresh()
+
+func _trade_send(target: String, kind: String, amount: float) -> void:
+    event_message=Trade.send(city,target,kind,amount)
+    if event_message=="":event_message="Kaubakaravan saadeti: %s %.0f → %s" % [kind,amount,target]
+    _save()
+    _refresh()
 
 func _toggle_auto() -> void:
     if timer.is_stopped():
@@ -274,6 +299,7 @@ func _refresh() -> void:
     for kind in ["wood","plank","stone","bread","grain","flour","berries","water","gold"]:
         shown.append("%s: %.1f" % [RESOURCE_LABELS[kind],float(stock.get(kind,0))])
     stat_text.text += "     ".join(shown)
+    if trade_label!=null:trade_label.text=Trade.overview(city)
     population_bar.max_value=maxf(1.0,cap)
     population_bar.value=pop
     var next_growth: float = float(realm.get("growthNeed",2.3+pop*0.28))
