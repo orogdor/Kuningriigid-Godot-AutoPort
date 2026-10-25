@@ -3,6 +3,7 @@ extends RefCounted
 ## No change to legacy 0.5 JS parity: this activates only when detail_sim exists.
 ## Workers walk to finite nearby tree/stone deposits and return to their
 ## workshop before wood/stone is credited to the same town warehouse.
+const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const STEP: float = 10.0
 const WALK_PER_TURN: float = 24.0
 const GATHER_AMOUNT: float = 5.0
@@ -19,6 +20,11 @@ static func make_site(kind: String, point: Vector2, index: int) -> Dictionary:
 
 static func initialize(state: Dictionary) -> void:
     if state.has("detail_sim") and state["detail_sim"] is Dictionary:
+        var old: Dictionary=state["detail_sim"]
+        if not old.has("roads"):old["roads"]={}
+        old["version"]=2
+        for agent in old.get("workers",[]):
+            if not agent.has("route"):agent["route"]=[]
         return
     var sites: Array = []
     for i in range(STARTING_SITES.size()):
@@ -36,7 +42,7 @@ static func initialize(state: Dictionary) -> void:
             building["x"]=spot.x
             building["z"]=spot.y
     state["detail_sim"]={"version":1,"sites":sites,"workers":[],"delivered_wood":0.0,
-        "delivered_stone":0.0,"turns":0}
+        "delivered_stone":0.0,"turns":0,"roads":{}}
 
 static func snap(point: Vector2) -> Vector2:
     return Vector2(roundf(point.x/STEP)*STEP,roundf(point.y/STEP)*STEP)
@@ -70,7 +76,8 @@ static func count_remaining(state: Dictionary, kind: String) -> float:
             result+=float(s.get("remaining",0))
     return result
 
-static func nearest_site(sim: Dictionary, kind: String, from: Vector2) -> int:
+static func nearest_site(state: Dictionary, kind: String, from: Vector2, home_index: int) -> int:
+    var sim: Dictionary=state["detail_sim"]
     var index: int=-1
     var dist: float=INF
     var sites: Array=sim.get("sites",[])
@@ -79,6 +86,8 @@ static func nearest_site(sim: Dictionary, kind: String, from: Vector2) -> int:
         if String(site.get("kind",""))!=kind or float(site.get("remaining",0))<=0.0:
             continue
         var p:=Vector2(float(site["x"]),float(site["z"]))
+        if Paths.find_path(state,from,p,home_index).is_empty():
+            continue
         var d: float=p.distance_squared_to(from)
         if d<dist:
             index=i
@@ -115,7 +124,7 @@ static func tick(state: Dictionary) -> void:
         if not existing.has(i):
             workers.append({"building":i,"kind":"wood" if typ=="lumber" else "stone",
                 "x":float(b.get("x",0)),"z":float(b.get("z",0)),
-                "phase":"out","carry":0.0,"site":-1})
+                "phase":"out","carry":0.0,"site":-1,"route":[]})
             existing[i]=true
     var stock: Dictionary=state["realms"][0]["resources"]
     for agent in workers:
@@ -127,7 +136,7 @@ static func tick(state: Dictionary) -> void:
         var home:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
         var speed: float=WALK_PER_TURN*clampf(float(b.get("efficiency",1.0)),0.2,1.0)
         if String(agent["phase"])=="return":
-            if walk_agent(agent,home,speed):
+            if Paths.move(agent,home,speed,state,idx):
                 var cargo: float=float(agent.get("carry",0))
                 if cargo>0:
                     var resource: String=String(agent["kind"])
@@ -137,19 +146,21 @@ static func tick(state: Dictionary) -> void:
                 agent["carry"]=0.0
                 agent["phase"]="out"
                 agent["site"]=-1
+                agent["route"]=[]
             continue
         var chosen: int=int(agent.get("site",-1))
         var nodes: Array=sim["sites"]
         if chosen<0 or chosen>=nodes.size() or float(nodes[chosen]["remaining"])<=0:
-            chosen=nearest_site(sim,String(agent["kind"]),home)
+            chosen=nearest_site(state,String(agent["kind"]),home,idx)
             agent["site"]=chosen
         if chosen<0:continue
         var node: Dictionary=nodes[chosen]
         var place:=Vector2(float(node["x"]),float(node["z"]))
-        if walk_agent(agent,place,speed):
+        if Paths.move(agent,place,speed,state,idx):
             var gathered: float=minf(GATHER_AMOUNT*clampf(float(b.get("efficiency",1)),0,1),
                 float(node["remaining"]))
             node["remaining"]=maxf(0.0,float(node["remaining"])-gathered)
             agent["carry"]=gathered
             agent["phase"]="return"
+            agent["route"]=[]
     sim["workers"]=workers
