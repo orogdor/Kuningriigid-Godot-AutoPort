@@ -122,8 +122,11 @@ func _test() -> void:
         return
     detail._refresh_grid()
     await process_frame
-    if detail.grid_materials.size()>8:
-        fail("build-grid refresh created unbounded duplicate grid materials")
+    var cached_palette: int=detail.grid_materials.size()
+    detail._refresh_grid()
+    await process_frame
+    if detail.grid_materials.size()!=cached_palette or cached_palette>8:
+        fail("build-grid refresh created duplicate grid materials")
         return
     print("CITY_GROWTH_V24 SUCCESS: deterministic compact growth, %d buildings, safe door map, shared meshes, editable plot and prepaid economy" % placed)
     quit(0)
