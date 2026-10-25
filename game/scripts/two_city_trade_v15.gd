@@ -61,8 +61,12 @@ static func send(state: Dictionary, destination: String, kind: String, quantity:
     origin_stock[kind]=float(origin_stock.get(kind,0))-quantity
     var trade: Dictionary=state["trade_v15"]
     trade["next_id"]=int(trade["next_id"])+1
+    # 0.15 saves keep their original duration. Only NEW caravans use a
+    # verified world path, so old in-flight shipments retain their ETA.
+    var route: Dictionary=trade.get("route_v17",{})
+    var travel: int=int(route.get("duration",TRAVEL_TURNS))
     trade["caravans"].append({"id":int(trade["next_id"]),"from":source,"to":destination,
-        "kind":kind,"quantity":quantity,"progress":0,"duration":TRAVEL_TURNS})
+        "kind":kind,"quantity":quantity,"progress":0,"duration":travel})
     return ""
 
 static func tick(state: Dictionary) -> void:
