@@ -495,7 +495,7 @@ func _placement_tile(point: Vector2, color: Color, label: String, width: float=8
     var square:=BoxMesh.new()
     square.size=Vector3(width,0.055,width)
     var instance:=MeshInstance3D.new()
-    instance.name=label
+    instance.name=label+"_"+str(plot_root.get_child_count())
     instance.mesh=square
     instance.position=Vector3(point.x,0.21,point.y)
     var material:=StandardMaterial3D.new()
@@ -542,7 +542,7 @@ func _set_placement_marker(cell: Vector2) -> void:
     placement_cell=cell
     if placement_marker==null:return
     var valid: bool=can_build and Spatial.can_place(city_state,cell)
-    var material: StandardMaterial3D=placement_marker.material_override
+    var material: StandardMaterial3D=placement_marker.material_override as StandardMaterial3D
     material.albedo_color=Color(0.99,0.82,0.23,0.78) if valid else Color(1.0,0.14,0.19,0.83)
     placement_marker.position=Vector3(cell.x,0.32,cell.y)
     placement_marker.show()
