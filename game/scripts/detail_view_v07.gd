@@ -17,6 +17,7 @@ const Freight = preload("res://scripts/freight_v14.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Access = preload("res://scripts/building_access_v22.gd")
 const Planner = preload("res://scripts/city_planner_v24.gd")
+const Transit = preload("res://scripts/district_transit_v26.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -65,7 +66,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.25 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.26 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -374,6 +375,7 @@ func refresh_buildings() -> void:
         _refresh_resource_meshes()
         _refresh_worker_meshes()
         _refresh_freight_meshes()
+        _refresh_district_transport_meshes()
         _refresh_grid()
         _refresh_roads()
         _refresh_bridges()
@@ -392,6 +394,8 @@ func _refresh_resource_meshes() -> void:
     if resource_root==null:return
     for old in resource_root.get_children():old.queue_free()
     var sim: Dictionary=city_state.get("detail_sim",{})
+    if district_id!="":
+        sim=city_state.get("transport_v26",{}).get("surfaces",{}).get(district_id,{})
     for deposit in sim.get("sites",[]):
         var remaining: float=float(deposit.get("remaining",0))
         if remaining<=0.0:continue
@@ -408,7 +412,7 @@ func _refresh_resource_meshes() -> void:
 func _refresh_worker_meshes() -> void:
     if worker_root==null:return
     for old in worker_root.get_children():old.queue_free()
-    var sim: Dictionary=city_state.get("detail_sim",{})
+    var sim: Dictionary=city_state.get("detail_sim",{}) if district_id=="" else {}
     for i in range(sim.get("workers",[]).size()):
         var person: Dictionary=sim["workers"][i]
         var p:=Vector3(float(person["x"]),0.0,float(person["z"]))
@@ -458,7 +462,7 @@ func _refresh_worker_meshes() -> void:
 func _refresh_freight_meshes() -> void:
     if freight_root==null:return
     for old in freight_root.get_children():old.queue_free()
-    var sim: Dictionary=city_state.get("detail_sim",{})
+    var sim: Dictionary=city_state.get("detail_sim",{}) if district_id=="" else {}
     for hauler in sim.get("haulers",[]):
         var id_key: String="hauler_"+str(hauler.get("id",0))
         var position3:=Vector3(float(hauler.get("x",0)),0.0,float(hauler.get("z",0)))
@@ -485,10 +489,46 @@ func _refresh_freight_meshes() -> void:
             wagon.create_tween().tween_property(wagon,"position",position3,0.68).set_trans(Tween.TRANS_SINE)
         previous_worker_positions[id_key]=position3
 
+func _refresh_district_transport_meshes() -> void:
+    var network: Dictionary=city_state.get("transport_v26",{})
+    if network.is_empty():return
+    var local_id: String=district_id if district_id!="" else Transit.home_key(city_state)
+    for agent in network.get("agents",[]):
+        if String(agent.get("district",""))!=local_id:continue
+        var role: String=String(agent.get("role",""))
+        var wagon: bool=role in ["wagon","input_wagon","material"]
+        var root_node: Node3D=freight_root if wagon else worker_root
+        var actor:=Node3D.new()
+        actor.name=("DistrictWagon_" if wagon else "DistrictWorker_")+str(agent.get("id",0))
+        actor.position=Vector3(float(agent.get("x",0)),0.0,float(agent.get("z",0)))
+        root_node.add_child(actor)
+        if wagon:
+            _box(actor,Vector3(0,1.0,0),Vector3(3.3,0.8,4.6),Color("#84603c"),"WagonBody")
+            for side in [-1.8,1.8]:
+                for axle in [-1.3,1.3]:
+                    var wheel:=CylinderMesh.new()
+                    wheel.top_radius=0.85
+                    wheel.bottom_radius=0.85
+                    wheel.height=0.30
+                    var mesh:=_mesh(actor,wheel,Vector3(side,0.77,axle),
+                        Color("#383027"),"CartWheel")
+                    mesh.rotation_degrees.z=90.0
+            if float(agent.get("load",0))>0.0:
+                _box(actor,Vector3(0,1.9,0),Vector3(2.8,1.3,2.7),
+                    Color("#c5a36d"),"VisibleGoodsCargo")
+        else:
+            _cylinder(actor,Vector3(0,1.25,0),0.55,2.1,
+                Color("#758c68") if role=="gatherer" else Color("#526e9b"),"WorkerBody")
+            if role=="gatherer" and float(agent.get("load",0))>0.0:
+                _box(actor,Vector3(0.9,1.65,0),Vector3(1.2,1.2,1.0),
+                    Color("#91754f"),"WorkerCargo")
+
 func _refresh_roads() -> void:
     if roads_root==null:return
     for old in roads_root.get_children():old.queue_free()
-    var sim: Dictionary=city_state.get("detail_sim",{})
+    var local: Dictionary=Transit._local_state(city_state,
+        Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
+    var sim: Dictionary=local.get("detail_sim",{})
     for tile in Paths.road_tiles(sim):
         if Terrain.river_lane(sim,float(tile["x"]),float(tile["z"])) and Terrain.crossing_kind(sim,int(roundf(float(tile["x"])/Terrain.CELL)))=="":
             continue
@@ -500,7 +540,7 @@ func _refresh_roads() -> void:
     # Connect adjacent high-traffic tiles into continuous, narrower streets.
     # Links are generated by A* traversability checks (no wall/river shortcuts).
     var street_number: int=0
-    for link in Paths.road_links(city_state):
+    for link in Paths.road_links(local):
         var a: Vector2=link["a"]
         var b: Vector2=link["b"]
         var delta: Vector2=b-a
@@ -518,7 +558,7 @@ func _refresh_roads() -> void:
     var buildings: Array=city_state.get("buildings",[])
     var connected: Dictionary={}
     if district_id=="" and not buildings.is_empty():
-        connected=Paths.connected_cells(city_state,Access.entrance(buildings[0]),0)
+        connected=Paths.connected_cells(local,Access.entrance(buildings[0]),0)
     for i in range(buildings.size()):
         var building: Dictionary=buildings[i]
         if String(building.get("district",""))!=district_id:continue
@@ -538,6 +578,27 @@ func _refresh_roads() -> void:
             segment_size,Color("#ae966e"),"DoorAccessPath_"+str(i))
         _box(roads_root,Vector3(entry.x,Terrain.elevation(sim,entry.x,entry.y)+0.17,entry.y),
             Vector3(3.4,0.10,3.4),Color("#d6b77d"),"DoorAccessPoint_"+str(i))
+
+    # Each adjoining owned world square has a local gate at ±70 m.
+    # The partner tile's matching gate is separated by a 20m travel link.
+    var current: String=district_id if district_id!="" else Transit.home_key(city_state)
+    if current!="":
+        var current_pair: PackedStringArray=current.split(":")
+        if current_pair.size()==2:
+            var cx: int=int(current_pair[0])
+            var cy: int=int(current_pair[1])
+            for owned_key in Transit.all_keys(city_state):
+                if owned_key==current:continue
+                var parts: PackedStringArray=owned_key.split(":")
+                if parts.size()!=2:continue
+                var dx: int=int(parts[0])-cx
+                var dy: int=int(parts[1])-cy
+                if absi(dx)+absi(dy)!=1:continue
+                var gate:=Vector2(float(dx)*70.0,float(dy)*70.0)
+                var midpoint:=gate-Vector2(float(dx)*8.0,float(dy)*8.0)
+                var extents:=Vector3(19.0,0.12,4.0) if dx!=0 else Vector3(4.0,0.12,19.0)
+                _box(roads_root,Vector3(midpoint.x,0.24,midpoint.y),
+                    extents,Color("#bda375"),"DistrictGateRoad_"+owned_key)
 
 func _refresh_bridges() -> void:
     if bridge_root==null:return
@@ -805,7 +866,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.25: naaberlinnaosade ehituskrundid ja ühine linnamajandus; ülemaailmne kaubatee on veel prototüüp."
+    note.text="0.26: füüsilised teekonnad naaberlinnaosade vahel, liikuvad töölised ja kaubavankrid."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
