@@ -35,8 +35,11 @@ static func _distance_to_segment(point: Vector2,a: Vector2,b: Vector2) -> float:
     return point.distance_to(a+edge*t)
 
 static func height(world: Dictionary,tile: Vector2i,x: float,z: float) -> float:
+    return height_from_segments(int(world.get("seed",0)),tile,segments(world,tile),x,z)
+
+static func height_from_segments(seed_value: int,tile: Vector2i,rivers: Array,x: float,z: float) -> float:
     var global: Vector2=global_point(tile,Vector2(x,z))
-    var seed: float=float(world.get("seed",0))
+    var seed: float=float(seed_value)
     var elevation: float=1.20*sin(global.x*0.015+seed*0.00013)*cos(global.y*0.016-seed*0.00017)
     elevation+=0.43*sin(global.x*0.032+global.y*0.021+seed*0.0009)
     # Building cores and actual 0.26 border gates stay comfortably low.
@@ -47,7 +50,7 @@ static func height(world: Dictionary,tile: Vector2i,x: float,z: float) -> float:
     if absf(z)>=58.0 and absf(x)<=8.0:
         elevation*=clampf((absf(x)-2.0)/6.0,0.0,1.0)
     var river_distance: float=INF
-    for segment in segments(world,tile):
+    for segment in rivers:
         river_distance=minf(river_distance,_distance_to_segment(Vector2(x,z),segment["start"],segment["end"]))
     if river_distance<RIVER_BANK:
         var blend: float=1.0-clampf((river_distance-RIVER_HALF_WIDTH)/(RIVER_BANK-RIVER_HALF_WIDTH),0.0,1.0)
