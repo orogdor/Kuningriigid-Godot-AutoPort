@@ -16,6 +16,12 @@ var expected_sha := ""
 var last_reason := ""
 
 func _ready() -> void:
+    # Windows is started by the independent native launcher, which has already
+    # downloaded game/scripts, data/generated and scenes into a real directory.
+    # Keep the embedded PCK updater only for Android.
+    if OS.get_name() == "Windows":
+        get_tree().call_deferred("change_scene_to_file", SCENE_PATH)
+        return
     var layout := VBoxContainer.new()
     layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     layout.add_theme_constant_override("separation", 14)
