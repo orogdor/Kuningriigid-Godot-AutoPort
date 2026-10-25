@@ -196,3 +196,14 @@ Juba materjalikoormaga teel olev ehitaja lõpetab vana objekti veo ka siis, kui 
 Vanad 0.12 salvestused saavad puuduvaks prioriteediks `normal`, varu, ehitusprogress ja senised marsruudid säilivad. 0.13 kontrollid on `game/tests/construction_v13.gd`: tööjõu prioriteetne jaotus, kahjuta veovahetus, kahe samaaegse ehituse valmimine, eri materjalide transport, varasema skeemi migratsioon ja 3D prioriteedinupu püsimine pärast salvestamist. Kõik 0.5–0.12 olemasolevad testid jäävad väljalaske eeldusteks.
 
 **Piirang:** praegu on see ühe mängija pealinna tööjõu/kaubaveo prototüüp. Täielik kaupade logistika eri linnade ja maakondade vahel, loomad/veokärud, töötajate animatsioonide viimistlus ja AI ehitusprioriteetide juhtimine on veel portimata.
+
+
+## AutoPort 0.14 — kaupade füüsiline vedu tootmisest lattu
+
+Godoti 0.14 lisab tootmishoonete valmis kaupadele tegeliku 3D transpordi. `game/scripts/freight_v14.gd` loob järjekorra, milles on saatjahoone, kauba liik ja kogus. Talude, saekaatrite ning teiste 0.5 majandusretseptide toodang kantakse linna lattu **alles siis**, kui vagun on kaubaga tagasi peahoone juurde jõudnud. Kaubavedu ei muuda algse veebimängu ühes keskpunktis toimuva 0.5 võrdlusmudeli käike, sest uus süsteem töötab ainult pärast 3D detailkaardi aktiveerimist.
+
+Korraga töötab kuni kaks lihtsustatud 3D veoüksust, ühe koorma maht on 12 kaubaühikut. Veol kasutatakse olemasolevat `spatial_paths_v09.gd` rajaleidmist, hoonete vältimist ja jõe ületuskohti. Sissekäidud tee peal kiireneb veoliikumine 20%, kaupade tegelik kohaletoimetamine omakorda lisab teedele kasutussagedust. `game/scripts/detail_view_v07.gd` kuvab lihtsustatud vankrid (kere, rattad, juht ja koorem) ning pealinna teabereal ootel ja teel oleva kauba.
+
+**Säilivus:** järjekorras ootav kaup + koormas olev kaup + lattu saabunud kaup peab võrduma tootmishoonete väljastatud kogusega. Selleks salvestatakse järjekord, vankrite asukohad, koormad ja kohaletoimetamiste ajalugu olemasolevasse `detail_sim` andmestikku (skeem 7). Vana salvestus ilma veojärjekorrata avatakse tühja järjekorraga, kaotamata olemasolevaid linnavarusid ja tööjõudu. Kontrolli `game/tests/freight_v14.gd` raames tehakse nii talu kui ka saeveski transport, teedest tekkiv liikumiskiiruse muutus, kaupade säilivus, 3D vanker ja salvestustest.
+
+**Piirangud:** esialgu kantakse vankriga tootmishoonetest kesklattu valmis toodang, kuid 0.8 metsa- ja kivimurru tooraineresursside kogumissüsteem krediteerib lao endiselt töökoja juurde jõudes. Sissetulevate tootmissisendite füüsiline vedu, käruveo tööjõu üksikasjalik kulu, kaupmehed ja mitme linna vaheline logistika on järgmised etapid. 3D vankrid on prototüüpmudelid, mitte ajalooliselt viimistletud veovahendid.
