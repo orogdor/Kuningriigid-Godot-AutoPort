@@ -52,7 +52,7 @@ func _initialize() -> void:
             quit(1)
             return
         for k in range(result["starts"].size()):
-            if result["starts"][k] != expected["starts"][k]:
+            if int(result["starts"][k]["c"]) != int(expected["starts"][k]["c"]) or int(result["starts"][k]["r"]) != int(expected["starts"][k]["r"]):
                 printerr("WORLD_V06_PARITY site mismatch seed=",expected["seed"]," i=",k,
                     " godot=",result["starts"][k]," js=",expected["starts"][k])
                 quit(1)
