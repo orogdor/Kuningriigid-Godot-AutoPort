@@ -15,6 +15,7 @@ const Materials = preload("res://scripts/construction_v12.gd")
 const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
 const Freight = preload("res://scripts/freight_v14.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Access = preload("res://scripts/building_access_v22.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -58,7 +59,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.21 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.22 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -345,6 +346,10 @@ func refresh_buildings() -> void:
             # finished structure or scaffold without moving its footprint.
             holder.position=pos
             holder.rotation_degrees.y=float(building.get("rotation",0))
+            # The entrance marker rotates with the house facade. It is a
+            # physical visual landmark, not a new obstacle or save field.
+            _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
+                Color("#b7a381"),"FrontDoorStep")
             if bool(building.get("ready",false)):
                 _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
             else:
@@ -476,6 +481,23 @@ func _refresh_roads() -> void:
         _box(roads_root,Vector3(float(tile["x"]),Terrain.elevation(sim,float(tile["x"]),float(tile["z"]))+0.11,float(tile["z"])),
             Vector3(7.5+minf(1.0,amount*0.07),0.06,7.5+minf(1.0,amount*0.07)),
             shade,"Footpath")
+    # Draw a short connector to the reachable access of each building.
+    # Actual worn footpaths still arise ONLY from A* traffic.
+    var buildings: Array=city_state.get("buildings",[])
+    for i in range(buildings.size()):
+        var building: Dictionary=buildings[i]
+        if float(building.get("hp",1.0))<=0.0:continue
+        var centre: Vector2=Access.center(building)
+        var entry: Vector2=Access.reachable(city_state,i,Access.entrance(buildings[0]),0)
+        if entry.x>1000.0:continue
+        var side: Vector2=(entry-centre).normalized()
+        var mid: Vector2=centre+side*13.5
+        var east_west: bool=absf(side.x)>0.5
+        var segment_size:=Vector3(14.0,0.09,2.9) if east_west else Vector3(2.9,0.09,14.0)
+        _box(roads_root,Vector3(mid.x,Terrain.elevation(sim,mid.x,mid.y)+0.19,mid.y),
+            segment_size,Color("#ae966e"),"DoorAccessPath_"+str(i))
+        _box(roads_root,Vector3(entry.x,Terrain.elevation(sim,entry.x,entry.y)+0.17,entry.y),
+            Vector3(3.4,0.10,3.4),Color("#d6b77d"),"DoorAccessPoint_"+str(i))
 
 func _refresh_bridges() -> void:
     if bridge_root==null:return
@@ -705,7 +727,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.21: ehitise tegeliku 3D mudeli eelvaade, 90° pööramine ning suuna säilitamine."
+    note.text="0.22: suunatundlikud hoone sissepääsud, teerajad ning töötajate ja kaubavankrite rajaleidmine."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
