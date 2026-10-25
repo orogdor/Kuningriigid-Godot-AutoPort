@@ -48,10 +48,11 @@ jobs:
             exit 0
           fi
           SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
+          AUTOPORT_SHA="$(git rev-parse HEAD)"
           LAST_BODY="$(gh release view --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null || true)"
-          if [[ -n "$SHA" && "$LAST_BODY" == *"Source commit: $SHA"* ]]; then
+          if [[ -n "$SHA" && "$LAST_BODY" == *"Source commit: $SHA"* && "$LAST_BODY" == *"AutoPort commit: $AUTOPORT_SHA"* ]]; then
             echo "build=false" >> "$GITHUB_OUTPUT"
-            echo "Source $SHA already released; no redundant binaries."
+            echo "Source $SHA and AutoPort $AUTOPORT_SHA already released; no redundant binaries."
           else
             echo "build=true" >> "$GITHUB_OUTPUT"
           fi
@@ -207,9 +208,10 @@ jobs:
           set -euo pipefail
           VERSION="v0.10.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
+          AUTOPORT_SHA="$(git rev-parse HEAD)"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.10 adds terrain-height-aware A*, river fords, buildable 3D bridges, sloped 3D ground paths and backwards-compatible saves. This is a prototype without army AI or battles." \
+            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.10 adds terrain-height-aware A*, river fords, buildable 3D bridges, sloped 3D ground paths and backwards-compatible saves. This is a prototype without army AI or battles." \
             --latest
