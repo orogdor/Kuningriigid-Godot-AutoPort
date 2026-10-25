@@ -276,6 +276,120 @@ func _surface(cell: Dictionary) -> void:
             _box(scene_root,Vector3(0,0.06,bank_z),Vector3(width,0.25,1.7),
                 Color("#978766"),"RiverBank")
 
+func _selected_offset() -> Vector3:
+    return Continuous.offset(active_tile,selected) if combined_city else Vector3.ZERO
+
+func _position_local_groups() -> void:
+    var delta: Vector3=_selected_offset()
+    for root_node in [construction_root,resource_root,worker_root,freight_root,plot_root,roads_root,bridge_root]:
+        if root_node!=null:root_node.position=delta
+
+func _render_neighbors() -> void:
+    if combined_root==null:return
+    for old in combined_root.get_children():old.queue_free()
+    if not combined_city:return
+    var buildings: Array=city_state.get("buildings",[])
+    for tile in shown_district_tiles:
+        var offset: Vector3=Continuous.offset(tile,selected)
+        var district: String=Continuous.district_key(tile,world)
+        var part:=Node3D.new()
+        part.name="DistrictTile_"+Continuous.district_key(tile,world).replace(":","_")
+        if tile==selected:part.name="DistrictTile_Capital"
+        part.position=offset
+        combined_root.add_child(part)
+        if tile!=selected:
+            var biome: String=Continuous.tile_biome(world,tile)
+            var shade:=Color("#8eaa6d")
+            if biome=="forest":shade=Color("#5a8056")
+            elif biome=="hills":shade=Color("#989991")
+            elif biome=="sea":shade=Color("#4a90aa")
+            _box(part,Vector3(0,-0.105,0),Vector3(Continuous.TILE_SPAN,0.20,Continuous.TILE_SPAN),
+                shade,"DistrictTerrain")
+            var cell: Dictionary=World.cell(world,tile.x,tile.y)
+            if bool(cell.get("river",false)):
+                _box(part,Vector3(0,0.035,25),Vector3(Continuous.TILE_SPAN,0.055,13),
+                    Color("#419abb"),"DistrictRiver")
+        if tile==active_tile:continue
+        for i in range(buildings.size()):
+            var building: Dictionary=buildings[i]
+            if String(building.get("district",""))!=district:continue
+            var holder:=Node3D.new()
+            holder.name=String(building.get("type","building"))+"_"+str(i)
+            holder.position=Vector3(float(building.get("x",0)),0.0,float(building.get("z",0)))
+            holder.rotation_degrees.y=float(building.get("rotation",0))
+            part.add_child(holder)
+            _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
+                Color("#b7a381"),"FrontDoorStep")
+            if bool(building.get("ready",false)):
+                _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
+            else:
+                _construction_site(holder,String(building.get("type","house")),Vector3.ZERO,building)
+        # Other districts remain populated while the camera passes over them.
+        var simulation: Dictionary=Transit._local_state(city_state,
+            Transit.home_key(city_state) if district=="" else district).get("detail_sim",{})
+        for deposit in simulation.get("sites",[]):
+            if float(deposit.get("remaining",0))<=0.0:continue
+            var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
+            if String(deposit.get("kind",""))=="wood":
+                _tree(part,p,0.75)
+            else:
+                _rock(part,p,0.8)
+        var agents: Array=city_state.get("transport_v26",{}).get("agents",[])
+        var key: String=Transit.home_key(city_state) if district=="" else district
+        for agent in agents:
+            if String(agent.get("district",""))!=key:continue
+            var actor:=Node3D.new()
+            actor.name="DistrictAgent_"+str(agent.get("id",0))
+            actor.position=Vector3(float(agent.get("x",0)),0.0,float(agent.get("z",0)))
+            part.add_child(actor)
+            if String(agent.get("role","")) in ["wagon","input_wagon","material"]:
+                _box(actor,Vector3(0,1.1,0),Vector3(3.7,1.2,5.0),
+                    Color("#896442"),"CargoWagon")
+                if float(agent.get("load",0))>0.0:
+                    _box(actor,Vector3(0,2.0,0),Vector3(3.0,1.1,3.2),
+                        Color("#c5a36d"),"VisibleGoodsCargo")
+            else:
+                _cylinder(actor,Vector3(0,1.25,0),0.55,2.2,Color("#7a927b"),"WorkerBody")
+    # Draw each actual shared street crossing once, exactly between 160m tiles.
+    var seen: Dictionary={}
+    for tile in shown_district_tiles:
+        for direction in [Vector2i(1,0),Vector2i(0,1)]:
+            var other: Vector2i=tile+direction
+            if not shown_district_tiles.has(other):continue
+            var road_key: String=str(tile)+"->"+str(other)
+            if seen.has(road_key):continue
+            seen[road_key]=true
+            var midpoint: Vector3=(Continuous.offset(tile,selected)+Continuous.offset(other,selected))*0.5
+            var shape:=Vector3(22.0,0.13,5.5) if direction.x!=0 else Vector3(5.5,0.13,22.0)
+            _box(combined_root,midpoint+Vector3(0,0.16,0),shape,
+                Color("#c3a371"),"ContinuousStreet_"+str(seen.size()))
+
+func _activate_district(tile: Vector2i) -> void:
+    if not combined_city or not shown_district_tiles.has(tile):return
+    active_tile=tile
+    district_id=Continuous.district_key(tile,world)
+    selected_biome=Continuous.tile_biome(world,tile)
+    pending_build=""
+    placement_rotation=0
+    placement_cell=Vector2(INF,INF)
+    suggested_site={}
+    _position_local_groups()
+    refresh_buildings()
+    _refresh_info()
+    if placement_label!=null:
+        placement_label.text="Linnaosa %d, %d valitud. Ehita siin või puuduta järgmist linnaosa." % [tile.x,tile.y]
+
+func _overview_city() -> void:
+    if not combined_city:return
+    controller.overview(combined_bounds)
+
+func _next_city_tile() -> void:
+    if not combined_city or shown_district_tiles.is_empty():return
+    var idx: int=shown_district_tiles.find(active_tile)
+    var next: Vector2i=shown_district_tiles[(idx+1)%shown_district_tiles.size()]
+    _activate_district(next)
+    controller.focus(Continuous.offset(next,selected))
+
 func _is_coastal(cell: Dictionary) -> bool:
     var c: int=int(cell.get("c",-1))
     var r: int=int(cell.get("r",-1))
