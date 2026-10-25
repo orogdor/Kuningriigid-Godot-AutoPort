@@ -33,8 +33,15 @@ func _test() -> void:
     if not is_equal_approx(float(stock["grain"]),before):
         fail("production appeared in warehouse before cart returned")
         return
-    if sim["haulers"].is_empty() or Freight.summary(state)["in_transit"]<=0.0:
-        fail("no physical cart picked up initial farm harvest")
+    # 0.22 routes wagons from the town hall door to the actual rotated
+    # building entrance, which can take more than one turn. The first turn
+    # must dispatch a real cart and retain queued output, not teleport cargo.
+    if sim["haulers"].is_empty():
+        fail("no physical cart dispatched for initial farm harvest")
+        return
+    var first_phase: String=String(sim["haulers"][0].get("phase",""))
+    if first_phase not in ["outbound","returning"] or (Freight.summary(state)["waiting"]<=0.0 and Freight.summary(state)["in_transit"]<=0.0):
+        fail("farm harvest has no real outbound or loaded freight")
         return
     for turn in range(20):
         City.tick(state)
