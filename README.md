@@ -146,3 +146,16 @@ Godoti maailmakaardi moodulid:
 - `game/tests/detail_v07_ui.gd` kontrollib 3D maastiku ilmumist, linna peahoone kujutamist, metsamaja ehitamist ja ressursikulu, 10-käigulist valmimist, salvestamist, maailmakaardile naasmist ja valesse ruutu ehitamise keeldu. Enne väljalaset jäävad kehtima 0.5 majandus- ja 0.6 maailmakaardi testid.
 
 **Piirangud:** tegu on toimiva 3D vaate ja linnamajandusega seotud ehitusprototüübiga, mitte veel veebimängu 1:1 detailkaardiga. Füüsilised töölised ja rajaleidmine, hoonete täpne ruumipõhine paigutus, maavarade ammendumine, mitu linna, AI ja lahingud puuduvad. Windowsi väikese käivitaja failihaaval uuendused ja Androidi PCK jäävad samaks.
+
+
+## AutoPort 0.8 — detailkaardi ehituskohad ja füüsiline kogumine
+
+AutoPort 0.8 laiendab 0.7 3D detailkaarti, säilitades 0.5 majanduse ja 0.6 maailmakaardi:
+
+- `game/scripts/spatial_economy_v08.gd` lisab pealinnale päris X/Z ehituskoordinaatidega 10 m sammuga ehitusruudud, hoonete kattumise kontrolli, piiratud metsa- ja kivivarud ning iga töötaja töö ja koju tagasiliikumise.
+- `game/scripts/detail_camera_v07.gd` kasutab paremklõpsuga kaamera pööramist ja vasakklõpsuga detailkaardi ehituskoha valimist (telefonis ühe sõrmega puudutus/lohistamine). Nupp `Ehita <hoone>` valib hoonetüübi, klõps paigutab selle rohelisele vabale ruudule.
+- `game/scripts/detail_view_v07.gd` kuvab tegelikud ehituskrundid, etteantud puude ja kivide ressursisõlmed, liikuvad töölised ja kaasaskantava materjali.
+- `game/scripts/city_sim_v05.gd` kasutab 0.8 aktiveeritud pealinnas metsamaja ja kivimurru materjalide krediteerimiseks ainult tegelikult töötaja poolt koju toodud kaupa. Kui mõlemasse kaevandusse kuuluv ressurss otsa saab, kaob vastav tootmine. Füüsilist süsteemi pole 0.5 JS-pariteedistsenaariumides aktiveeritud; vanad 1200 käigu võrdlustestid jäävad kehtima.
+- `game/tests/detail_v08_ui.gd` kontrollib hoone paigutust klõpsuga, varude kulumist, tööliste liikumist ja toodangu laekumist, hoone kattumise keeldu, kivimurru töötajat, salvestamist ja maailmakaardile naasmist.
+
+**Ulatuspiirang:** tegemist on algelise sõlmede vahel liikuva kogumissüsteemiga, mitte veel originaalse veebimängu 1:1 tööliste rajaleidmise, lõpliku metsade taassünni, 3D inimese animatsioonide või töökohtade täieliku tööjõuloogikaga. 0.8 aktiveerub pealinna detailkaardi avamisel ning tööliste tootmine jätkub pärast seda ka linnamajanduse ekraanil käike vahetades. Liikumine on hetkel käigupõhine, mitte sujuvalt animeeritud.
