@@ -4,6 +4,7 @@ extends RefCounted
 ## Workers walk to finite nearby tree/stone deposits and return to their
 ## workshop before wood/stone is credited to the same town warehouse.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Access = preload("res://scripts/building_access_v22.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const STEP: float = 10.0
 const WALK_PER_TURN: float = 24.0
@@ -131,8 +132,9 @@ static func tick(state: Dictionary) -> void:
         if typ not in ["lumber","quarry"] or not bool(b.get("ready",false)):
             continue
         if not existing.has(i):
+            var doorway: Vector2=Access.entrance(b)
             workers.append({"building":i,"kind":"wood" if typ=="lumber" else "stone",
-                "x":float(b.get("x",0)),"z":float(b.get("z",0)),
+                "x":doorway.x,"z":doorway.y,
                 "phase":"out","carry":0.0,"site":-1,"route":[]})
             existing[i]=true
     var stock: Dictionary=state["realms"][0]["resources"]
@@ -142,7 +144,9 @@ static func tick(state: Dictionary) -> void:
         var b: Dictionary=builds[idx]
         if not bool(b.get("ready",false)) or float(b.get("assigned",0.0))<=0.0:
             continue
-        var home:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
+        var current:=Vector2(float(agent.get("x",0)),float(agent.get("z",0)))
+        var home: Vector2=Access.reachable(state,idx,current,idx)
+        if home.x>1000.0:continue
         var speed: float=WALK_PER_TURN*clampf(float(b.get("efficiency",1.0)),0.2,1.0)
         if String(agent["phase"])=="return":
             if Paths.move(agent,home,speed,state,idx):
