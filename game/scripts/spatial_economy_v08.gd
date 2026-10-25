@@ -4,6 +4,7 @@ extends RefCounted
 ## Workers walk to finite nearby tree/stone deposits and return to their
 ## workshop before wood/stone is credited to the same town warehouse.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const STEP: float = 10.0
 const WALK_PER_TURN: float = 24.0
 const GATHER_AMOUNT: float = 5.0
@@ -22,7 +23,10 @@ static func initialize(state: Dictionary) -> void:
     if state.has("detail_sim") and state["detail_sim"] is Dictionary:
         var old: Dictionary=state["detail_sim"]
         if not old.has("roads"):old["roads"]={}
-        old["version"]=2
+        if not old.has("bridges"):old["bridges"]=[]
+        if not old.has("terrain"):old["terrain"]="plains"
+        if not old.has("river"):old["river"]=false
+        old["version"]=3
         for agent in old.get("workers",[]):
             if not agent.has("route"):agent["route"]=[]
         return
@@ -41,8 +45,8 @@ static func initialize(state: Dictionary) -> void:
             var spot: Vector2=Vector2(-40.0+float(i%5)*20.0,-40.0+float(i/5)*20.0)
             building["x"]=spot.x
             building["z"]=spot.y
-    state["detail_sim"]={"version":1,"sites":sites,"workers":[],"delivered_wood":0.0,
-        "delivered_stone":0.0,"turns":0,"roads":{}}
+    state["detail_sim"]={"version":3,"sites":sites,"workers":[],"delivered_wood":0.0,
+        "delivered_stone":0.0,"turns":0,"roads":{},"bridges":[],"river":false,"terrain":"plains"}
 
 static func snap(point: Vector2) -> Vector2:
     return Vector2(roundf(point.x/STEP)*STEP,roundf(point.y/STEP)*STEP)
@@ -54,6 +58,11 @@ static func can_place(state: Dictionary, point: Vector2) -> bool:
     for b in state.get("buildings",[]):
         var pos:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
         if pos.distance_to(p)<15.5:return false
+    if Terrain.river_lane(state.get("detail_sim",{}),p.x,p.y):return false
+    var site_sim: Dictionary=state.get("detail_sim",{})
+    var local: Vector2i=Paths.grid(p)
+    if Terrain.too_steep(site_sim,local,local+Vector2i(1,0)) or Terrain.too_steep(site_sim,local,local+Vector2i(0,1)):
+        return false
     for site in state.get("detail_sim",{}).get("sites",[]):
         if float(site.get("remaining",0))>0.0:
             var node:=Vector2(float(site["x"]),float(site["z"]))
@@ -164,3 +173,25 @@ static func tick(state: Dictionary) -> void:
             agent["phase"]="return"
             agent["route"]=[]
     sim["workers"]=workers
+
+static func build_bridge(state: Dictionary, x: float) -> String:
+    if not state.has("detail_sim"):return "3D detailkaart pole avatud"
+    var sim: Dictionary=state["detail_sim"]
+    var x_cell: int=int(roundf(x/Terrain.CELL))
+    if not Terrain.can_place_bridge(sim,x_cell):
+        return "Silla asukoht pole jões lubatud"
+    for b in state.get("buildings",[]):
+        if absf(float(b.get("x",0))-float(x_cell)*Terrain.CELL)<8.0 and absf(float(b.get("z",0))-25.0)<14.0:
+            return "Silla ehituskoht on hõivatud"
+    var stock: Dictionary=state["realms"][0]["resources"]
+    for key in Terrain.BRIDGE_COST.keys():
+        if float(stock.get(key,0))<float(Terrain.BRIDGE_COST[key]):
+            return "Silla jaoks on vaja 28 puitu ja 18 kivi"
+    for key in Terrain.BRIDGE_COST.keys():
+        stock[key]=float(stock.get(key,0))-float(Terrain.BRIDGE_COST[key])
+    sim["bridges"].append({"x":x_cell,"built_turn":int(sim.get("turns",0))})
+    # Old waypoint arrays are invalid as soon as a river crossing opens.
+    for agent in sim.get("workers",[]):
+        agent["route"]=[]
+        agent["path_version"]=-1
+    return ""
