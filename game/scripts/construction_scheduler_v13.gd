@@ -51,6 +51,12 @@ static func assign(state: Dictionary) -> void:
     var ordered: Array=[]
     for i in range(1,buildings.size()):
         if _quota(buildings[i])>0:ordered.append(i)
+    # Keep an established crew instead of spawning an additional avatar
+    # every time the city's population increases mid-construction.
+    # New simultaneous projects can unlock additional recruitment.
+    var previous_max_sites: int=int(sim.get("builder_pool_projects",0))
+    var may_expand_pool: bool=workers.is_empty() or ordered.size()>previous_max_sites
+    sim["builder_pool_projects"]=maxi(previous_max_sites,ordered.size())
     ordered.sort_custom(func(a,b):
         var ap: int=int(LEVELS[normalize(String(buildings[a].get("priority","normal")))])
         var bp: int=int(LEVELS[normalize(String(buildings[b].get("priority","normal")))])
@@ -85,6 +91,10 @@ static func assign(state: Dictionary) -> void:
             continue
         _idle(agent)
     var available: int=maxi(0,pop_limit-workers.filter(func(w):return int(w.get("building",-1))>=0).size())
+    if not may_expand_pool:
+        # Existing unassigned avatars are still reusable, but there is no
+        # need to recruit a fourth builder for unchanged worksite demand.
+        available=mini(available,workers.filter(func(w):return int(w.get("building",-1))<0).size())
     for idx in ordered:
         var needed: int=maxi(0,int(quotas.get(idx,0))-int(kept.get(idx,0)))
         while needed>0 and available>0:
