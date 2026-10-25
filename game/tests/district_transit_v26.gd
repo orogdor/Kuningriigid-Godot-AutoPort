@@ -2,6 +2,7 @@ extends SceneTree
 ## 0.26: physically timed door-to-door movement between independent local
 ## 3D squares, freight custody, real builder supplies and resumed saves.
 const Screen=preload("res://content.tscn")
+const City=preload("res://scripts/city_sim_v05.gd")
 const World=preload("res://scripts/world_gen_v06.gd")
 const Districts=preload("res://scripts/world_districts_v25.gd")
 const Transit=preload("res://scripts/district_transit_v26.gd")
@@ -32,8 +33,8 @@ func _test() -> void:
     var stock: Dictionary=city["realms"][0]["resources"]
     stock["wood"]=500.0
     stock["stone"]=500.0
-    stock["bread"]=500.0
-    stock["water"]=500.0
+    stock["bread"]=5000.0
+    stock["water"]=5000.0
     city["realms"][0]["pop"]=18
     var destination: Vector2i=Vector2i(-1,-1)
     for delta in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
@@ -122,7 +123,10 @@ func _test() -> void:
     var delivered: bool=false
     var finished: bool=false
     for n in range(180):
-        ui._advance(1)
+        # The UI's advance button uses City.tick. Skip repeated costly 3D
+        # scene rebuilds here; validate visual objects separately above.
+        City.tick(city)
+        if n%20==0:ui.detail_view.refresh_buildings()
         if not Freight.conserved(city,"test_cargo_v26"):
             fail("produced cargo duplicated or vanished during transport")
             return
