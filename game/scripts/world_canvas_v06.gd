@@ -12,6 +12,8 @@ var last_pointer: Vector2 = Vector2.ZERO
 var dragging: bool = false
 var movement: float = 0.0
 var initialized_view: bool = false
+var trade_route: Dictionary={}
+var trade_caravans: Array=[]
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -48,6 +50,11 @@ func set_world(next: Dictionary) -> void:
     atlas=ImageTexture.create_from_image(image)
     initialized_view=false
     call_deferred("fit_to_view")
+
+func set_trade_route(route: Dictionary, moving: Array) -> void:
+    trade_route=route.duplicate(true)
+    trade_caravans=moving.duplicate(true)
+    queue_redraw()
 
 func fit_to_view() -> void:
     if size.x<=10 or size.y<=10:return
@@ -98,6 +105,33 @@ func _draw() -> void:
                 var b: Vector2=point(float(to["c"])+0.5,float(to["r"])+0.5)
                 var thickness: float=clampf(zoom*0.28,1.0,4.5)
                 draw_line(a,b,Color("#62c9ee"),thickness,true)
+    var road: Array=trade_route.get("tiles",[])
+    if road.size()>=2:
+        # Roads follow traversable grid tiles, never straight through water.
+        for n in range(1,road.size()):
+            var before: Dictionary=road[n-1]
+            var after: Dictionary=road[n]
+            var a: Vector2=point(float(before["c"])+0.5,float(before["r"])+0.5)
+            var b: Vector2=point(float(after["c"])+0.5,float(after["r"])+0.5)
+            draw_line(a,b,Color("#624c2b"),maxf(2.4,zoom*0.69),true)
+            draw_line(a,b,Color("#d2a45a"),maxf(1.25,zoom*0.31),true)
+        var town: Dictionary=road[road.size()-1]
+        var marker: Vector2=point(float(town["c"])+0.5,float(town["r"])+0.5)
+        draw_circle(marker,maxf(5.0,zoom*1.15),Color("#ffc562"))
+        draw_arc(marker,maxf(7.0,zoom*1.4),0.0,TAU,22,Color("#51320f"),2.0,true)
+        for caravan in trade_caravans:
+            var duration: float=maxf(1.0,float(caravan.get("duration",6)))
+            var pct: float=clampf(float(caravan.get("progress",0))/duration,0.0,1.0)
+            if String(caravan.get("from","capital"))=="outpost":pct=1.0-pct
+            var offset: float=pct*float(road.size()-1)
+            var idx: int=clampi(int(floor(offset)),0,road.size()-2)
+            var f: float=clampf(offset-idx,0.0,1.0)
+            var first: Dictionary=road[idx]
+            var second: Dictionary=road[idx+1]
+            var pos: Vector2=point(lerpf(float(first["c"])+0.5,float(second["c"])+0.5,f),
+                lerpf(float(first["r"])+0.5,float(second["r"])+0.5,f))
+            draw_circle(pos,maxf(3.5,zoom*0.8),Color("#ff7548"))
+            draw_arc(pos,maxf(4.5,zoom),0.0,TAU,14,Color("#38201a"),1.4,true)
     var colors: Array[Color]=[Color("#e9f6ff"),Color("#ff9f87"),Color("#ffc85d"),Color("#bb95e8")]
     for i in range(world.get("starts",[]).size()):
         var site: Dictionary=world["starts"][i]
