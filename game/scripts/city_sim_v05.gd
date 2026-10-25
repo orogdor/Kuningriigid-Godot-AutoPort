@@ -101,14 +101,16 @@ static func build(state: Dictionary, building_type: String) -> String:
     var count: int = state["buildings"].size()
     var place: Vector2=Vector2(float(count)*2.0,0.0)
     var pending_rotation: int=0
+    var pending_district: String=""
     if state.has("detail_sim"):
         var proposed: Variant=state.get("pending_site",null)
         if proposed is Dictionary:
             pending_rotation=int(proposed.get("rotation",0))
+            pending_district=String(proposed.get("district",""))
             place=Spatial.snap(Vector2(float(proposed.get("x",0)),float(proposed.get("z",0))))
         else:
             place=Spatial.next_free(state)
-        if not is_finite(place.x) or not Spatial.can_place(state,place):
+        if not is_finite(place.x) or not Spatial.can_place(state,place,pending_district):
             return "Ehituskoht on hõivatud või väljaspool linna"
     spend(stock,cost)
     state.erase("pending_site")
@@ -118,6 +120,8 @@ static func build(state: Dictionary, building_type: String) -> String:
         # 0.21 orientation lives on the building, never in one-use pending_site.
         # Old city saves without rotation keep their original orientation (0°).
         new_site["rotation"]=posmod(rounded_to_quarter_turn(pending_rotation),360)
+        if pending_district!="":
+            new_site["district"]=pending_district
         # Wood/stone/planks were already paid by spend() above. 0.12
         # tracks their delivery without deducting the same materials twice.
         var prepaid: Dictionary={}
