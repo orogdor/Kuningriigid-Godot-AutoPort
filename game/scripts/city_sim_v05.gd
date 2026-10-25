@@ -6,6 +6,7 @@ const Logic = preload("res://scripts/logic_v02.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v12.gd")
 const Freight = preload("res://scripts/freight_v14.gd")
+const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -271,6 +272,7 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
             realm["pop"] = maxi(3,int(minf(cap,pop-1.0)))
         realm["shortageTurns"] = shortage
     realm["growthProgress"] = progress
+    Trade.tick(state)
 
 static func snapshot(state: Dictionary) -> Dictionary:
     var realm: Dictionary = state["realms"][0]
