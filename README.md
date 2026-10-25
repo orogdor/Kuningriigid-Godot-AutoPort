@@ -134,3 +134,15 @@ Godoti maailmakaardi moodulid:
 **Võrdlustestid:** `tools/generate-world-v06-fixtures.mjs` arvutab originaalse `continentLayout` järgi kuus maailmakonfiguratsiooni ning `game/tests/world_v06_parity.gd` nõuab sama mandrite/saarekeste polygoniseerimist ja eraldatud stardikohti Godotist. `game/tests/world_v06_ui.gd` kontrollib 220 × 165 ruudu olemasolu, nelja stardikohta, jõgede äravoolu, ruuduvalikut ja linnavaatesse liikumist. Samuti peavad varasemad 0.5 majandustestid läbima kõik kontrollid enne APK/EXE väljalaset.
 
 **Piirangud:** mandrite/saarekeste paigutus kattub originaaliga, kuid kõrguse müra, osa rannajoonest ning reljeef ei ole veel `continentHeight` 1:1 port. Kaart on praegu kahemõõtmeline strateegiavaade. Jõed on äravooluvõrguga, aga nende visuaalne jõesäng ja 3D detailreljeef pole veel üle kantud. Neli alguskohta on kaardile märgitud, kuid ülejäänud riikide linnade majandust ega AI-d pole veel ühendatud. Mängitav linnamajandus on endiselt üks eraldi prototüüplinn.
+
+
+## AutoPort 0.7 — kiviaegse linna 3D detailkaardi prototüüp
+
+- `game/scripts/detail_view_v07.gd`: valitud maailmaruudu iseseisev Godoti 3D vaade (detailala ~225 × 195 meetrit) koos maapinna, künklikkuse, mere, jõelõigu, puude ja kividega. 3D geomeetria on praegu Godoti lihtsatest algkujunditest; täpsed veebimängu mudelid ja kõrguskaardi parity tulevad hiljem.
+- `game/scripts/detail_camera_v07.gd`: pööratav ja suumitav kaamera hiirega, telefoni sõrmega pööramine.
+- Eristatavad kiviaja 3D prototüübid: peahoone (hall), elumaja (house), metsamaja (lumber), kaev (well), kivimurd (quarry), põld (farm). Teisi olemasolevaid tootmishooneid näidatakse ajutise töökojamudelina.
+- Maailmakaardil saab valida ruudu ja vajutada **Ava 3D detailkaart**. Tagasi maailmakaardile saab detailvaate nupuga.
+- Ehitamine on prototüübis lubatud ainult mängija esimese riigi pealinna maailmaruudul. Ehituskulu, ehituse valmimine, 10 käigu liigutamine ja linna salvestamine kasutavad olemasolevat 0.5 majandussüsteemi. Mujal saab detailmaastikku vaadata.
+- `game/tests/detail_v07_ui.gd` kontrollib 3D maastiku ilmumist, linna peahoone kujutamist, metsamaja ehitamist ja ressursikulu, 10-käigulist valmimist, salvestamist, maailmakaardile naasmist ja valesse ruutu ehitamise keeldu. Enne väljalaset jäävad kehtima 0.5 majandus- ja 0.6 maailmakaardi testid.
+
+**Piirangud:** tegu on toimiva 3D vaate ja linnamajandusega seotud ehitusprototüübiga, mitte veel veebimängu 1:1 detailkaardiga. Füüsilised töölised ja rajaleidmine, hoonete täpne ruumipõhine paigutus, maavarade ammendumine, mitu linna, AI ja lahingud puuduvad. Windowsi väikese käivitaja failihaaval uuendused ja Androidi PCK jäävad samaks.
