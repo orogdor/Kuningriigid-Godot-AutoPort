@@ -36,6 +36,9 @@ var roads_root: Node3D
 var bridge_root: Node3D
 var previous_worker_positions: Dictionary={}
 var pending_build: String = ""
+var placement_marker: MeshInstance3D
+var placement_cell: Vector2=Vector2(INF,INF)
+var placement_label: Label
 var controller: SubViewportContainer
 var info: Label
 var actions: HFlowContainer
@@ -52,7 +55,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.19 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.20 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -63,6 +66,10 @@ func _ready() -> void:
     info=Label.new()
     info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     column.add_child(info)
+    placement_label=Label.new()
+    placement_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    placement_label.text="Vali ehitis, et näha lubatud (roheline) ja keelatud (punane) ehitusruute."
+    column.add_child(placement_label)
     controller=Controller.new()
     controller.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     controller.size_flags_vertical=Control.SIZE_EXPAND_FILL
@@ -96,6 +103,7 @@ func _ready() -> void:
     scene_root.add_child(camera)
     controller.call("attach_camera",camera)
     controller.connect("ground_clicked",_ground_clicked)
+    controller.connect("ground_hovered",_hover_ground)
     construction_root=Node3D.new()
     construction_root.name="PlacedBuildings"
     scene_root.add_child(construction_root)
@@ -483,18 +491,74 @@ func _refresh_bridges() -> void:
                 _box(bridge_root,Vector3(x+side,1.35,end_z),Vector3(0.7,2.8,0.7),
                     Color("#735238"),"BridgePost")
 
+func _placement_tile(point: Vector2, color: Color, label: String, width: float=8.5) -> MeshInstance3D:
+    var square:=BoxMesh.new()
+    square.size=Vector3(width,0.055,width)
+    var instance:=MeshInstance3D.new()
+    instance.name=label
+    instance.mesh=square
+    instance.position=Vector3(point.x,0.21,point.y)
+    var material:=StandardMaterial3D.new()
+    material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+    material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    material.albedo_color=color
+    instance.material_override=material
+    plot_root.add_child(instance)
+    return instance
+
 func _refresh_grid() -> void:
     if plot_root==null:return
     for old in plot_root.get_children():old.queue_free()
+    placement_marker=null
     if not can_build:return
-    for z in range(-7,8):
-        for x in range(-7,8):
-            var point:=Vector2(float(x)*Spatial.STEP,float(z)*Spatial.STEP)
-            if not Spatial.can_place(city_state,point):continue
-            var square:=BoxMesh.new()
-            square.size=Vector3(8,0.035,8)
-            _mesh(plot_root,square,Vector3(point.x,0.08,point.y),
-                Color(0.2,0.8,0.55,0.16),"BuildPlot")
+    # Neutral fine lines stay visible outside build mode; status fills only
+    # appear while a building is selected to avoid covering the 3D terrain.
+    var line_color:=Color(0.93,0.89,0.72,0.17)
+    for n in range(-8,9):
+        var grid_coordinate: float=float(n)*Spatial.STEP-5.0
+        var horizontal:=BoxMesh.new()
+        horizontal.size=Vector3(160.0,0.02,0.12)
+        var h:=_placement_tile(Vector2(0.0,grid_coordinate),line_color,"BuildGridLine",0.12)
+        h.mesh=horizontal
+        var vertical:=BoxMesh.new()
+        vertical.size=Vector3(0.12,0.02,160.0)
+        var v:=_placement_tile(Vector2(grid_coordinate,0.0),line_color,"BuildGridLine",0.12)
+        v.mesh=vertical
+    if pending_build=="":
+        return
+    if pending_build!="bridge":
+        for z in range(-7,8):
+            for x in range(-7,8):
+                var point:=Vector2(float(x)*Spatial.STEP,float(z)*Spatial.STEP)
+                var allowed: bool=Spatial.can_place(city_state,point)
+                var shade:=Color(0.19,0.89,0.52,0.31) if allowed else Color(0.91,0.24,0.22,0.25)
+                _placement_tile(point,shade,"BuildPlotOpen" if allowed else "BuildPlotBlocked")
+    placement_marker=_placement_tile(Vector2.ZERO,Color(1.0,0.83,0.27,0.72),"BuildPlacementPreview",9.4)
+    placement_marker.hide()
+    if is_finite(placement_cell.x):
+        _set_placement_marker(placement_cell)
+
+func _set_placement_marker(cell: Vector2) -> void:
+    placement_cell=cell
+    if placement_marker==null:return
+    var valid: bool=can_build and Spatial.can_place(city_state,cell)
+    var material: StandardMaterial3D=placement_marker.material_override
+    material.albedo_color=Color(0.99,0.82,0.23,0.78) if valid else Color(1.0,0.14,0.19,0.83)
+    placement_marker.position=Vector3(cell.x,0.32,cell.y)
+    placement_marker.show()
+    if placement_label!=null and pending_build!="":
+        placement_label.text=("Sobiv ehituskoht" if valid else "Keelatud ehituskoht")+" (%d, %d m). " % [int(cell.x),int(cell.y)]+("Puuduta kinnitamiseks." if valid else "Vali roheline ruut.")
+
+func _hover_ground(pos: Vector3) -> void:
+    if not can_build or pending_build=="" or pending_build=="bridge":return
+    _set_placement_marker(Spatial.snap(Vector2(pos.x,pos.z)))
+
+func _cancel_placement() -> void:
+    pending_build=""
+    placement_cell=Vector2(INF,INF)
+    if placement_label!=null:placement_label.text="Ehituskoha valik tühistatud."
+    _refresh_grid()
+    _refresh_actions()
 
 func _ground_clicked(pos: Vector3) -> void:
     if not can_build or pending_build=="":return
@@ -507,17 +571,22 @@ func _ground_clicked(pos: Vector3) -> void:
         bridge_requested.emit(float(x_cell)*Terrain.CELL)
         return
     var snapped: Vector2=Spatial.snap(Vector2(pos.x,pos.z))
+    _set_placement_marker(snapped)
     if not Spatial.can_place(city_state,snapped):
         if info!=null:info.text="Ehituskoht on hõivatud või väljaspool linna: "+str(snapped)
         return
     var kind: String=pending_build
     pending_build=""
+    placement_cell=Vector2(INF,INF)
     build_at_requested.emit(kind,snapped.x,snapped.y)
 
 func select_building(kind: String) -> void:
     if not can_build or not _can_build(kind):return
     pending_build=kind
-    if info!=null:info.text="EHITUS: "+kind+" — puuduta rohelist ehitusruutu; üks sõrm pöörab, kaks sõrme suumivad ja nihutavad"
+    placement_cell=Vector2(INF,INF)
+    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — roheline = lubatud, punane = keelatud. Puuduta ruutu. Vali Tühista, et katkestada."
+    _refresh_grid()
+    _refresh_actions()
 
 func _refresh_info() -> void:
     if info==null:return
@@ -555,6 +624,11 @@ func _refresh_actions() -> void:
         child.queue_free()
     if not can_build:
         return
+    if pending_build!="":
+        var cancel:=Button.new()
+        cancel.text="Tühista ehitise paigutamine"
+        cancel.pressed.connect(_cancel_placement)
+        actions.add_child(cancel)
     var turn:=Button.new()
     turn.text="+10 käiku"
     turn.pressed.connect(func(): turns_requested.emit(10))
@@ -573,7 +647,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.19: 3D kaamera kahe sõrme suum ja nihutamine; 0.17 teise linna AI ja kaubateed säilivad."
+    note.text="0.20: ehitusruudustik ja koha eelvaade; ühe sõrmega pööramine ning kahe sõrmega suum/nihe."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -611,6 +685,8 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     city_state=city
     can_build=capital
     pending_build=""
+    placement_cell=Vector2(INF,INF)
+    if placement_label!=null:placement_label.text="Vali ehitis. Roheline tähistab lubatud, punane keelatud ehituskohta."
     previous_worker_positions.clear()
     if can_build:
         Spatial.initialize(city_state)
