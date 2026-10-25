@@ -69,6 +69,12 @@ func _test() -> void:
     if not Districts.owns(saved,world,p.x,p.y):
         fail("annexed tile did not survive JSON save")
         return
+    # Regenerating a world must not import its predecessor's annexes.
+    var another_world: Dictionary=world.duplicate()
+    another_world["seed"]=int(world.get("seed",0))+1
+    if Districts.cells(saved,another_world).size()!=1:
+        fail("old ownership leaked into a newly generated world")
+        return
     if ui.world_view.map_canvas.city_district_tiles.size()!=2 or ui.world_view.map_canvas.city_district_links.size()!=1:
         fail("world-map ownership and street overlays were not refreshed")
         return
