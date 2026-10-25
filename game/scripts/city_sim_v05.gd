@@ -4,6 +4,7 @@ extends RefCounted
 ## no physical delivery paths, terrain deposits, districts, AI or battle.
 const Logic = preload("res://scripts/logic_v02.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
+const Construction = preload("res://scripts/construction_v11.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -160,9 +161,13 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
             continue
         var work_dt: float = DT * efficiency
         if not bool(b.get("ready",false)):
-            b["progress"] = float(b.get("progress",0)) + work_dt
-            if float(b["progress"]) + 0.00000001 >= float(d.get("time",0)):
-                b["ready"] = true
+            if not state.has("detail_sim"):
+                # Keep 0.5 JavaScript-equivalent construction exactly intact.
+                b["progress"] = float(b.get("progress",0)) + work_dt
+                if float(b["progress"]) + 0.00000001 >= float(d.get("time",0)):
+                    b["ready"] = true
+            # On the 0.11 detail map a visible builder must travel and work.
+            # Physical construction runs after staffing is allocated.
             continue
         if not d.has("out"):
             continue
@@ -186,6 +191,7 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
         var resource_key: String = c["key"]
         stock[resource_key] = float(stock.get(resource_key,0)) + float(c["amount"])
     if state.has("detail_sim"):
+        Construction.tick(state,recipes)
         Spatial.tick(state)
     state["time"] = float(state.get("time",0)) + DT
     var cap: float = housing_capacity(buildings)
