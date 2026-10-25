@@ -269,3 +269,13 @@ Kaks uut nuppu (**Pööra ↶ 90°**, **Pööra ↷ 90°**) lubavad valida hoone
 Uus `game/tests/detail_rotation_v21.gd` kontrollib päris 3D kaardil erinevaid läbipaistvaid hoonemudeleid, pööramise normaliseerimist, keelatud ehituskoha tõrjumist, valitud asukohta ja suunda, ehitusmaterjalide kasutust, JSON-salvestust, varasemate 0.20 ehituskutsete sobivust ning vana salvestuse 0° vaikimisi suunda. Mõlemad GitHub Actionsi töövood peavad testi läbima enne uut väljalaset. Väljalaskemärgis on `v0.21.<run_number>`.
 
 **Piirang:** mudelid on endiselt esialgsed Godoti 3D geomeetrilised hooned; pööramine ei lisa automaatselt uusi ukse-põhiseid rajaleidmise ja liikluse reegleid. CI, Windowsi EXE, Androidi APK ja füüsilise telefoni tulemused vajavad veel kinnitamist.
+
+## AutoPort 0.22 — pööratavad hooneuksed ja kaubateed
+
+Eelmise versiooni salvestatud `rotation` määrab nüüd hoone teenindussissepääsu: 0° = +Z, 90° = +X, 180° = −Z, 270° = −X. Uus `game/scripts/building_access_v22.gd` paigutab sissepääsu 20 meetri kaugusele hoone keskmest 10-meetrise A* ruudustiku järgi. Kui peasissepääs on hõivatud või ligipääsmatu, proovib rajaleidmine järjest kolme teist teeninduskülge.
+
+Metsamaja ja kivimurru töölised väljuvad töökoja uksest ja naasevad sinna; ehitajad käivad ehitusplatsi sissepääsu ja linnahalli sissepääsu vahel; kaubavankrid kasutavad lähtehoone ja raekoja ukseesiseid. Kauba hulk, hind, juba salvestatud saadetiste väärtus ja ehituse materjalikulu ei muutu. Varasemate salvestuste hooned ilma `rotation` väljata säilitavad +Z suuna, ilma kohustusliku andmeskeemi migratsioonita.
+
+Godoti 3D detailkaardil on pööratav `FrontDoorStep` ning `DoorAccessPath_*` ja `DoorAccessPoint_*` ühendused. Tegelikud pikemad teed tekivad ja kuluvad endiselt ainult liikumisest; lühikesed ehitise juurdepääsulõigud on illustratiivsed. Ehitise keeramisega ei teki uusi teid automaatselt läbi ehitiste, jõgede ega järsakute.
+
+Uus test `game/tests/building_access_v22.gd` kontrollib nelja suunda, A* läbipääsetavust, ehitajate ja vankrite sihtkohti, blokeeritud ukse varuteed, kuue ühiku kauba säilimist, vana salvestuse +Z suunda ning 3D ukseesise nähtavust. Mõlemasse GitHub Actionsi töövoogu on lisatud sama test ning väljalaskeskripti versioon on `v0.22.<run_number>`. Automaattestide edukus ja uue APK/EXE avaldamine vajavad eraldi kinnitust.
