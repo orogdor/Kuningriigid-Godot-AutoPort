@@ -151,6 +151,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_parity.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v07_ui.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_camera_v19.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v08_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/spatial_paths_v09.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_terrain_v10.gd
@@ -213,12 +214,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.17.${{ github.run_number }}"
+          VERSION="v0.19.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.18 adds anchored two-finger pinch-zoom/pan on the Android world map, protects tile selection after multitouch and retains 0.17 satellite building AI, mapped roads, caravan ETAs and backward-compatible saves. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
+            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.19 adds anchored two-finger zoom and pan in the Godot 3D detail camera, keeps one-finger orbit and tap-to-build safe, and retains 0.18 world-map pinch, 0.17 satellite AI and caravan ETA compatibility. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
             --latest
