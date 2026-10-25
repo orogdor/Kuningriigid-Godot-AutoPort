@@ -130,7 +130,7 @@ static func _assign(state: Dictionary) -> void:
     var sim: Dictionary=state["detail_sim"]
     var haulers: Array=sim["haulers"]
     var population: int=maxi(0,int(state["realms"][0].get("pop",0)))
-    var maximum: int=mini(MAX_HAULERS,population,1 if population<8 else 2)
+    var maximum: int=mini(mini(MAX_HAULERS,population),1 if population<8 else 2)
     for h in haulers:
         if String(h.get("phase",""))=="idle" and not sim["freight_queue"].is_empty():
             _next_job(state,h)
