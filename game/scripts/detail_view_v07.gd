@@ -287,6 +287,14 @@ func refresh_buildings() -> void:
         _refresh_worker_meshes()
         _refresh_grid()
         _refresh_roads()
+    else:
+        # Changing from the capital to an unowned tile must not leave
+        # the old town's 3D workers, paths or resources on screen.
+        for group in [resource_root,worker_root,plot_root,roads_root]:
+            if group!=null:
+                for child in group.get_children():
+                    child.queue_free()
+        previous_worker_positions.clear()
     _refresh_actions()
     _refresh_info()
 
