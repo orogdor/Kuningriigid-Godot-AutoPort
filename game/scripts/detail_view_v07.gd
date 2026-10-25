@@ -514,11 +514,14 @@ func _refresh_roads() -> void:
     # Draw a short connector to the reachable access of each building.
     # Actual worn footpaths still arise ONLY from A* traffic.
     var buildings: Array=city_state.get("buildings",[])
+    var connected: Dictionary={}
+    if not buildings.is_empty():
+        connected=Paths.connected_cells(city_state,Access.entrance(buildings[0]),0)
     for i in range(buildings.size()):
         var building: Dictionary=buildings[i]
         if float(building.get("hp",1.0))<=0.0:continue
         var centre: Vector2=Access.center(building)
-        var entry: Vector2=Access.reachable(city_state,i,Access.entrance(buildings[0]),0)
+        var entry: Vector2=Access.reachable_from_map(city_state,i,connected,0)
         if entry.x>1000.0:continue
         var side: Vector2=(entry-centre).normalized()
         var mid: Vector2=centre+side*13.5
@@ -695,12 +698,30 @@ func select_building(kind: String) -> void:
     if not can_build or not _can_build(kind):return
     pending_build=kind
     placement_rotation=0
-    # Touchscreens have no hover cursor. Put the preview on the closest free
-    # plot immediately; it is only a visual suggestion, not an auto-build.
-    placement_cell=Spatial.next_free(city_state)
-    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — eelvaade lähimal vabal ruudul. Pööra 90° nuppudega või vali teine roheline ruut."
+    # Preserve the original 0-degree starting orientation for all legacy
+    # interactions. The separate planning button applies a street-aligned
+    # facing only when the player explicitly requests it.
+    suggested_site=Planner.plan(city_state,kind)
+    placement_cell=suggested_site.get("position",Spatial.next_free(city_state))
+    if placement_label!=null:
+        placement_label.text="EHITUS: "+kind+" — plaanitud krunt on kollane. Pööra või vali muu roheline ruut."
     _refresh_grid()
     _refresh_actions()
+
+func _recommend_placement() -> void:
+    if pending_build=="" or pending_build=="bridge" or not can_build:return
+    suggested_site=Planner.plan(city_state,pending_build)
+    if suggested_site.is_empty():
+        if placement_label!=null:placement_label.text="Vaba ligipääsetavat krunti ei leitud."
+        return
+    placement_cell=suggested_site["position"]
+    placement_rotation=int(suggested_site.get("rotation",0))
+    _set_placement_marker(placement_cell)
+    if placement_label!=null:
+        placement_label.text="Planeeritud krunt %d, %d m • suund %d° • %d võimalikku kohta. Puuduta ehitamiseks." % [
+            int(placement_cell.x),int(placement_cell.y),placement_rotation,
+            int(suggested_site.get("plots",0))]
+
 
 func _refresh_info() -> void:
     if info==null:return
@@ -740,6 +761,10 @@ func _refresh_actions() -> void:
         return
     if pending_build!="":
         if pending_build!="bridge":
+            var planned:=Button.new()
+            planned.text="Soovita linna krunti"
+            planned.pressed.connect(_recommend_placement)
+            actions.add_child(planned)
             var rotate_left:=Button.new()
             rotate_left.text="Pööra ↶ 90°"
             rotate_left.pressed.connect(_rotate_placement.bind(-90))
@@ -770,7 +795,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.23: ühendatud sissetallatud teed ja kiirem A* rajaleidmine suuremas linnas."
+    note.text="0.24: linna krundiplaneerija, jagatud 3D materjalid ja kiirem uksetänavate arvutus."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -810,6 +835,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     pending_build=""
     placement_rotation=0
     placement_cell=Vector2(INF,INF)
+    suggested_site={}
     if placement_label!=null:placement_label.text="Vali ehitis. Roheline tähistab lubatud, punane keelatud ehituskohta."
     previous_worker_positions.clear()
     if can_build:
