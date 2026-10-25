@@ -11,6 +11,7 @@ const WorldGen = preload("res://scripts/world_gen_v06.gd")
 const Routes = preload("res://scripts/world_trade_routes_v17.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
 const Districts = preload("res://scripts/world_districts_v25.gd")
+const Transit = preload("res://scripts/district_transit_v26.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -99,6 +100,9 @@ func _satellite_tile() -> Dictionary:
 func _sync_trade_map() -> void:
     if world_view==null or world_view.world.is_empty():return
     world_view.set_city_districts(city)
+    Transit.configure(city,world_view.world)
+    world_view.map_canvas.set_city_agents(city.get("transport_v26",{}).get("agents",[]),
+        Transit.home_key(city))
     if not Trade.has_outpost(city):
         world_view.map_canvas.set_trade_route({},[])
         return
@@ -150,6 +154,7 @@ func _show_detail(c: int, r: int) -> void:
         satellite=not loc.is_empty() and int(loc["c"])==c and int(loc["r"])==r
     detail_town="outpost" if satellite else "capital"
     var active: Dictionary=Trade.ensure_city(city) if satellite else city
+    if not satellite:Transit.configure(city,world_view.world)
     var owned: bool=Districts.owns(city,world_view.world,c,r)
     var district_key: String=""
     if owned and not capital and not satellite:
@@ -205,7 +210,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.25",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.26",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -319,6 +324,8 @@ func _reset() -> void:
 
 func _advance(n: int) -> void:
     var before: int = int(city["realms"][0]["pop"])
+    if world_view!=null and not world_view.world.is_empty():
+        Transit.configure(city,world_view.world)
     for i in range(n):
         City.tick(city)
     var after: int = int(city["realms"][0]["pop"])
@@ -353,6 +360,7 @@ func _expand_district(c: int,r: int) -> void:
     if world_view==null or world_view.world.is_empty():return
     var result: String=Districts.expand(city,world_view.world,c,r)
     event_message=result if result!="" else "Linn laienes ruudule %d, %d. Kasutati 20 puitu ja 10 kivi." % [c,r]
+    Transit.configure(city,world_view.world)
     _save()
     _sync_trade_map()
     _refresh()
