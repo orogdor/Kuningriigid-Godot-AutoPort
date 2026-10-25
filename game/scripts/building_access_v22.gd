@@ -29,6 +29,18 @@ static func candidates(building: Dictionary) -> Array[Vector2]:
     return [c+main*DOOR_OFFSET,c+right*DOOR_OFFSET,
         c-right*DOOR_OFFSET,c-main*DOOR_OFFSET]
 
+static func reachable_from_map(state: Dictionary, index: int, connected: Dictionary, home_index: int=0) -> Vector2:
+    var buildings: Array=state.get("buildings",[])
+    if index<0 or index>=buildings.size():return FAILED
+    for point in candidates(buildings[index]):
+        if absf(point.x)>float(Paths.EXTENT)*Paths.STEP or absf(point.y)>float(Paths.EXTENT)*Paths.STEP:
+            continue
+        var cell: Vector2i=Paths.grid(point)
+        if not connected.has(Paths.cell_key(cell)):continue
+        if Paths.blocked(state,cell,home_index):continue
+        return point
+    return FAILED
+
 static func reachable(state: Dictionary, index: int, start: Vector2, home_index: int=0) -> Vector2:
     var buildings: Array=state.get("buildings",[])
     if index<0 or index>=buildings.size():return FAILED
