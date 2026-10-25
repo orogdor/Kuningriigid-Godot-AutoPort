@@ -16,6 +16,7 @@ const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
 const Freight = preload("res://scripts/freight_v14.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Access = preload("res://scripts/building_access_v22.gd")
+const Planner = preload("res://scripts/city_planner_v24.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -47,6 +48,10 @@ var controller: SubViewportContainer
 var info: Label
 var actions: HFlowContainer
 var rendered_buildings: int = 0
+var shared_materials: Dictionary={}
+var shared_boxes: Dictionary={}
+var grid_materials: Dictionary={}
+var suggested_site: Dictionary={}
 var selected_biome: String = ""
 
 func _ready() -> void:
@@ -59,7 +64,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.23 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.24 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -136,9 +141,12 @@ func _ready() -> void:
     _refresh_actions()
 
 func _material(color: Color, roughness: float=0.95) -> StandardMaterial3D:
+    var key: String=color.to_html(true)+"_"+str(snappedf(roughness,0.01))
+    if shared_materials.has(key):return shared_materials[key]
     var m:=StandardMaterial3D.new()
     m.albedo_color=color
     m.roughness=roughness
+    shared_materials[key]=m
     return m
 
 func _mesh(parent: Node3D, primitive: Mesh, pos: Vector3, color: Color, label: String) -> MeshInstance3D:
@@ -151,8 +159,14 @@ func _mesh(parent: Node3D, primitive: Mesh, pos: Vector3, color: Color, label: S
     return result
 
 func _box(parent: Node3D, pos: Vector3, scale: Vector3, color: Color, label: String) -> MeshInstance3D:
-    var mesh:=BoxMesh.new()
-    mesh.size=scale
+    var key: String=str(snappedf(scale.x,0.001))+":"+str(snappedf(scale.y,0.001))+":"+str(snappedf(scale.z,0.001))
+    var mesh: BoxMesh
+    if shared_boxes.has(key):
+        mesh=shared_boxes[key]
+    else:
+        mesh=BoxMesh.new()
+        mesh.size=scale
+        shared_boxes[key]=mesh
     return _mesh(parent,mesh,pos,color,label)
 
 func _cylinder(parent: Node3D, pos: Vector3, radius: float, height: float, color: Color, label: String) -> MeshInstance3D:
@@ -543,10 +557,23 @@ func _placement_tile(point: Vector2, color: Color, label: String, width: float=8
     instance.name=label+"_"+str(plot_root.get_child_count())
     instance.mesh=square
     instance.position=Vector3(point.x,0.21,point.y)
-    var material:=StandardMaterial3D.new()
-    material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-    material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-    material.albedo_color=color
+    var material: StandardMaterial3D
+    # Highlight material changes while hovering, so never share the preview.
+    if label=="BuildPlacementPreview":
+        material=StandardMaterial3D.new()
+        material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+        material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+        material.albedo_color=color
+    else:
+        var key: String=label+":"+color.to_html(true)
+        if grid_materials.has(key):
+            material=grid_materials[key]
+        else:
+            material=StandardMaterial3D.new()
+            material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+            material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+            material.albedo_color=color
+            grid_materials[key]=material
     instance.material_override=material
     plot_root.add_child(instance)
     return instance
