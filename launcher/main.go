@@ -236,6 +236,15 @@ func run()error{
  state:=readState(base)
  updated,updateErr:=upgrade(base,state)
  if updateErr!=nil{fmt.Fprintln(os.Stderr,"Update unavailable:",updateErr)}
+ if os.Getenv("KUNINGRIIGID_VERIFY_ONLY") == "1" {
+  if !commitHash.MatchString(updated.Commit) {return fmt.Errorf("no downloaded files available: %v",updateErr)}
+  m,err:=readManifest(base,updated.Commit)
+  if err!=nil{return err}
+  if !validGame(base,m) || currentRuntime(base,updated)=="" {
+   return errors.New("cached Godot files failed Windows verification")
+  }
+  return nil
+ }
  if err=start(base,updated);err==nil{return nil}
  if updated!=state {
   if err=start(base,state);err==nil {
@@ -250,6 +259,13 @@ func run()error{
 }
 func main() {
  if err := run(); err != nil {
+  // A diagnosable error file for unattended Windows installs and bug reports.
+  if executable, e := os.Executable(); e == nil {
+   dir := filepath.Join(filepath.Dir(executable),"Kuningriigid-Data")
+   if custom:=os.Getenv("KUNINGRIIGID_HOME");custom!=""{dir=custom}
+   _=os.MkdirAll(dir,0755)
+   _=os.WriteFile(filepath.Join(dir,"last-error.txt"),[]byte(err.Error()),0644)
+  }
   showFatal("Kuningriigid ei käivitu:\n" + err.Error())
   os.Exit(1)
  }
