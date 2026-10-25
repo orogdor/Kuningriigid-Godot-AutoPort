@@ -14,6 +14,8 @@ var movement: float = 0.0
 var initialized_view: bool = false
 var trade_route: Dictionary={}
 var trade_caravans: Array=[]
+var city_district_tiles: Array=[]
+var city_district_links: Array=[]
 # Track physical fingers independently; never select a tile after a pinch.
 var touch_points: Dictionary={}
 var gesture_active: bool=false
@@ -57,6 +59,11 @@ func set_world(next: Dictionary) -> void:
 func set_trade_route(route: Dictionary, moving: Array) -> void:
     trade_route=route.duplicate(true)
     trade_caravans=moving.duplicate(true)
+    queue_redraw()
+
+func set_city_districts(tiles: Array, links: Array) -> void:
+    city_district_tiles=tiles.duplicate(true)
+    city_district_links=links.duplicate(true)
     queue_redraw()
 
 func fit_to_view() -> void:
@@ -135,6 +142,21 @@ func _draw() -> void:
                 lerpf(float(first["r"])+0.5,float(second["r"])+0.5,f))
             draw_circle(pos,maxf(3.5,zoom*0.8),Color("#ff7548"))
             draw_arc(pos,maxf(4.5,zoom),0.0,TAU,14,Color("#38201a"),1.4,true)
+    # Owned capital districts: visible on the strategic world atlas, with
+    # roads only between physically adjacent annexed world tiles.
+    for tile in city_district_tiles:
+        var c: float=float(tile.get("c",-1))
+        var r: float=float(tile.get("r",-1))
+        if c<0 or r<0:continue
+        draw_rect(Rect2(point(c,r),Vector2.ONE*zoom),Color(0.95,0.72,0.31,0.32),true)
+        draw_rect(Rect2(point(c,r),Vector2.ONE*zoom),Color("#ffcb69"),false,maxf(1.0,zoom*0.11))
+    for edge in city_district_links:
+        var one: Dictionary=edge.get("from",{})
+        var other: Dictionary=edge.get("to",{})
+        var a: Vector2=point(float(one.get("c",0))+0.5,float(one.get("r",0))+0.5)
+        var b: Vector2=point(float(other.get("c",0))+0.5,float(other.get("r",0))+0.5)
+        draw_line(a,b,Color("#483427"),maxf(1.5,zoom*0.52),true)
+        draw_line(a,b,Color("#ebbd79"),maxf(1.0,zoom*0.22),true)
     var colors: Array[Color]=[Color("#e9f6ff"),Color("#ff9f87"),Color("#ffc85d"),Color("#bb95e8")]
     for i in range(world.get("starts",[]).size()):
         var site: Dictionary=world["starts"][i]
