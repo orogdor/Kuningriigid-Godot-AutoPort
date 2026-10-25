@@ -53,10 +53,13 @@ func _test() -> void:
         return
     # Existing walkways increase movement speed; the same route-usage
     # tracking is shared by workers and freight carts.
-    var plain_speed: float=Freight._speed(state,Vector2.ZERO)
+    var unused_map: Dictionary=City.default_state()
+    Spatial.initialize(unused_map)
+    Freight.initialize(unused_map)
+    var plain_speed: float=Freight._speed(unused_map,Vector2.ZERO)
     var cell: Vector2i=Paths.grid(Vector2.ZERO)
-    for n in range(4):Paths.touch(sim,cell)
-    var road_speed: float=Freight._speed(state,Vector2.ZERO)
+    for n in range(4):Paths.touch(unused_map["detail_sim"],cell)
+    var road_speed: float=Freight._speed(unused_map,Vector2.ZERO)
     if road_speed<=plain_speed:
         fail("established footpaths did not speed up loaded transport")
         return
