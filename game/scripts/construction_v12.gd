@@ -126,6 +126,9 @@ static func tick(state: Dictionary, specs: Dictionary) -> void:
             worker["phase"]="waiting_for_workers"
             continue
         var phase: String=String(worker.get("phase","to_hall"))
+        if phase in ["waiting_for_workers","no_route"]:
+            phase="to_site" if float(worker.get("cargo_amount",0))>0 else "to_hall"
+            worker["phase"]=phase
         var pos:=Vector2(float(worker.get("x",0)),float(worker.get("z",0)))
         # Hall is a permitted A* origin; the path planner ignores its
         # collision hull only for these resident construction crews.
