@@ -321,3 +321,14 @@ Uue linnaosa hoonetest pärit valmis kaup läheb esmalt füüsilisele vankrile. 
 3D vaates näidatakse selle linnaosa kohal olevat liikuvat töölist või kaubavankrit ja väravani viivat teelõiku. Maailmakaardil on linnaosadevahelised tänavad ning liikujate tegeliku ruudu ja kohaliku asukoha järgi muutuvad markerid. 0.26 ei renderda veel kogu mitmest maailmaruudust koosnevat maastikku korraga ühes 3D kaameras; liikumise füüsiline võrk on ühine, vahetatavate detailvaadetega.
 
 `game/tests/district_transit_v26.gd` kontrollib läbitavaid naaberruutude vahelisi marsruute, vähemalt ühe mängukäigu pikkust väravaületust, päris kaupa kandvat 3D vankrit, kaubakoguse säilimist igal käigul, ehitusmaterjalide ette tasumist, ehitajate töö valmimist ja marsruutide salvestamist. Test on osa mõlemast CI töövoost. Väljalase on `v0.26.<run_number>`.
+
+
+## AutoPort 0.27 — naaberlinnaosad ühes 3D stseenis
+
+Pealinna ja 0.25-s liidetud naaberlinnaosade 3D maastikku saab nüüd vaadata ühes Godoti stseenis. `game/scripts/continuous_city_v27.gd` joondab iga maailmakaardi ruudu keskpunkti 160 meetri sammuga: 70 m kummagi linnaosa sees, 20 m vaheline füüsiline väravaületus. Kombineeritud vaates kasutatakse ühe linnaosa kohta 160 × 160 m maastikku, mis ei kattu naaberlinnaosaga. Ühe linnaosa vana 225 × 195 m vaade jääb alles ja tema kaamerapiirid ei muutu.
+
+Kõik kaamerast kuni nelja maailmaruudu kaugusel asuvad ühendatud ja omatud linnaosad kuvavad korraga oma maapinda, hooneid, kohalikke puu/kivivarusid ning parasjagu selles linnaosas olevaid 0.26 töölisi või kaubavankreid. Linnaruudud ühendatakse tegelike naaberlõikude vahel 3D teedega. Uued **Vaata kogu linna** ja **Järgmine linnaosa** nupud näitavad laiemat mänguala või viivad tähelepanu järgmisele linnaosale. Kui puudutada teise linnaosa maapinda, aktiveerub selle ehitusruudustik samas 3D stseenis, ilma maailmakaardile naasmata. Ühe puudutusega linnaosa vahetamisel ei toimu tahtmatut ehitust ega ressursikulu; järgmine puudutus saab sooritada ehitustoimingu valitud linnaosas.
+
+0.26 käigupõhised tööliste ja kaubavankrite asukohad ja marsruudid on endiselt majanduse allikaks; 0.27 ei dubleeri transpordi- ega ehitusressursse. 3D geomeetria on teadlikult Godoti prototüübi materjalidest ja lihtobjektidest. Väljaspool avatud kaamerapiirkonda võib jääda linnaosi, mida ei renderdata samaaegselt, et hoida mobiili jõudlust. Praegused linnaruudud on tasapinnalised ka siis, kui nende maailmakaardil on mägimets või jõgi; detailne kõrguste ja jõgede sujuv kokkuviimine jääb tulevasse etappi.
+
+Regressioonitest `game/tests/continuous_city_v27.gd` kontrollib 160 m maastikuruute, naaberhoonete samaaegset kuvamist, 3D tänavalõike, suurema ala kaamerapiire, ekraanilt linnaosa valimist, tahtmatu ehituse vältimist, reaalse maja ehitamist ühise ressursikuluga ning eemal oleva kaubavankri nähtavust. Test lisatakse mõlemasse GitHub Actionsi töövoogu; väljalaskemärgis on `v0.27.<run_number>`.
