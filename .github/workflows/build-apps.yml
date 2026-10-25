@@ -144,6 +144,7 @@ jobs:
           cmp /tmp/checked-city-definitions.json game/data/generated/city_buildings.json
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
 
       - name: Import resources and inspect editor errors
         shell: bash
