@@ -19,6 +19,7 @@ const Access = preload("res://scripts/building_access_v22.gd")
 const Planner = preload("res://scripts/city_planner_v24.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Continuous = preload("res://scripts/continuous_city_v27.gd")
+const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -33,6 +34,8 @@ var combined_city: bool=false
 var combined_root: Node3D
 var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
+var terrain_mesh_builds: int=0
+var prop_builds: int=0
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -72,7 +75,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.27 • ÜHINE 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.28 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -216,6 +219,12 @@ func _elevation(x: float, z: float, base: float, plain: bool) -> float:
 
 func _surface(cell: Dictionary) -> void:
     selected_biome=String(cell.get("biome","sea"))
+    if combined_city:
+        scene_root.add_child(Terrain28.surface(world,selected,"DetailTerrain"))
+        terrain_mesh_builds+=1
+        for water in Terrain28.water(world,selected):
+            scene_root.add_child(water)
+        return
     var sea: bool=selected_biome=="sea"
     var heights: float=clampf(float(cell.get("h",0))*0.02,-1.0,1.7)
     var smooth_centre: bool=can_build
@@ -285,86 +294,129 @@ func _position_local_groups() -> void:
         if root_node!=null:root_node.position=delta
 
 func _render_neighbors() -> void:
-    if combined_root==null:return
-    # Free immediately: queued nodes keep their names until frame end and
-    # would silently rename DistrictTile_Capital when focus changes.
-    for old in combined_root.get_children():old.free()
-    if not combined_city:return
+    if combined_root==null or not combined_city:return
     var buildings: Array=city_state.get("buildings",[])
+    var agents: Array=city_state.get("transport_v26",{}).get("agents",[])
+    var local_home: String=Transit.home_key(city_state)
+    # Retain each permanent terrain tile across ticks. A turn only adjusts
+    # changed houses, living resource props and moving transport actors.
     for tile in shown_district_tiles:
-        var offset: Vector3=Continuous.offset(tile,selected)
         var district: String=Continuous.district_key(tile,world)
-        var part:=Node3D.new()
-        part.name="DistrictTile_"+Continuous.district_key(tile,world).replace(":","_")
-        if tile==selected:part.name="DistrictTile_Capital"
-        part.position=offset
-        combined_root.add_child(part)
-        if tile!=selected:
-            var biome: String=Continuous.tile_biome(world,tile)
-            var shade:=Color("#8eaa6d")
-            if biome=="forest":shade=Color("#5a8056")
-            elif biome=="hills":shade=Color("#989991")
-            elif biome=="sea":shade=Color("#4a90aa")
-            _box(part,Vector3(0,-0.105,0),Vector3(Continuous.TILE_SPAN,0.20,Continuous.TILE_SPAN),
-                shade,"DistrictTerrain")
-            var cell: Dictionary=World.cell(world,tile.x,tile.y)
-            if bool(cell.get("river",false)):
-                _box(part,Vector3(0,0.035,25),Vector3(Continuous.TILE_SPAN,0.055,13),
-                    Color("#419abb"),"DistrictRiver")
-        if tile==active_tile:continue
-        for i in range(buildings.size()):
-            var building: Dictionary=buildings[i]
-            if String(building.get("district",""))!=district:continue
-            var holder:=Node3D.new()
-            holder.name=String(building.get("type","building"))+"_"+str(i)
-            holder.position=Vector3(float(building.get("x",0)),0.0,float(building.get("z",0)))
-            holder.rotation_degrees.y=float(building.get("rotation",0))
-            part.add_child(holder)
-            _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
-                Color("#b7a381"),"FrontDoorStep")
-            if bool(building.get("ready",false)):
-                _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
-            else:
-                _construction_site(holder,String(building.get("type","house")),Vector3.ZERO,building)
-        # Other districts remain populated while the camera passes over them.
-        var simulation: Dictionary=Transit._local_state(city_state,
-            Transit.home_key(city_state) if district=="" else district).get("detail_sim",{})
-        for deposit in simulation.get("sites",[]):
-            if float(deposit.get("remaining",0))<=0.0:continue
-            var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
-            if String(deposit.get("kind",""))=="wood":
-                _tree(part,p,0.75)
-            else:
-                _rock(part,p,0.8)
-        var agents: Array=city_state.get("transport_v26",{}).get("agents",[])
-        var key: String=Transit.home_key(city_state) if district=="" else district
-        for agent in agents:
-            if String(agent.get("district",""))!=key:continue
-            var actor:=Node3D.new()
-            actor.name="DistrictAgent_"+str(agent.get("id",0))
-            actor.position=Vector3(float(agent.get("x",0)),0.0,float(agent.get("z",0)))
-            part.add_child(actor)
-            if String(agent.get("role","")) in ["wagon","input_wagon","material"]:
-                _box(actor,Vector3(0,1.1,0),Vector3(3.7,1.2,5.0),
-                    Color("#896442"),"CargoWagon")
-                if float(agent.get("load",0))>0.0:
-                    _box(actor,Vector3(0,2.0,0),Vector3(3.0,1.1,3.2),
+        var label: String="DistrictTile_Capital" if tile==selected else "DistrictTile_"+district.replace(":","_")
+        var part: Node3D=combined_root.get_node_or_null(label) as Node3D
+        if part==null:
+            part=Node3D.new()
+            part.name=label
+            part.position=Continuous.offset(tile,selected)
+            combined_root.add_child(part)
+            if tile!=selected:
+                part.add_child(Terrain28.surface(world,tile,"DistrictTerrain"))
+                terrain_mesh_builds+=1
+                for water in Terrain28.water(world,tile):
+                    part.add_child(water)
+            var resources:=Node3D.new()
+            resources.name="DistrictResources"
+            part.add_child(resources)
+        var props: Node3D=part.get_node("DistrictResources") as Node3D
+        props.visible=tile!=active_tile
+        if tile!=active_tile and props.get_child_count()==0:
+            var sim: Dictionary=Transit._local_state(city_state,
+                local_home if district=="" else district).get("detail_sim",{})
+            var offset: Vector3=Continuous.offset(tile,selected)
+            var far: bool=Terrain28.distant_props(controller.look_at,offset)
+            var max_props: int=5 if far else 14
+            var resource_count: int=0
+            for deposit in sim.get("sites",[]):
+                if resource_count>=max_props:break
+                if float(deposit.get("remaining",0))<=0.0:continue
+                var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
+                p.y=Terrain28.height(world,tile,p.x,p.z)
+                if String(deposit.get("kind",""))=="wood":
+                    _tree(props,p,0.65)
+                else:
+                    _rock(props,p,0.7)
+                resource_count+=1
+                prop_builds+=1
+        # Reuse unchanged buildings; only rebuild a mesh when its stage,
+        # readiness or durable visual details actually changed.
+        var current_buildings: Dictionary={}
+        if tile!=active_tile:
+            for i in range(buildings.size()):
+                var building: Dictionary=buildings[i]
+                if String(building.get("district",""))!=district:continue
+                var label_b: String=String(building.get("type","building"))+"_"+str(i)
+                current_buildings[label_b]=true
+                var ready: bool=bool(building.get("ready",false))
+                var stage: int=3 if ready else Construction.stage(building,
+                    CityRecipes.read_table("city_buildings").get("buildings",{}).get(String(building.get("type","")),{})
+                )
+                var sig: String=str(stage)+":"+str(ready)+":"+str(int(building.get("rotation",0)))
+                var holder: Node3D=part.get_node_or_null(label_b) as Node3D
+                if holder!=null and String(holder.get_meta("visual_sig",""))!=sig:
+                    holder.free()
+                    holder=null
+                if holder==null:
+                    holder=Node3D.new()
+                    holder.name=label_b
+                    holder.set_meta("visual_sig",sig)
+                    holder.set_meta("is_building",true)
+                    part.add_child(holder)
+                    _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
+                        Color("#b7a381"),"FrontDoorStep")
+                    if ready:
+                        _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
+                    else:
+                        _construction_site(holder,String(building.get("type","house")),Vector3.ZERO,building)
+                holder.position=Vector3(float(building.get("x",0)),0.0,float(building.get("z",0)))
+                holder.rotation_degrees.y=float(building.get("rotation",0))
+        for child in part.get_children():
+            if bool(child.get_meta("is_building",false)) and not current_buildings.has(child.name):
+                child.free()
+        var live_agents: Dictionary={}
+        if tile!=active_tile:
+            for agent in agents:
+                if String(agent.get("district",""))!=(local_home if district=="" else district):continue
+                var label_a: String="DistrictAgent_"+str(agent.get("id",0))
+                live_agents[label_a]=true
+                var actor: Node3D=part.get_node_or_null(label_a) as Node3D
+                var loaded: bool=float(agent.get("load",0.0))>0.0
+                var is_wagon: bool=String(agent.get("role","")) in ["wagon","input_wagon","material"]
+                if actor==null:
+                    actor=Node3D.new()
+                    actor.name=label_a
+                    actor.set_meta("is_agent",true)
+                    actor.set_meta("loaded",loaded)
+                    part.add_child(actor)
+                    if is_wagon:
+                        _box(actor,Vector3(0,1.1,0),Vector3(3.7,1.2,5.0),
+                            Color("#896442"),"CargoWagon")
+                        if loaded:_box(actor,Vector3(0,2.0,0),Vector3(3.0,1.1,3.2),
+                            Color("#c5a36d"),"VisibleGoodsCargo")
+                    else:
+                        _cylinder(actor,Vector3(0,1.25,0),0.55,2.2,Color("#7a927b"),"WorkerBody")
+                elif is_wagon and bool(actor.get_meta("loaded",false))!=loaded:
+                    var cargo: Node=actor.get_node_or_null("VisibleGoodsCargo")
+                    if cargo!=null:cargo.free()
+                    if loaded:_box(actor,Vector3(0,2.0,0),Vector3(3.0,1.1,3.2),
                         Color("#c5a36d"),"VisibleGoodsCargo")
-            else:
-                _cylinder(actor,Vector3(0,1.25,0),0.55,2.2,Color("#7a927b"),"WorkerBody")
-    # Draw each actual shared street crossing once, exactly between 160m tiles.
-    var seen: Dictionary={}
+                    actor.set_meta("loaded",loaded)
+                actor.position=Vector3(float(agent.get("x",0)),0.0,float(agent.get("z",0)))
+        for child in part.get_children():
+            if bool(child.get_meta("is_agent",false)) and not live_agents.has(child.name):
+                child.free()
+    # Shared physical 20m border gateways, generated only once per scene.
+    var number: int=0
     for tile in shown_district_tiles:
         for direction in [Vector2i(1,0),Vector2i(0,1)]:
             var other: Vector2i=tile+direction
             if not shown_district_tiles.has(other):continue
-            var road_key: String=str(tile)+"->"+str(other)
-            if seen.has(road_key):continue
-            seen[road_key]=true
+            number+=1
+            var street_label: String="ContinuousStreet_"+str(number)
+            if combined_root.get_node_or_null(street_label)!=null:continue
             var midpoint: Vector3=(Continuous.offset(tile,selected)+Continuous.offset(other,selected))*0.5
             var shape:=Vector3(22.0,0.13,5.5) if direction.x!=0 else Vector3(5.5,0.13,22.0)
             _box(combined_root,midpoint+Vector3(0,0.16,0),shape,
-                Color("#c3a371"),"ContinuousStreet_"+str(seen.size()))
+                Color("#c3a371"),street_label)
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
@@ -1080,6 +1132,12 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
             terrain_sim["river"]=bool(current_tile.get("river",false))
     if scene_root==null:return
     _position_local_groups()
+    # A newly opened 3D world needs fresh permanent tiles, whereas gameplay
+    # refreshes must retain terrain resources and static neighboring houses.
+    if combined_root!=null:
+        for previous in combined_root.get_children():previous.free()
+    terrain_mesh_builds=0
+    prop_builds=0
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
         if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
