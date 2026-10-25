@@ -40,7 +40,7 @@ func _test() -> void:
     if int(state["detail_sim"].get("version",0))<8:
         fail("spatial freight save schema version did not migrate")
         return
-    var saw_delivery: bool=false
+    var saw_delivery: bool=Freight.inputs_delivered(saw)
     var completed: bool=false
     var haul_labor: bool=false
     for turn in range(25):
