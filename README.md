@@ -220,3 +220,14 @@ Lisaks on `game/scripts/two_city_trade_v15.gd`: **teise linna kaubalao prototü�
 Uus `game/tests/logistics_v15.gd` kontrollib saeveski sisendipuidu vedu enne tootmist, kaubavankrite tööjõukulu, valmis laudade toimetamist lattu, kuuekäigulist karavaniliikumist, tagasivedu ja salvestuse taastamist koos linnamenüü toimingutega. Varasemad 0.5–0.14 testid jäävad samuti kohustuslikuks, sealhulgas 1200 JavaScripti originaalmajandusega võrreldud käiku.
 
 **Piirangud:** veotööjõu jaotus on esialgne (1 või 2 vankrit), metsast ja karjäärist tooraine kogumine jääb senise töökoja juurde toomise loogikaga, kaubapunkti elanikkond ei arene iseseisvalt ja täpne maailmakaardi kaubatee ning hinnad puuduvad.
+
+
+## AutoPort 0.17 – teise linna ehitus-AI ja päris maailmakaardi kaubatee
+
+Teise linna asutamine linnamajanduse menüüs lülitab nüüd sisse **ehitus-AI**, mille saab samas menüüs käsitsi välja või sisse lülitada. AI ehitab ühe poolelioleva hoone kaupa, lähtudes ressurssidest, tööjõust ja olemasolevast hoonete tehnoloogilisest eeltingimusest. Eelistusjärjestus algab metsamajast, kaevu ja elamutega ning jätkub kivimurru, põllu ja laoga. Ehitus toimub ainult teise linna oma varudest ja legaalsetel vabadel 3D ehitusplatsidel; automaatseid riikidevahelisi oste endiselt ei tehta. Teise linna arendust saab käigupõhiselt jälgida linnainfo real ja tööde ajaloost salvestuses (`ai_log`).
+
+`game/scripts/world_trade_routes_v17.gd` otsib maailmakaardi 220 × 165 ruudust läbitava maismaatee alguslinna ja teise linna vahel, vältides merd ja läbimatuid mäestikuruute. Tee joonistatakse `world_canvas_v06.gd` kaardile ning karavanide asukohad kuvatakse teel kauba liikumise osakaalu järgi. Vaid tõendatult kättesaadav maismaaruut sobib uue linna asukohaks. Uute karavanide sõiduaeg oleneb kaubatee tegelikust ruutude arvust (esialgne prototüübikiirus kolm maailmaruutu käigu kohta, vähemalt kaks käiku). **Juba salvestatud vanade karavanide kuuekäiguline aeg jääb muutmata**, samuti ei vähendata või suurendata nende laadungit.
+
+Automaatkontroll `game/tests/world_trade_v17.gd` kontrollib, et tee on külgnev ja kuiv, kauba väärtus kandub õigel käigul ainult sihtlinna, vanad saadetised säilitavad ETA, AI tellib teise linna esimese ehitise oma materjalidest, kasutajaliidese AI lüliti säilib salvestuses ning kaubatee ja karavanid kuvatakse maailmakaardil. Säilivad ka kõik varasemad pariteedi-, logistika- ja 0.16 kahe linna ehitustestid.
+
+**Piirangud:** tegemist on piiratud teise linna ehitus-AI-ga, mitte täisväärtusliku strateegilise riigi-AI-ga. Tee on esialgu maismaa ruutude järjestus, mitte realistlik vankritega läbiv sõidetav kogu maailma 3D tee. Linnadevahelised teehooldus- ja transpordihinnad ning merevedu vajavad veel arendust.
