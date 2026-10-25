@@ -207,3 +207,16 @@ Korraga töötab kuni kaks lihtsustatud 3D veoüksust, ühe koorma maht on 12 ka
 **Säilivus:** järjekorras ootav kaup + koormas olev kaup + lattu saabunud kaup peab võrduma tootmishoonete väljastatud kogusega. Selleks salvestatakse järjekord, vankrite asukohad, koormad ja kohaletoimetamiste ajalugu olemasolevasse `detail_sim` andmestikku (skeem 7). Vana salvestus ilma veojärjekorrata avatakse tühja järjekorraga, kaotamata olemasolevaid linnavarusid ja tööjõudu. Kontrolli `game/tests/freight_v14.gd` raames tehakse nii talu kui ka saeveski transport, teedest tekkiv liikumiskiiruse muutus, kaupade säilivus, 3D vanker ja salvestustest.
 
 **Piirangud:** esialgu kantakse vankriga tootmishoonetest kesklattu valmis toodang, kuid 0.8 metsa- ja kivimurru tooraineresursside kogumissüsteem krediteerib lao endiselt töökoja juurde jõudes. Sissetulevate tootmissisendite füüsiline vedu, käruveo tööjõu üksikasjalik kulu, kaupmehed ja mitme linna vaheline logistika on järgmised etapid. 3D vankrid on prototüüpmudelid, mitte ajalooliselt viimistletud veovahendid.
+
+
+## AutoPort 0.15 — tootmissisendite transport, tööjõukulu ja esimene kaubalinn
+
+Godoti pealinna 3D-majanduses peavad saeveski, veski ja pagarikoja **sisendkaubad** nüüd jõudma peahoonest töökotta vankriga. Kui tootmistsükkel vajab toorainet, reserveeritakse ja lahutatakse see keskladu varust **ainult ühe korra**. Toodangut ei teki enne tegelikku kohaletoimetamist. Sisendite ja väljundkaupade veojärjekord teenindab mõlemat suunda vaheldumisi, et üks tootmisahel ei takistaks teisi. Olemasolev 0.14 toodangu vedu lattu säilib.
+
+Aktiivsed vankrijuhid võtavad Godoti 3D-pealinnas osa linna tööjõust: väikeses linnas on korraga üks, vähemalt kaheksa elanikuga linnas kuni kaks veoüksust. Tööhõive arvestus vähendab saadaval olevat tootmistööjõudu. Vankrid kasutavad jätkuvalt A*-rajaleidmist, teid ja jõgede ületuskohti. Sisendite tellimused, laadungid ja nende saabumine kuuluvad salvestatavasse `detail_sim` skeemi 8. Vanade mänguseisude majandusvarusid ümber ei arvestata.
+
+Lisaks on `game/scripts/two_city_trade_v15.gd`: **teise linna kaubalao prototüüp**. Linnamajanduse menüü alt saab tasu eest avada teise asula lao ning käsitsi saata 5 ühikut puitu või leiba pealinnast sinna ja puitu tagasi. Karavan võtab kuus mängukäiku, kaup lahutatakse lähtevarust väljumisel ning saabub sihtkoha eraldi lattu alles kohale jõudes. Teel olev karavan salvestatakse. See on **kahe lao ja kaubakaravani vertikaallõik**, mitte veel teine täisväärtuslik ehitatav või AI juhitud linn ega ka maailmakaardile paigutatud tegelik marsruut.
+
+Uus `game/tests/logistics_v15.gd` kontrollib saeveski sisendipuidu vedu enne tootmist, kaubavankrite tööjõukulu, valmis laudade toimetamist lattu, kuuekäigulist karavaniliikumist, tagasivedu ja salvestuse taastamist koos linnamenüü toimingutega. Varasemad 0.5–0.14 testid jäävad samuti kohustuslikuks, sealhulgas 1200 JavaScripti originaalmajandusega võrreldud käiku.
+
+**Piirangud:** veotööjõu jaotus on esialgne (1 või 2 vankrit), metsast ja karjäärist tooraine kogumine jääb senise töökoja juurde toomise loogikaga, kaubapunkti elanikkond ei arene iseseisvalt ja täpne maailmakaardi kaubatee ning hinnad puuduvad.
