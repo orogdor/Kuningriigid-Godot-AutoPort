@@ -258,3 +258,14 @@ Kahe sõrme vabastamine, sõrmede järjekorra muutumine ega orb-mouse-up sündmu
 Olemasolevad majandus-, tööjõu-, salvestus- ja teeotsimise reeglid jäid muutmata. `game/tests/detail_placement_v20.gd` kontrollib ruudustiku nähtavust, lubatud ja keelatud ruute, 10 m asukohta ümardamist, keelatud ehituse kuluta tagasilükkamist, valiku tühistamist, korrektset hoone ehitamist ja võõral kaardiruudul ehitamise tõkestamist. Test on lisatud nii GitHub Actionsi sünkroonimis- kui ka APK/EXE ehitusprotsessi. Kaamera ühe sõrme pööramine on veidi aeglasem ja kahe sõrme näpistuse tundlikkus pehmem. Väljalaskemärgis on `v0.20.<run_number>`.
 
 **Kontrollistaatus:** lähtekood ja testid on üles laaditud, kuid automaattestide tulemused ning uue Androidi APK ja Windowsi EXE valmimine vajavad GitHub Actionsi kinnitust. Detailkaardi visuaal on endiselt Godoti prototüüp, mitte täielik Three.js mängu port.
+
+
+## AutoPort 0.21 — pööratav läbipaistev 3D ehitise eelvaade
+
+Kui 3D detailkaardil valida ehitis, ilmub maastikul selle **päris Godoti primitiivmudeliga sama kujuga** läbipaistev eelvaade. Rohelised/punased ruudud järgivad jätkuvalt 0.20 ehitusreegleid; eelvaate värvus muutub sõltuvalt koha lubatavusest. Kaamera all olev eelvaade ei kuluta ressursse ega ole linnas päriselt ehitatud.
+
+Kaks uut nuppu (**Pööra ↶ 90°**, **Pööra ↷ 90°**) lubavad valida hoone suuna: 0°, 90°, 180° või 270°. Hoone tellimisel liigub suund läbi `build_at_requested` signaali majanduse ehitusfunktsiooni ja salvestatakse ehitise `rotation` väljana. Nii valmis hoone kui ka ehitusjärgus 3D karkass kasutavad selle suuna pööramiseks kohalikku 3D sõlme. Vanade salvestuste ehitised, millel `rotation` puudub, jäävad automaatselt suunaga 0°. Vana kolme argumendiga `_build_at(kind,x,z)` kutse jääb kehtima; eraldi mängumajanduse reeglid ja linnade kaubandus ei muutu.
+
+Uus `game/tests/detail_rotation_v21.gd` kontrollib päris 3D kaardil erinevaid läbipaistvaid hoonemudeleid, pööramise normaliseerimist, keelatud ehituskoha tõrjumist, valitud asukohta ja suunda, ehitusmaterjalide kasutust, JSON-salvestust, varasemate 0.20 ehituskutsete sobivust ning vana salvestuse 0° vaikimisi suunda. Mõlemad GitHub Actionsi töövood peavad testi läbima enne uut väljalaset. Väljalaskemärgis on `v0.21.<run_number>`.
+
+**Piirang:** mudelid on endiselt esialgsed Godoti 3D geomeetrilised hooned; pööramine ei lisa automaatselt uusi ukse-põhiseid rajaleidmise ja liikluse reegleid. CI, Windowsi EXE, Androidi APK ja füüsilise telefoni tulemused vajavad veel kinnitamist.
