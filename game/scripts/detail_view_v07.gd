@@ -3,7 +3,7 @@ extends Control
 ## World elevation/coastal context follows 0.6 cells; not yet 1:1 Three.js meshes.
 signal return_requested
 signal build_requested(kind: String)
-signal build_at_requested(kind: String, x: float, z: float)
+signal build_at_requested(kind: String, x: float, z: float, rotation: int)
 signal bridge_requested(x: float)
 signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
@@ -37,6 +37,9 @@ var bridge_root: Node3D
 var previous_worker_positions: Dictionary={}
 var pending_build: String = ""
 var placement_marker: MeshInstance3D
+var placement_ghost: Node3D
+var placement_ghost_material: StandardMaterial3D
+var placement_rotation: int=0
 var placement_cell: Vector2=Vector2(INF,INF)
 var placement_label: Label
 var controller: SubViewportContainer
@@ -55,7 +58,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.20 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.21 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -338,10 +341,14 @@ func refresh_buildings() -> void:
             var holder:=Node3D.new()
             holder.name=String(building.get("type","building"))+"_"+str(i)
             construction_root.add_child(holder)
+            # All building meshes use local coordinates; rotate the entire
+            # finished structure or scaffold without moving its footprint.
+            holder.position=pos
+            holder.rotation_degrees.y=float(building.get("rotation",0))
             if bool(building.get("ready",false)):
-                _building(holder,String(building.get("type","house")),pos,true)
+                _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
             else:
-                _construction_site(holder,String(building.get("type","house")),pos,building)
+                _construction_site(holder,String(building.get("type","house")),Vector3.ZERO,building)
             rendered_buildings+=1
         _refresh_resource_meshes()
         _refresh_worker_meshes()
@@ -510,6 +517,8 @@ func _refresh_grid() -> void:
     if plot_root==null:return
     for old in plot_root.get_children():old.queue_free()
     placement_marker=null
+    placement_ghost=null
+    placement_ghost_material=null
     if not can_build:return
     # Neutral fine lines stay visible outside build mode; status fills only
     # appear while a building is selected to avoid covering the 3D terrain.
@@ -535,6 +544,24 @@ func _refresh_grid() -> void:
                 _placement_tile(point,shade,"BuildPlotOpen" if allowed else "BuildPlotBlocked")
     placement_marker=_placement_tile(Vector2.ZERO,Color(1.0,0.83,0.27,0.72),"BuildPlacementPreview",9.4)
     placement_marker.hide()
+    if pending_build!="bridge":
+        placement_ghost=Node3D.new()
+        placement_ghost.name="BuildModelPreview"
+        plot_root.add_child(placement_ghost)
+        # Exact same primitive geometry as the completed building, rendered
+        # with a transparent single-color material (no collision, no cost).
+        _building(placement_ghost,pending_build,Vector3.ZERO,true)
+        placement_ghost_material=StandardMaterial3D.new()
+        placement_ghost_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+        placement_ghost_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+        placement_ghost_material.albedo_color=Color(0.28,0.98,0.69,0.48)
+        for part in placement_ghost.get_children():
+            if part is MeshInstance3D:
+                var preview_part: MeshInstance3D=part as MeshInstance3D
+                preview_part.material_override=placement_ghost_material
+                preview_part.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        placement_ghost.rotation_degrees.y=float(placement_rotation)
+        placement_ghost.hide()
     if is_finite(placement_cell.x):
         _set_placement_marker(placement_cell)
 
@@ -546,15 +573,32 @@ func _set_placement_marker(cell: Vector2) -> void:
     material.albedo_color=Color(0.99,0.82,0.23,0.78) if valid else Color(1.0,0.14,0.19,0.83)
     placement_marker.position=Vector3(cell.x,0.32,cell.y)
     placement_marker.show()
+    if placement_ghost!=null:
+        placement_ghost.position=Vector3(cell.x,0.24,cell.y)
+        placement_ghost.rotation_degrees.y=float(placement_rotation)
+        if placement_ghost_material!=null:
+            placement_ghost_material.albedo_color=Color(0.27,0.98,0.66,0.45) if valid else Color(0.99,0.25,0.26,0.47)
+        placement_ghost.show()
     if placement_label!=null and pending_build!="":
-        placement_label.text=("Sobiv ehituskoht" if valid else "Keelatud ehituskoht")+" (%d, %d m). " % [int(cell.x),int(cell.y)]+("Puuduta kinnitamiseks." if valid else "Vali roheline ruut.")
+        placement_label.text=("Sobiv ehituskoht" if valid else "Keelatud ehituskoht")+" (%d, %d m), suund %d°. " % [int(cell.x),int(cell.y),placement_rotation]+("Puuduta kinnitamiseks." if valid else "Vali roheline ruut.")
 
 func _hover_ground(pos: Vector3) -> void:
     if not can_build or pending_build=="" or pending_build=="bridge":return
     _set_placement_marker(Spatial.snap(Vector2(pos.x,pos.z)))
 
+func _rotate_placement(degrees: int) -> void:
+    if pending_build=="" or pending_build=="bridge":return
+    placement_rotation=posmod(placement_rotation+degrees,360)
+    if is_finite(placement_cell.x):
+        _set_placement_marker(placement_cell)
+    elif placement_label!=null:
+        placement_label.text="Ehitis: "+pending_build+" | Suund: %d° | Vali roheline ruut." % placement_rotation
+    if placement_ghost!=null:
+        placement_ghost.rotation_degrees.y=float(placement_rotation)
+
 func _cancel_placement() -> void:
     pending_build=""
+    placement_rotation=0
     placement_cell=Vector2(INF,INF)
     if placement_label!=null:placement_label.text="Ehituskoha valik tühistatud."
     _refresh_grid()
@@ -576,15 +620,18 @@ func _ground_clicked(pos: Vector3) -> void:
         if info!=null:info.text="Ehituskoht on hõivatud või väljaspool linna: "+str(snapped)
         return
     var kind: String=pending_build
+    var rotation: int=placement_rotation
     pending_build=""
+    placement_rotation=0
     placement_cell=Vector2(INF,INF)
-    build_at_requested.emit(kind,snapped.x,snapped.y)
+    build_at_requested.emit(kind,snapped.x,snapped.y,rotation)
 
 func select_building(kind: String) -> void:
     if not can_build or not _can_build(kind):return
     pending_build=kind
+    placement_rotation=0
     placement_cell=Vector2(INF,INF)
-    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — roheline = lubatud, punane = keelatud. Puuduta ruutu. Vali Tühista, et katkestada."
+    if placement_label!=null:placement_label.text="EHITUS: "+kind+" — näed 3D eelvaadet. Pööra 90° nuppudega ja puuduta rohelist ruutu."
     _refresh_grid()
     _refresh_actions()
 
@@ -625,6 +672,15 @@ func _refresh_actions() -> void:
     if not can_build:
         return
     if pending_build!="":
+        if pending_build!="bridge":
+            var rotate_left:=Button.new()
+            rotate_left.text="Pööra ↶ 90°"
+            rotate_left.pressed.connect(_rotate_placement.bind(-90))
+            actions.add_child(rotate_left)
+            var rotate_right:=Button.new()
+            rotate_right.text="Pööra ↷ 90°"
+            rotate_right.pressed.connect(_rotate_placement.bind(90))
+            actions.add_child(rotate_right)
         var cancel:=Button.new()
         cancel.text="Tühista ehitise paigutamine"
         cancel.pressed.connect(_cancel_placement)
@@ -647,7 +703,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.20: ehitusruudustik ja koha eelvaade; ühe sõrmega pööramine ning kahe sõrmega suum/nihe."
+    note.text="0.21: ehitise tegeliku 3D mudeli eelvaade, 90° pööramine ning suuna säilitamine."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -685,6 +741,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     city_state=city
     can_build=capital
     pending_build=""
+    placement_rotation=0
     placement_cell=Vector2(INF,INF)
     if placement_label!=null:placement_label.text="Vali ehitis. Roheline tähistab lubatud, punane keelatud ehituskohta."
     previous_worker_positions.clear()
