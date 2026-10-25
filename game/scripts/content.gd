@@ -130,7 +130,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.8",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.9",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -175,7 +175,7 @@ func _setup_ui() -> void:
     body.add_child(construction_rows)
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.8: detailkaardi ehitusalad, liikuvad metsa- ja kivikorjajad ning lõplikud kohalikud maavarad. AI, teed ja sõjad tulevad hiljem."
+    note.text="0.9: 3D teed tekivad tööliste liikumisest, rajaleidmine väldib maju ja mahajäetud rajad hääbuvad. AI, teed ja sõjad tulevad hiljem."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
