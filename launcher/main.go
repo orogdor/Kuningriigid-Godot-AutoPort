@@ -27,8 +27,21 @@ const manifestAsset = "Windows-files.json"
 var hexHash = regexp.MustCompile("^[a-f0-9]{64}$")
 var commitHash = regexp.MustCompile("^[a-f0-9]{40}$")
 var client = &http.Client{} // Use per-request context: 45 s metadata, 6 min engine download.
+var progressFile *os.File
+var lastProgressPercent = -1
+func reportProgress(pct int, message string) {
+ if pct<0 {pct=0}; if pct>100 {pct=100}
+ // Stage text may change independently from the percentage.
+ showUpdate(pct,message)
+ if pct!=lastProgressPercent {
+  lastProgressPercent=pct
+  if progressFile!=nil {fmt.Fprintf(progressFile,"%d%% %s\n",pct,message)}
+ }
+}
+
 
 type asset struct {
+ Size int64 `json:"size"`
  Name string `json:"name"`
  URL string `json:"browser_download_url"`
  Digest string `json:"digest"`
@@ -77,7 +90,19 @@ func atomicWrite(path string,data []byte) error {
  if err:=os.Rename(tmp,path);err!=nil {os.Remove(tmp);return err}
  return nil
 }
-func download(url,dest,sha string) error {
+type progressWriter struct {
+ writer io.Writer
+ copied int64
+ total int64
+ callback func(int64,int64)
+}
+func (w *progressWriter) Write(p []byte)(int,error){
+ n,err:=w.writer.Write(p)
+ w.copied+=int64(n)
+ if w.callback!=nil {w.callback(w.copied,w.total)}
+ return n,err
+}
+func download(url,dest,sha string,callback func(int64,int64)) error {
  if !hexHash.MatchString(sha){return errors.New("invalid file checksum")}
  ctx,cancel:=context.WithTimeout(context.Background(),6*time.Minute)
  defer cancel()
@@ -89,7 +114,10 @@ func download(url,dest,sha string) error {
  temp:=dest+".download"
  f,err:=os.Create(temp);if err!=nil{return err}
  h:=sha256.New()
- _,err=io.Copy(io.MultiWriter(f,h),io.LimitReader(res.Body,220<<20))
+ total:=res.ContentLength
+ if total<0 {total=0}
+ writer:=&progressWriter{writer:io.MultiWriter(f,h),total:total,callback:callback}
+ _,err=io.Copy(writer,io.LimitReader(res.Body,220<<20))
  closeErr:=f.Close()
  if err!=nil||closeErr!=nil{os.Remove(temp);return fmt.Errorf("file write: %v %v",err,closeErr)}
  if hex.EncodeToString(h.Sum(nil))!=sha {os.Remove(temp);return fmt.Errorf("SHA-256 differs for %s",filepath.Base(dest))}
@@ -147,13 +175,19 @@ func installRuntime(home string,a asset) (string,string,error) {
  if !hexHash.MatchString(sha){return "","",errors.New("Godot release binary has no SHA-256 digest")}
  path:=runtimePath(home,sha)
  if !matching(path,sha){
-  if err:=download(a.URL,path,sha);err!=nil{return "","",err}
+  if err:=download(a.URL,path,sha,func(bytes,total int64){
+   if total<=0 {total=a.Size}
+   if total>0 {reportProgress(8+int(70*float64(bytes)/float64(total)), "UPDATE: Godoti mootor")}
+  });err!=nil{return "","",err}
  }
  return path,sha,nil
 }
 func installGame(home string,m manifest,prior installed)error {
  final:=filepath.Join(home,"versions",m.Commit)
- if old,err:=readManifest(home,m.Commit);err==nil && validGame(home,old) && identical(old,m){return nil}
+ if old,err:=readManifest(home,m.Commit);err==nil && validGame(home,old) && identical(old,m){
+  reportProgress(99,"UPDATE: mängufailid on ajakohased")
+  return nil
+ }
  stage:=filepath.Join(home,"versions",".stage-"+m.Commit)
  os.RemoveAll(stage)
  if err:=os.MkdirAll(filepath.Join(stage,"game"),0755);err!=nil{return err}
@@ -161,8 +195,10 @@ func installGame(home string,m manifest,prior installed)error {
  oldManifest,_:=readManifest(home,prior.Commit)
  oldPaths:=map[string]string{}
  for _,f:=range oldManifest.Files {oldPaths[f.Path]=f.SHA}
- for _,file:=range m.Files {
+ for index,file:=range m.Files {
   dest:=filepath.Join(stage,"game",filepath.FromSlash(file.Path))
+  startPercent:=80+int(19*float64(index)/float64(len(m.Files)))
+  reportProgress(startPercent,"UPDATE: "+file.Path)
   if err:=os.MkdirAll(filepath.Dir(dest),0755);err!=nil{return err}
   old:=filepath.Join(home,"versions",prior.Commit,"game",filepath.FromSlash(file.Path))
   if oldPaths[file.Path]==file.SHA&&matching(old,file.SHA) {
@@ -170,10 +206,15 @@ func installGame(home string,m manifest,prior installed)error {
    if err=atomicWrite(dest,data);err!=nil{return err}
   } else {
    url:=sourceRoot+m.Commit+"/game/"+file.Path
-   if err:=download(url,dest,file.SHA);err!=nil{return err}
+   if err:=download(url,dest,file.SHA,func(done,total int64){
+    fraction:=0.0
+    if total>0 {fraction=float64(done)/float64(total)}
+    reportProgress(80+int(19*(float64(index)+fraction)/float64(len(m.Files))),"UPDATE: "+file.Path)
+   });err!=nil{return err}
   }
  }
  if !validStage(stage,m){return errors.New("installed content failed SHA-256 check")}
+ reportProgress(99,"UPDATE: failid kontrollitud")
  encoded,_:=json.MarshalIndent(m,"","  ")
  if err:=atomicWrite(filepath.Join(stage,"manifest.json"),encoded);err!=nil{return err}
  // A corrupted installation may be replaced only after complete validation.
@@ -199,22 +240,32 @@ func currentRuntime(home string,state installed)string{
 }
 func upgrade(home string,prior installed)(installed,error){
  var r release
+ reportProgress(1,"UPDATE: kontrollin GitHubi uusimat versiooni")
  bytes,err:=fetch(releasesAPI);if err!=nil{return prior,err}
  if err=json.Unmarshal(bytes,&r);err!=nil{return prior,err}
+ reportProgress(4,"UPDATE: uusim väljalase "+r.Tag)
  mAsset,ok:=findAsset(r.Assets,manifestAsset);if !ok{return prior,errors.New("release has no Windows file manifest")}
  eAsset,ok:=findAsset(r.Assets,engineAsset);if !ok{return prior,errors.New("release has no Godot runtime")}
  body,err:=fetch(mAsset.URL);if err!=nil{return prior,err}
+ reportProgress(7,"UPDATE: võrdlen mängufaile")
  digest:=strings.TrimPrefix(mAsset.Digest,"sha256:")
  if !hexHash.MatchString(digest)||digestBytes(body)!=digest{return prior,errors.New("Windows manifest digest mismatch")}
  var m manifest
  if err=json.Unmarshal(body,&m);err!=nil{return prior,err}
  if err=validate(m);err!=nil{return prior,err}
  // The previous working version remains active until BOTH downloads complete.
+ expectedEngine:=strings.TrimPrefix(eAsset.Digest,"sha256:")
+ if !hexHash.MatchString(expectedEngine){return prior,errors.New("runtime checksum missing")}
+ if matching(runtimePath(home,expectedEngine),expectedEngine){
+  reportProgress(80,"UPDATE: Godoti mootor on olemas")
+ } else {reportProgress(8,"UPDATE: laadin Godoti mootorit")}
  _,engineSha,err:=installRuntime(home,eAsset);if err!=nil{return prior,err}
+ reportProgress(80,"UPDATE: mängufailid")
  if err=installGame(home,m,prior);err!=nil{return prior,err}
  next:=installed{Commit:m.Commit,EngineSHA:engineSha}
  state,_:=json.MarshalIndent(next,"","  ")
  if err:=atomicWrite(filepath.Join(home,"active.json"),state);err!=nil{return prior,err}
+ reportProgress(100,"UPDATE valmis: "+r.Tag)
  return next,nil
 }
 func start(home string,state installed)error{
@@ -233,9 +284,24 @@ func run()error{
  base:=filepath.Join(filepath.Dir(exe),"Kuningriigid-Data")
  if custom:=os.Getenv("KUNINGRIIGID_HOME");custom!=""{base=custom}
  if err=os.MkdirAll(base,0755);err!=nil{return err}
+ startUpdateUI()
+ defer stopUpdateUI()
+ if log,openErr:=os.Create(filepath.Join(base,"last-update-progress.log"));openErr==nil {
+  progressFile=log
+  defer func(){progressFile.Close();progressFile=nil}()
+ }
+ reportProgress(0,"UPDATE: kontrollin uuendusi")
  state:=readState(base)
  updated,updateErr:=upgrade(base,state)
- if updateErr!=nil{fmt.Fprintln(os.Stderr,"Update unavailable:",updateErr)}
+ if updateErr!=nil{
+  fmt.Fprintln(os.Stderr,"UPDATE ERROR:",updateErr)
+  _=os.WriteFile(filepath.Join(base,"last-update-error.txt"),[]byte(updateErr.Error()),0644)
+  reportProgress(100,"UPDATE ebaõnnestus - avan olemasoleva versiooni")
+ } else {
+  _=os.Remove(filepath.Join(base,"last-update-error.txt"))
+ }
+ // Leave the result visible briefly before the Godot window opens.
+ if os.Getenv("CI")!="true" {time.Sleep(380*time.Millisecond)}
  if os.Getenv("KUNINGRIIGID_VERIFY_ONLY") == "1" {
   if !commitHash.MatchString(updated.Commit) {return fmt.Errorf("no downloaded files available: %v",updateErr)}
   m,err:=readManifest(base,updated.Commit)
