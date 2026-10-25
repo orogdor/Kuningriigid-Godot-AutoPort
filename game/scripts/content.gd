@@ -12,6 +12,7 @@ const Routes = preload("res://scripts/world_trade_routes_v17.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
 const Districts = preload("res://scripts/world_districts_v25.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
+const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -210,7 +211,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.28",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.29",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -373,9 +374,25 @@ func _change_priority(index: int, level: String) -> void:
         _refresh()
         if detail_view!=null and detail_view.visible:detail_view.refresh_buildings()
 
-func _build_bridge(x: float) -> void:
-    var outcome: String=Spatial.build_bridge(_detail_state(),x)
-    event_message="Sild valmis X %.0f meetri kohal" % x if outcome=="" else outcome
+func _build_bridge(x: float,z: float=25.0) -> void:
+    var outcome: String=""
+    var state: Dictionary=_detail_state()
+    var combined: bool=detail_view!=null and detail_view.visible and bool(detail_view.combined_city)
+    if combined:
+        var district: String=String(detail_view.district_id)
+        var local: Dictionary=Transit._local_state(state,
+            Transit.home_key(state) if district=="" else district)
+        var sim: Dictionary=local.get("detail_sim",{})
+        outcome="Silda ei saa sinna jõele ehitada."
+        for axis in ["x","z"]:
+            var cell: int=int(roundf((x if axis=="x" else z)/10.0))
+            var place: Vector2=Nav.bridge_position(sim,axis,cell)
+            if Nav.can_bridge(sim,axis,cell) and place.distance_to(Vector2(x,z))<=10.0:
+                outcome=Nav.build_bridge(state,sim,axis,cell)
+                break
+    else:
+        outcome=Spatial.build_bridge(state,x)
+    event_message="Sild valmis jõe kohal %.0f, %.0f m" % [x,z] if outcome=="" else outcome
     _save()
     _refresh()
     if detail_view!=null and detail_view.visible:
