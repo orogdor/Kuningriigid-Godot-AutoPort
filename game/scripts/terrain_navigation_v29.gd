@@ -112,22 +112,29 @@ static func passable_step(sim: Dictionary,from: Vector2i,to: Vector2i) -> bool:
             return false
     return true
 
+static func bridge_position(sim: Dictionary,axis: String,coordinate: int) -> Vector2:
+    var missing:=Vector2(INF,INF)
+    if not enabled(sim):
+        return Vector2(float(coordinate)*STEP,25.0) if axis=="x" and Legacy.can_place_bridge(sim,coordinate) else missing
+    var chosen: float=float(coordinate)*STEP
+    if not BRIDGES.has(chosen) or axis not in ["x","z"]:return missing
+    var check: Dictionary=sim.duplicate(true)
+    if not check.has("bridges"):check["bridges"]=[]
+    check["bridges"].append({"x":coordinate,"axis":axis})
+    for c in crossings(check):
+        if String(c["kind"])!="bridge" or String(c["axis"])!=axis:continue
+        if is_equal_approx(float(c["x"] if axis=="x" else c["z"]),chosen):
+            return Vector2(float(c["x"]),float(c["z"]))
+    return missing
+
 static func can_bridge(sim: Dictionary,crossing_axis: String,coordinate: int) -> bool:
     if not enabled(sim):
         return crossing_axis=="x" and Legacy.can_place_bridge(sim,coordinate)
-    var desired: float=float(coordinate)*STEP
-    if not BRIDGES.has(desired):return false
     for record in sim.get("bridges",[]):
         if int(record.get("x",999))==coordinate and String(record.get("axis","x"))==crossing_axis:
             return false
-    # Temporarily test candidate crossing without charging or mutating sim.
-    var check: Dictionary=sim.duplicate(true)
-    check["bridges"].append({"x":coordinate,"axis":crossing_axis})
-    for c in crossings(check):
-        if String(c["kind"])=="bridge" and String(c["axis"])==crossing_axis:
-            if is_equal_approx(float(c["x"] if crossing_axis=="x" else c["z"]),desired):
-                return true
-    return false
+    var p: Vector2=bridge_position(sim,crossing_axis,coordinate)
+    return is_finite(p.x) and is_finite(p.y)
 
 static func build_bridge(city: Dictionary,sim: Dictionary,axis: String,coordinate: int) -> String:
     if not can_bridge(sim,axis,coordinate):return "Silda ei saa sinna jõelõigule ehitada."
