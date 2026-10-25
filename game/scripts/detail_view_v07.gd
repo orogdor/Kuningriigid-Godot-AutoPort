@@ -10,6 +10,7 @@ const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v11.gd")
+const Materials = preload("res://scripts/construction_v12.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -47,7 +48,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.11 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.12 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -293,9 +294,17 @@ func _construction_site(parent: Node3D, kind: String, place: Vector3, building: 
         for x in [-6.0,6.0]:
             _box(parent,place+Vector3(x,6.5,0),Vector3(0.7,0.6,12.0),
                 Color("#785539"),"Stage2RoofBeam")
-    # Material piles indicate that the building is still under construction.
-    _box(parent,place+Vector3(8,0.65,5),Vector3(3.0,1.3,2.8),
-        Color("#8b6540"),"BuildingMaterialPile")
+    # Display ONLY materials that have actually reached this construction site.
+    var delivered_stock: Dictionary=building.get("supply_delivered",{})
+    var amount: float=0.0
+    for key in delivered_stock.keys():amount+=float(delivered_stock[key])
+    if amount>0:
+        _box(parent,place+Vector3(8,0.65,5),Vector3(3.0,1.3,2.8),
+            Color("#8b6540"),"BuildingMaterialPile")
+        var bundles: int=mini(5,int(ceil(amount/8.0)))
+        for i in range(bundles):
+            _box(parent,place+Vector3(7.2+i*0.45,1.5,4.7),Vector3(0.4,0.5,1.5),
+                Color("#b89564"),"DeliveredWoodOrStone")
 
 func _clear_buildings() -> void:
     for child in construction_root.get_children():
@@ -391,9 +400,13 @@ func _refresh_worker_meshes() -> void:
         _mesh(actor,head,Vector3(0,2.8,0),Color("#d6b08b"),"BuilderHead")
         _box(actor,Vector3(0,3.52,0),Vector3(1.6,0.45,1.5),
             Color("#987443"),"BuildersHat")
-        if String(builder.get("phase",""))=="building":
+        if String(builder.get("phase",""))=="working":
             _box(actor,Vector3(1.1,1.8,0),Vector3(0.45,0.25,1.2),
                 Color("#99918b"),"BuilderHammer")
+        if float(builder.get("cargo_amount",0))>0:
+            _box(actor,Vector3(1.0,1.6,0),Vector3(1.2,1.4,1.1),
+                Color("#82633e") if String(builder.get("cargo_kind",""))=="wood" else Color("#969b9c"),
+                "ConstructionCargo")
         if not previous_builder.is_equal_approx(position3):
             actor.create_tween().tween_property(actor,"position",position3,0.68).set_trans(Tween.TRANS_SINE)
         previous_worker_positions[builder_id]=position3
@@ -486,8 +499,9 @@ func _refresh_info() -> void:
             text_line+=" | Sildu %d" % sim.get("bridges",[]).size()
         var streets: Dictionary=Paths.roads_summary(sim)
         text_line+=" | Sissekäidud teeruutusid %d" % int(streets["tiles"])
-        var work: Dictionary=Construction.progress_report(city_state,CityRecipes.read_table("city_buildings").get("buildings",{}))
-        text_line+=" | Ehitajad %d | Ehitusel %d" % [int(work["builders"]),int(work["under_construction"])]
+        var work: Dictionary=Materials.report(city_state)
+        text_line+=" | Ehitajaid %d | Ehitusel %d | Vedamas %d | Kohaletoimetatud %.0f" % [
+            int(work["builders"]),int(work["sites"]),int(work["in_transit"]),float(work["delivered"])]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -516,7 +530,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.11: ehitajad kõnnivad ehitusplatsile; vundament, seinad ja karkass kerkivad töö käigus."
+    note.text="0.12: kuni kaks ehitajat toovad materjali peahoonest platsile ja ehitavad koos. Materjalid tasutakse tellimisel."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
 
