@@ -2,6 +2,7 @@ extends RefCounted
 ## AutoPort 0.9: deterministic 10 m grid, eight-direction A* with
 ## obstacle/corner checks. Traffic emerges on traveled cells and fades when idle.
 ## This approximates detail-map travel, not yet a 1:1 Three.js pathfinder.
+const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const STEP: float = 10.0
 const EXTENT: int = 8
 const WIDTH: int = 2 * EXTENT + 1
@@ -36,12 +37,7 @@ static func blocked(state: Dictionary, cell: Vector2i, home_index: int) -> bool:
         if point.distance_to(occupied)<11.5:
             return true
     var sim: Dictionary=state.get("detail_sim",{})
-    if sim.get("terrain","")=="river":
-        # First approximation: reserve the stream running east/west at z = 25.
-        # Only the two ford cells may be crossed.
-        if cell.y==2 or cell.y==3:
-            if cell.x not in [-6,0,6]:
-                return true
+    if Terrain.blocked_cell(sim,cell):return true
     return false
 
 static func traffic_strength(sim: Dictionary, key: String) -> int:
@@ -77,8 +73,8 @@ static func distance_cost(start: Vector2i, finish: Vector2i) -> float:
 static func find_path(state: Dictionary, start: Vector2, destination: Vector2, home_index: int) -> Array:
     var origin: Vector2i=grid(start)
     var goal: Vector2i=grid(destination)
-    if origin==goal:return [{"x":destination.x,"z":destination.y}]
     if blocked(state,goal,home_index):return []
+    if origin==goal:return [{"x":destination.x,"z":destination.y}]
     var frontier: Array=[origin]
     var costs: Dictionary={cell_key(origin):0.0}
     var parents: Dictionary={}
@@ -102,13 +98,18 @@ static func find_path(state: Dictionary, start: Vector2, destination: Vector2, h
         for direction in DIRS:
             var other: Vector2i=node+direction
             if blocked(state,other,home_index):continue
+            var sim: Dictionary=state.get("detail_sim",{})
+            if Terrain.too_steep(sim,node,other):continue
             if direction.x!=0 and direction.y!=0:
                 if blocked(state,node+Vector2i(direction.x,0),home_index) or blocked(state,node+Vector2i(0,direction.y),home_index):
                     continue
+                if Terrain.too_steep(sim,node,node+Vector2i(direction.x,0)) or Terrain.too_steep(sim,node,node+Vector2i(0,direction.y)):
+                    continue
             var next_key: String=cell_key(other)
             if seen.has(next_key):continue
-            var factor: float=0.70 if traffic_strength(state.get("detail_sim",{}),next_key)>=ROAD_THRESHOLD else 1.0
-            var move: float=(14.0 if direction.x!=0 and direction.y!=0 else 10.0)*factor
+            var factor: float=0.70 if traffic_strength(sim,next_key)>=ROAD_THRESHOLD else 1.0
+            var rise: float=absf(Terrain.height_at(sim,other.x*STEP,other.y*STEP)-Terrain.height_at(sim,node.x*STEP,node.y*STEP))
+            var move: float=((14.0 if direction.x!=0 and direction.y!=0 else 10.0)+rise*3.0)*factor
             var next_cost: float=float(costs[key])+move
             if not costs.has(next_key) or next_cost+0.0001<float(costs[next_key]):
                 costs[next_key]=next_cost
