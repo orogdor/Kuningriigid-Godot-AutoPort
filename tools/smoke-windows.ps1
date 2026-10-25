@@ -89,7 +89,7 @@ if ($contentScript -notmatch 'GODOT 0\.8' -or $contentScript -notmatch 'Linnamaj
     throw "Installed project is not the AutoPort 0.8 city and 3D detail prototype"
 }
 if (-not (Test-Path (Join-Path $game "scripts/spatial_economy_v08.gd")) -or
-    -not (Test-Path (Join-Path $game "tests/detail_v08_ui.gd"))) {
+    -not (Test-Path (Join-Path $game "scripts/detail_view_v07.gd"))) {
     throw "Missing spatial economy and worker interaction files"
 }
 Write-Host "GODOT 0.8 CONTENT VERIFIED: city economy, detail map and physical workers"
