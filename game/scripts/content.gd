@@ -10,6 +10,7 @@ const WorldMap = preload("res://scripts/world_map_v06.gd")
 const WorldGen = preload("res://scripts/world_gen_v06.gd")
 const Routes = preload("res://scripts/world_trade_routes_v17.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
+const Districts = preload("res://scripts/world_districts_v25.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -59,6 +60,8 @@ func _ready() -> void:
     world_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     world_view.open_city_requested.connect(_show_city)
     world_view.open_detail_requested.connect(_show_detail)
+    world_view.expand_requested.connect(_expand_district)
+    world_view.set_city_districts(city)
     detail_view=DetailView.new()
     add_child(detail_view)
     detail_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -95,6 +98,7 @@ func _satellite_tile() -> Dictionary:
 
 func _sync_trade_map() -> void:
     if world_view==null or world_view.world.is_empty():return
+    world_view.set_city_districts(city)
     if not Trade.has_outpost(city):
         world_view.map_canvas.set_trade_route({},[])
         return
@@ -146,7 +150,11 @@ func _show_detail(c: int, r: int) -> void:
         satellite=not loc.is_empty() and int(loc["c"])==c and int(loc["r"])==r
     detail_town="outpost" if satellite else "capital"
     var active: Dictionary=Trade.ensure_city(city) if satellite else city
-    detail_view.open_tile(world_view.world,c,r,active,capital or satellite)
+    var owned: bool=Districts.owns(city,world_view.world,c,r)
+    var district_key: String=""
+    if owned and not capital and not satellite:
+        district_key=Districts.key(Vector2i(c,r))
+    detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
     if capital or satellite:_save()
     if city_scroll != null:city_scroll.hide()
     if world_view != null:world_view.hide()
@@ -197,7 +205,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.24",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.25",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -260,7 +268,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.24: tiheneva linna krundiplaneerija, ühised 3D materjalid ning kiirem tänavate joonistamine."
+    note.text="0.25: linn laieneb naaberruutudele, ühine ressursiladu ja maailmakaardi linnaosateed."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -333,10 +341,22 @@ func _build(kind: String) -> void:
 
 func _build_at(kind: String, x: float, z: float, rotation: int=0) -> void:
     var active: Dictionary=_detail_state()
-    active["pending_site"]={"x":x,"z":z,"rotation":rotation}
+    var pending: Dictionary={"x":x,"z":z,"rotation":rotation}
+    if detail_view!=null and detail_view.visible and String(detail_view.district_id)!="":
+        pending["district"]=String(detail_view.district_id)
+    active["pending_site"]=pending
     _build(kind)
     active.erase("pending_site")
     _save()
+
+func _expand_district(c: int,r: int) -> void:
+    if world_view==null or world_view.world.is_empty():return
+    var result: String=Districts.expand(city,world_view.world,c,r)
+    event_message=result if result!="" else "Linn laienes ruudule %d, %d. Kasutati 20 puitu ja 10 kivi." % [c,r]
+    _save()
+    _sync_trade_map()
+    _refresh()
+    world_view._on_selected(c,r)
 
 func _change_priority(index: int, level: String) -> void:
     if Schedule.change_priority(_detail_state(),index,level):
