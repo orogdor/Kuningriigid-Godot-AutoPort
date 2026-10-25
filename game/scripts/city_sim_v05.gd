@@ -80,6 +80,10 @@ static func spend(stock: Dictionary, cost: Dictionary) -> void:
     if cost.has("bread"):
         take_food(stock,float(cost["bread"]))
 
+static func rounded_to_quarter_turn(angle: int) -> int:
+    # Normalize external / saved integer angles to the nearest 90 degrees.
+    return int(floor(float(angle)/90.0+0.5))*90
+
 static func build(state: Dictionary, building_type: String) -> String:
     var defs: Dictionary = definitions().get("buildings",{})
     if building_type == "hall" or not defs.has(building_type):
@@ -109,6 +113,13 @@ static func build(state: Dictionary, building_type: String) -> String:
     var new_site: Dictionary={"type":building_type,"team":0,"x":place.x,"z":place.y,
         "hp":350,"ready":false,"progress":0.0,"timer":0.0}
     if state.has("detail_sim"):
+        # 0.21 orientation lives on the building, never in one-use pending_site.
+        # Old city saves without rotation keep their original orientation (0°).
+        var pending_rotation: int=0
+        var requested: Variant=state.get("pending_site",null)
+        if requested is Dictionary:
+            pending_rotation=int(requested.get("rotation",0))
+        new_site["rotation"]=posmod(rounded_to_quarter_turn(pending_rotation),360)
         # Wood/stone/planks were already paid by spend() above. 0.12
         # tracks their delivery without deducting the same materials twice.
         var prepaid: Dictionary={}
