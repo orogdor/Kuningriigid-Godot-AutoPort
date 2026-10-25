@@ -121,3 +121,16 @@ Mänguajad: üks käik on üks mänguminut; toidukulu `0,60` ja veekulu `0,45` e
 **Pariteedikontroll:** `tools/generate-city-v05-fixtures.mjs` käivitab originaalse `economy.js::tickEconomy()` kuues stsenaariumis **200 järjestikust käiku** ning `game/tests/city_v05_parity.gd` kontrollib kõiki 1200 tulemust Godoti enda arvutustega. Test hõlmab tootmist, tööliste jaotust, ehituse valmimist, toidu/vee tarbimist, puudusest tingitud elanike vähenemist ja turu- ning jõukusboonust. `game/tests/city_v05_ui.gd` kontrollib stseeni käivitamist, hoone ehitamist, kümmet käiku ja salvestust. Mõlemad testid peavad läbima GitHub Actionsi enne uut väljalaset.
 
 **Oluline piirang:** see on sihilikult piiratud, aga reeglitruu *ühe linna* majanduskatse. Allalaaditav linn ei ole veel 3D-maailm ega terviklik RTS. Simulatsioonis jõuavad kaubad abstraktselt kohe lattu, maardlate ammendumist, kaugtranspordi, põldude geomeetriat, AI linnade otsuseid ja sõdu veel ei arvutata. Teadus on näidatud elanike baasmäärana, täielik avastuste uurimine on alles lisamata. AutoPort 0.5 alustatakse vana käivitajaga uue sisupaketina; Windows saab üksikfailid GitHubist ja Android jätkab PCK uuendust.
+
+
+## AutoPort 0.6 — maailmakaardi esimene mängitav vaade
+
+Godoti maailmakaardi moodulid:
+- `game/scripts/world_gen_v06.gd`: veebimängu `continent-map.js` seemnepõhise mandri-/saaregeomeetria ja nelja lähteasukoha otsene ülekanne, 220 × 165 ruutu ning Godoti esmane kõrgustiku, ranniku ja jõgede arvutus. Jõgede äravool on prioriteet-üleujutuse põhimõttel nagu `world-geography.js`.
+- `game/scripts/world_canvas_v06.gd`: kaarditekstuur, mäed, metsad, rannad, jõed, riikide asukohad; hiirerattaga suum, lohistamine, ruudule klõpsamine ja telefoni ühe sõrmega liigutamine.
+- `game/scripts/world_map_v06.gd`: kaardi infopaneel, uus maailma seeme, suumikaardi lähtestamine, valitud ruudu info ja ühendus 0.5 linnamajandusega.
+- `game/scripts/content.gd`: maailmakaardi ja olemasoleva linnavaate vahel liikumine. 0.5 majanduse salvestus jääb alles.
+
+**Võrdlustestid:** `tools/generate-world-v06-fixtures.mjs` arvutab originaalse `continentLayout` järgi kuus maailmakonfiguratsiooni ning `game/tests/world_v06_parity.gd` nõuab sama mandrite/saarekeste polygoniseerimist ja eraldatud stardikohti Godotist. `game/tests/world_v06_ui.gd` kontrollib 220 × 165 ruudu olemasolu, nelja stardikohta, jõgede äravoolu, ruuduvalikut ja linnavaatesse liikumist. Samuti peavad varasemad 0.5 majandustestid läbima kõik kontrollid enne APK/EXE väljalaset.
+
+**Piirangud:** mandrite/saarekeste paigutus kattub originaaliga, kuid kõrguse müra, osa rannajoonest ning reljeef ei ole veel `continentHeight` 1:1 port. Kaart on praegu kahemõõtmeline strateegiavaade. Jõed on äravooluvõrguga, aga nende visuaalne jõesäng ja 3D detailreljeef pole veel üle kantud. Neli alguskohta on kaardile märgitud, kuid ülejäänud riikide linnade majandust ega AI-d pole veel ühendatud. Mängitav linnamajandus on endiselt üks eraldi prototüüplinn.
