@@ -5,6 +5,7 @@ extends RefCounted
 ## from workplaces and does not re-charge resources or duplicate stock.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Access = preload("res://scripts/building_access_v22.gd")
+const Transit = preload("res://scripts/district_transit_v26.gd")
 const MAX_HAULERS: int=2
 const LOAD_CAPACITY: float=12.0
 const WALK_DISTANCE: float=24.0
@@ -25,6 +26,10 @@ static func enqueue(state: Dictionary, origin: int, product: String, amount: flo
     initialize(state)
     var sim: Dictionary=state["detail_sim"]
     if origin<0 or origin>=state.get("buildings",[]).size():return
+    # Production in a neighboring district must reach the capital warehouse
+    # by a real cross-tile wagon before the shared stock can increase.
+    if String(state["buildings"][origin].get("district",""))!="" and Transit.enqueue_output(state,origin,product,amount):
+        return
     sim["freight_queue"].append({"origin":origin,"kind":product,"amount":amount})
     var made: Dictionary=sim["freight_produced"]
     made[product]=float(made.get(product,0))+amount
@@ -53,6 +58,8 @@ static func request_inputs(state: Dictionary, origin: int, needed: Dictionary) -
         stock[key]=float(stock.get(key,0))-value
         total[key]=value
         # Materials are reserved ONCE and wait in a physical queue at the hall.
+        if String(building.get("district",""))!="" and Transit.enqueue_input(state,origin,String(key),value):
+            continue
         state["detail_sim"]["freight_queue"].append({"origin":origin,
             "kind":String(key),"amount":value,"direction":"input"})
     building["input_shipment"]={"total":total,"delivered":{}}
@@ -207,7 +214,11 @@ static func summary(state: Dictionary) -> Dictionary:
         waiting+=float(item.get("amount",0))
     for h in sim.get("haulers",[]):
         moving+=float(h.get("load",0))
-    return {"haulers":sim.get("haulers",[]).size(),"waiting":waiting,
+    for a in state.get("transport_v26",{}).get("agents",[]):
+        if String(a.get("role",""))=="wagon":
+            moving+=float(a.get("load",0))
+    return {"haulers":sim.get("haulers",[]).size()+state.get("transport_v26",{}).get("agents",[]).filter(
+        func(a):return String(a.get("role",""))=="wagon").size(),"waiting":waiting,
         "in_transit":moving,"trips":int(sim.get("freight_trips",0)),
         "workers":staffed_count(state)}
 
@@ -220,4 +231,5 @@ static func conserved(state: Dictionary, kind: String) -> bool:
         if String(q.get("direction","output"))=="output" and String(q.get("kind",""))==kind:remaining+=float(q.get("amount",0))
     for h in sim.get("haulers",[]):
         if String(h.get("phase",""))=="returning" and String(h.get("kind",""))==kind:remaining+=float(h.get("load",0))
+    remaining+=Transit.in_transit(state,kind)
     return is_equal_approx(created,arrived+remaining)
