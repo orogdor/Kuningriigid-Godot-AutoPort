@@ -161,7 +161,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/district_transit_v26.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/continuous_city_v27.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/terrain_seams_v28.gd
-          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/terrain_navigation_v29.gd
+          timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/terrain_navigation_v29.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v08_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/spatial_paths_v09.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_terrain_v10.gd
