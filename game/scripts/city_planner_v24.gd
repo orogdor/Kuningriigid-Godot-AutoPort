@@ -51,15 +51,24 @@ static func score(state: Dictionary, kind: String, cell: Vector2) -> float:
         location=absf(distance-40.0)*0.5
     return location+corridor_penalty+density_penalty
 
-static func plan(state: Dictionary, kind: String) -> Dictionary:
+static func plan(state: Dictionary, kind: String, district: String="") -> Dictionary:
     if not state.has("detail_sim") or state.get("buildings",[]).is_empty():
         return {}
+    # A neighboring world tile is a separate set of local building plots
+    # but belongs to the same economic state.
+    var planning: Dictionary=state
+    if district!="":
+        planning=state.duplicate()
+        var structures: Array=[{"type":"hall","x":0.0,"z":0.0,"hp":1200.0,"ready":true}]
+        for building in state.get("buildings",[]):
+            if String(building.get("district",""))==district:structures.append(building)
+        planning["buildings"]=structures
     var proposals: Array=[]
     for z in range(-7,8):
         for x in range(-7,8):
             var cell:=Vector2(float(x)*Spatial.STEP,float(z)*Spatial.STEP)
-            if not Spatial.can_place(state,cell):continue
-            proposals.append({"position":cell,"score":score(state,kind,cell)})
+            if not Spatial.can_place(state,cell,district):continue
+            proposals.append({"position":cell,"score":score(planning,kind,cell)})
     if proposals.is_empty():return {}
     proposals.sort_custom(func(a,b):
         if not is_equal_approx(float(a["score"]),float(b["score"])):
@@ -70,9 +79,9 @@ static func plan(state: Dictionary, kind: String) -> Dictionary:
     )
     # Probe only the best-scoring plots for an actual A* connection.
     # Never mutate the source city (not even the buildings array).
-    var trial: Dictionary=state.duplicate()
-    trial["buildings"]=state["buildings"].duplicate()
-    var hall: Vector2=Access.entrance(state["buildings"][0])
+    var trial: Dictionary=planning.duplicate()
+    trial["buildings"]=planning["buildings"].duplicate()
+    var hall: Vector2=Access.entrance(planning["buildings"][0])
     for i in range(mini(proposals.size(),MAX_EVALUATED)):
         var proposal: Dictionary=proposals[i]
         var position: Vector2=proposal["position"]
