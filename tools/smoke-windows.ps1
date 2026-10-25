@@ -85,15 +85,15 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $(
 
 # The active file-by-file release must contain 0.13 construction scheduling and goods logistics.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
-if ($contentScript -notmatch 'GODOT 0\.13' -or $contentScript -notmatch 'Linnamajandus') {
-    throw "Installed project is not the AutoPort 0.13 city, visible builders and staged construction"
+if ($contentScript -notmatch 'GODOT 0\.14' -or $contentScript -notmatch 'Linnamajandus') {
+    throw "Installed project is not the AutoPort 0.14 city, visible builders and staged construction"
 }
-foreach ($part in @("scripts/construction_scheduler_v13.gd", "scripts/construction_v12.gd", "scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
+foreach ($part in @("scripts/freight_v14.gd", "scripts/construction_scheduler_v13.gd", "scripts/construction_v12.gd", "scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
     if (-not (Test-Path (Join-Path $game $part))) {
         throw "Missing 0.13 deployed game source: $part"
     }
 }
-Write-Host "GODOT 0.13 CONTENT VERIFIED: city economy, worksite priorities, cargo preservation and multi-project builders"
+Write-Host "GODOT 0.14 CONTENT VERIFIED: city economy, saved goods freight carts, roads and construction logistics"
 
 $count = (Get-ChildItem -Path $game -Recurse -File | Measure-Object).Count
 if ($count -lt 20) { throw "Expected game directory with many distinct files; found $count" }
@@ -107,4 +107,4 @@ $offlineText = Get-Content $progressLog -Raw
 if (-not ($offlineText -match '0% UPDATE' -and $offlineText -match '100% UPDATE')) {
     throw "Cached/offline startup did not complete update progress"
 }
-Write-Host "WINDOWS BOOTSTRAP TEST SUCCESS: 0.13 content, update progress, first install and offline startup"
+Write-Host "WINDOWS BOOTSTRAP TEST SUCCESS: 0.14 content, update progress, first install and offline startup"
