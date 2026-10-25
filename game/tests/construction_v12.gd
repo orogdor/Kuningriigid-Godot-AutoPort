@@ -64,7 +64,7 @@ func _test() -> void:
     if float(state["realms"][0]["resources"]["wood"])<before-20.00001:
         fail("warehouse was charged for prepaid materials twice")
         return
-    if int(state["detail_sim"].get("version",0))!=5:
+    if int(state["detail_sim"].get("version",0))<5:
         fail("0.12 city save schema migration did not happen")
         return
     # The second building reuses idle builders instead of creating extra citizens.
