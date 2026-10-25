@@ -1,6 +1,7 @@
 extends Control
 ## AutoPort 0.6 atlas screen: click a tile, zoom, pan, and return to 0.5 city.
 signal open_city_requested
+signal open_detail_requested(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
 const SAVE_PATH: String = "user://autoport_world_v06.json"
@@ -29,6 +30,10 @@ func _ready() -> void:
     city_button.text="Ava linna majandus"
     city_button.pressed.connect(func(): open_city_requested.emit())
     bar.add_child(city_button)
+    var detail_button:=Button.new()
+    detail_button.text="Ava 3D detailkaart"
+    detail_button.pressed.connect(open_selected_detail)
+    bar.add_child(detail_button)
     var new_world:=Button.new()
     new_world.text="Uus maailm"
     new_world.pressed.connect(regenerate)
@@ -103,9 +108,14 @@ func _on_selected(c: int,r: int) -> void:
         var s: Dictionary=world["starts"][i]
         if int(s["c"])==c and int(s["r"])==r:
             home=" • Riigi %d algus" % (i+1)
-    info_label.text="Ruut %d × %d • %s • kõrgus %.1f%s%s\n0.6 on maailmakaardi prototüüp. Linnamajandus avaneb ülalolevast nupust." % [
+    info_label.text="Ruut %d × %d • %s • kõrgus %.1f%s%s\nVali ruut ja vajuta Ava 3D detailkaart. Linnamajandus on samuti saadaval." % [
         c,r,name,float(cell.get("h",0)),note,home]
     _save_settings()
+
+func open_selected_detail() -> void:
+    if selected_cell.x < 0 or selected_cell.y < 0 or world.is_empty():
+        return
+    open_detail_requested.emit(selected_cell.x,selected_cell.y)
 
 func reveal_city() -> void:
     open_city_requested.emit()
