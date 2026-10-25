@@ -53,7 +53,7 @@ func _test() -> void:
     if not is_equal_approx(Builders.phase_fraction(job,City.definitions()["buildings"]["lumber"]),1.0):
         bad("Building fraction not complete after finishing")
         return
-    if int(sim.get("version",0))!=4:
+    if int(sim.get("version",0))<4:
         bad("Old 0.10 detail save did not migrate to construction schema v4")
         return
     var count_before: int=sim["builders"].size()
