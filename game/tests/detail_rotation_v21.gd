@@ -23,12 +23,15 @@ func _test() -> void:
     if detail.rendered_buildings!=1:
         fail("old town hall was not rendered")
         return
-    var legacy_hall: Node3D=detail.construction_root.get_node_or_null("hall_0")
+    var legacy_hall: Node3D=detail.construction_root.get_node_or_null("hall_0") as Node3D
     if legacy_hall==null or not is_equal_approx(legacy_hall.rotation_degrees.y,0.0):
         fail("legacy hall without rotation lost its default direction")
         return
     var original: float=float(ui.city["realms"][0]["resources"]["wood"])
     detail.select_building("lumber")
+    if detail.placement_ghost==null or not detail.placement_ghost.visible:
+        fail("mobile touch preview did not appear before the first tap")
+        return
     detail._hover_ground(Vector3(30.0,0.0,-10.0))
     if detail.placement_ghost==null or detail.placement_ghost.get_child_count()<4:
         fail("lumber model was not shown in the ghost preview")
@@ -72,7 +75,7 @@ func _test() -> void:
     if float(ui.city["realms"][0]["resources"]["wood"])>=original:
         fail("successful build did not debit resources")
         return
-    var holder: Node3D=detail.construction_root.get_node_or_null("lumber_1")
+    var holder: Node3D=detail.construction_root.get_node_or_null("lumber_1") as Node3D
     if holder==null or not is_equal_approx(holder.rotation_degrees.y,270.0):
         fail("3D construction scaffold did not rotate")
         return
@@ -98,7 +101,7 @@ func _test() -> void:
     ui.city["buildings"][1].erase("rotation")
     detail.refresh_buildings()
     await process_frame
-    var old_holder: Node3D=detail.construction_root.get_node_or_null("lumber_1")
+    var old_holder: Node3D=detail.construction_root.get_node_or_null("lumber_1") as Node3D
     if old_holder==null or not is_equal_approx(old_holder.rotation_degrees.y,0.0):
         fail("legacy loaded building did not fall back to 0 degrees")
         return
