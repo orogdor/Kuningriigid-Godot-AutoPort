@@ -350,7 +350,12 @@ static func river_reaches_sea(world: Dictionary, c: int, r: int) -> bool:
     if pos<0 or pos>=down.size():return false
     var steps: int=0
     while pos>=0 and steps<COLS*ROWS:
-        if not bool(world["cells"][pos]["land"]):return true
+        var outlet: Dictionary=world["cells"][pos]
+        if not bool(outlet["land"]):return true
+        # Exactly as the source priority flood: land on the map border is
+        # also a permitted outlet when the sea edge is outside the grid.
+        if int(outlet["c"])==0 or int(outlet["r"])==0 or int(outlet["c"])==COLS-1 or int(outlet["r"])==ROWS-1:
+            return true
         pos=down[pos]
         steps+=1
     return false
