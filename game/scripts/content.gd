@@ -8,6 +8,7 @@ const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const WorldMap = preload("res://scripts/world_map_v06.gd")
 const WorldGen = preload("res://scripts/world_gen_v06.gd")
+const Routes = preload("res://scripts/world_trade_routes_v17.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
@@ -78,27 +79,28 @@ func _detail_state() -> Dictionary:
 func _satellite_tile() -> Dictionary:
     if not Trade.has_outpost(city) or world_view==null or world_view.world.is_empty():return {}
     var trade: Dictionary=city["trade_v15"]
-    if trade.has("position"):
-        return trade["position"]
-    var home: Dictionary=world_view.world["starts"][0]
-    var hc: int=int(home["c"])
-    var hr: int=int(home["r"])
-    for radius in range(3,12):
-        for dz in range(-radius,radius+1):
-            for dx in range(-radius,radius+1):
-                if maxi(absi(dx),absi(dz))!=radius:continue
-                var c: int=hc+dx
-                var r: int=hr+dz
-                var cell: Dictionary=WorldGen.cell(world_view.world,c,r)
-                if cell.is_empty() or not bool(cell.get("land",false)):continue
-                if String(cell.get("biome","")) in ["sea","hills"]:continue
-                var occupied: bool=false
-                for st in world_view.world.get("starts",[]):
-                    if int(st["c"])==c and int(st["r"])==r:occupied=true
-                if occupied:continue
-                trade["position"]={"c":c,"r":r,"seed":int(world_view.world.get("seed",0))}
-                return trade["position"]
-    return {}
+    var world: Dictionary=world_view.world
+    var seed: int=int(world.get("seed",0))
+    if trade.has("position") and int(trade["position"].get("seed",-1))==seed:
+        var site: Dictionary=trade["position"]
+        var route: Dictionary=trade.get("route_v17",{})
+        if route.is_empty() or int(route.get("seed",-1))!=seed:
+            Routes.configure(city,world,world["starts"][0],site)
+        return site
+    var home: Dictionary=world["starts"][0]
+    var chosen: Dictionary=Routes.choose_site(world,Vector2i(int(home["c"]),int(home["r"])))
+    if chosen.is_empty():return {}
+    if not Routes.configure(city,world,home,chosen):return {}
+    return chosen
+
+func _sync_trade_map() -> void:
+    if world_view==null or world_view.world.is_empty():return
+    if not Trade.has_outpost(city):
+        world_view.map_canvas.set_trade_route({},[])
+        return
+    _satellite_tile()
+    var trade: Dictionary=city["trade_v15"]
+    world_view.map_canvas.set_trade_route(trade.get("route_v17",{}),trade.get("caravans",[]))
 
 func _open_satellite() -> void:
     if not Trade.has_outpost(city):
@@ -126,6 +128,7 @@ func _show_city() -> void:
     _refresh()
 
 func _show_world() -> void:
+    _sync_trade_map()
     if city_scroll != null:city_scroll.hide()
     if detail_view != null:detail_view.hide()
     if world_view != null:world_view.show()
@@ -194,7 +197,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.16",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.17",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -256,7 +259,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.16: teine linn areneb eraldi, oma elanike, hoonete ja laoga. Ava teise linna 3D kaart ning ehita sinna maju ja tootmishooneid. AI pole veel üle toodud."
+    note.text="0.17: teise linna ehitus-AI, maismaatee maailmakaardil ja sõiduajaga arvestavad kaubakaravanid."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -264,12 +267,14 @@ func _setup_ui() -> void:
 func _found_trade_city() -> void:
     event_message=Trade.found(city)
     if event_message=="":event_message="Teine linn (kaubapunkt) asutati."
+    _sync_trade_map()
     _save()
     _refresh()
 
 func _trade_send(target: String, kind: String, amount: float) -> void:
     event_message=Trade.send(city,target,kind,amount)
     if event_message=="":event_message="Kaubakaravan saadeti: %s %.0f → %s" % [kind,amount,target]
+    _sync_trade_map()
     _save()
     _refresh()
 
@@ -286,6 +291,7 @@ func _reset() -> void:
         timer.stop()
         auto_button.text="Auto: väljas"
     city = City.default_state()
+    _sync_trade_map()
     event_message="Uus kiviaegne linn on rajatud."
     _save()
     _refresh()
@@ -298,6 +304,7 @@ func _advance(n: int) -> void:
     event_message="%d käiku möödus. Elanikkond: %d → %d." % [n,before,after]
     if bool(city["realms"][0].get("housingShortage",false)):
         event_message += " Toidu või vee puudus!"
+    _sync_trade_map()
     _save()
     _refresh()
     if detail_view != null and detail_view.visible:
@@ -364,7 +371,12 @@ func _refresh() -> void:
     for kind in ["wood","plank","stone","bread","grain","flour","berries","water","gold"]:
         shown.append("%s: %.1f" % [RESOURCE_LABELS[kind],float(stock.get(kind,0))])
     stat_text.text += "     ".join(shown)
-    if trade_label!=null:trade_label.text=Trade.overview(city)
+    if trade_label!=null:
+        trade_label.text=Trade.overview(city)
+        if Trade.has_outpost(city):
+            var route: Dictionary=city["trade_v15"].get("route_v17",{})
+            if not route.is_empty():
+                trade_label.text+=" | Maismaatee %d ruutu | Karavan %d käiku" % [int(route["distance_tiles"]),int(route["duration"])]
     if satellite_label!=null:
         if Trade.has_outpost(city):
             var satellite: Dictionary=Trade.ensure_city(city)
