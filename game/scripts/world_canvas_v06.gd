@@ -14,6 +14,9 @@ var movement: float = 0.0
 var initialized_view: bool = false
 var trade_route: Dictionary={}
 var trade_caravans: Array=[]
+# Track physical fingers independently; never select a tile after a pinch.
+var touch_points: Dictionary={}
+var gesture_active: bool=false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
@@ -174,20 +177,59 @@ func _gui_input(event: InputEvent) -> void:
     elif event is InputEventScreenTouch:
         var touch: InputEventScreenTouch=event
         if touch.pressed:
-            dragging=true
-            drag_start=touch.position
-            last_pointer=touch.position
-            movement=0.0
+            touch_points[touch.index]=touch.position
+            if touch_points.size()==1:
+                dragging=true
+                drag_start=touch.position
+                last_pointer=touch.position
+                movement=0.0
+                gesture_active=false
+            else:
+                # A pinch is not a map tile selection, even when one finger lifts first.
+                gesture_active=true
+                dragging=false
+                movement=999.0
         else:
-            if dragging and movement<7.0:
-                var selected: Vector2i=tile_at(touch.position)
-                select_cell(selected.x,selected.y)
-            dragging=false
+            if touch_points.has(touch.index):
+                if touch_points.size()==1 and not gesture_active and dragging and movement<7.0:
+                    var selected: Vector2i=tile_at(touch.position)
+                    select_cell(selected.x,selected.y)
+                touch_points.erase(touch.index)
+            if touch_points.is_empty():
+                dragging=false
+                gesture_active=false
+            elif touch_points.size()==1:
+                # The remaining finger may pan, but cannot accidentally tap.
+                last_pointer=touch_points.values()[0]
+                dragging=true
         accept_event()
     elif event is InputEventScreenDrag:
-        var screen_drag: InputEventScreenDrag=event
-        movement+=screen_drag.position.distance_to(last_pointer)
-        pan+=screen_drag.position-last_pointer
-        last_pointer=screen_drag.position
+        var finger: InputEventScreenDrag=event
+        if not touch_points.has(finger.index):
+            return
+        if touch_points.size()==1:
+            var old: Vector2=touch_points[finger.index]
+            touch_points[finger.index]=finger.position
+            movement+=finger.position.distance_to(old)
+            pan+=finger.position-old
+        else:
+            # Keep the world coordinate below the OLD midpoint fixed under the
+            # NEW midpoint while simultaneously zooming and translating.
+            var ids: Array=touch_points.keys()
+            var a: Vector2=touch_points[ids[0]]
+            var b: Vector2=touch_points[ids[1]]
+            var old_mid: Vector2=(a+b)*0.5
+            var old_distance: float=a.distance_to(b)
+            touch_points[finger.index]=finger.position
+            var next_a: Vector2=touch_points[ids[0]]
+            var next_b: Vector2=touch_points[ids[1]]
+            var next_mid: Vector2=(next_a+next_b)*0.5
+            var next_distance: float=next_a.distance_to(next_b)
+            var anchor: Vector2=(old_mid-pan)/zoom
+            if old_distance>8.0:
+                zoom=clampf(zoom*next_distance/old_distance,0.9,28.0)
+            pan=next_mid-anchor*zoom
+            movement=999.0
+            gesture_active=true
         queue_redraw()
         accept_event()
