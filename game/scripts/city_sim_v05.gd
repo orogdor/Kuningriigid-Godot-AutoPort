@@ -5,6 +5,7 @@ extends RefCounted
 const Logic = preload("res://scripts/logic_v02.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v12.gd")
+const Freight = preload("res://scripts/freight_v14.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -196,16 +197,22 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
             b["timer"] = maxf(0.0,float(b["timer"]) - float(d.get("cycle",1)))
             if not input.is_empty():
                 spend(stock,input)
-            cargo.append({"key":String(d["out"]),"amount":float(d.get("rate",0))})
+            cargo.append({"key":String(d["out"]),"amount":float(d.get("rate",0)), "origin":buildings.find(b)})
     realm["employed"] = employed
     # All producers use the local delivery shortcut in the 0.5 single-city model.
     # The upstream reference has all buildings placed at the hall to force immediate delivery.
     for c in cargo:
         var resource_key: String = c["key"]
-        stock[resource_key] = float(stock.get(resource_key,0)) + float(c["amount"])
+        if state.has("detail_sim") and int(c.get("origin",-1))>=0:
+            # Only spatial capitals carry factory/farm output along real paths.
+            # The 0.5 reference town still receives all goods immediately.
+            Freight.enqueue(state,int(c["origin"]),resource_key,float(c["amount"]))
+        else:
+            stock[resource_key] = float(stock.get(resource_key,0)) + float(c["amount"])
     if state.has("detail_sim"):
         Construction.tick(state,recipes)
         Spatial.tick(state)
+        Freight.tick(state)
     state["time"] = float(state.get("time",0)) + DT
     var cap: float = housing_capacity(buildings)
     var food_need: float = floor(pop * 0.60 * 100.0 + 0.5) / 100.0
