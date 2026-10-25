@@ -69,6 +69,14 @@ func fetch(url string) ([]byte,error) {
  req,err:=http.NewRequestWithContext(ctx,"GET",url,nil); if err!=nil{return nil,err}
  req.Header.Set("User-Agent","Kuningriigid-Windows-Bootstrap/1.0")
  req.Header.Set("Accept","application/vnd.github+json")
+ // GitHub-hosted Windows runners have heavily shared public IPs. Authenticated
+ // API calls in CI avoid hitting the unauthenticated hourly rate limit.
+ // Never require a token from normal players.
+ if os.Getenv("CI")=="true" && strings.HasPrefix(url,"https://api.github.com/") {
+  if token:=os.Getenv("GH_TOKEN");token!=""{
+   req.Header.Set("Authorization","Bearer "+token)
+  }
+ }
  res,err:=client.Do(req);if err!=nil{return nil,err};defer res.Body.Close()
  if res.StatusCode!=200{return nil,fmt.Errorf("GitHub HTTP %d",res.StatusCode)}
  return io.ReadAll(io.LimitReader(res.Body,2<<20))
