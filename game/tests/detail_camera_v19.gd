@@ -45,12 +45,13 @@ func _run() -> void:
         return
     var start_distance: float=float(orbit.get("distance"))
     var old_yaw: float=float(orbit.get("yaw"))
-    var left:=Vector2(300,240)
-    var right:=Vector2(400,240)
+    var center: Vector2=orbit.size*0.5
+    var left: Vector2=center+Vector2(-50,0)
+    var right: Vector2=center+Vector2(50,0)
     orbit.call("_gui_input",_touch(0,left,true))
     orbit.call("_gui_input",_touch(1,right,true))
     # Spreading apart must zoom in, not orbit and not place a building.
-    orbit.call("_gui_input",_drag(1,Vector2(470,240)))
+    orbit.call("_gui_input",_drag(1,center+Vector2(120,0)))
     var close_distance: float=float(orbit.get("distance"))
     if close_distance>=start_distance or close_distance<15.0:
         _fail("two-finger spread did not zoom towards terrain")
@@ -59,11 +60,11 @@ func _run() -> void:
         _fail("pinch wrongly rotated the 3D camera")
         return
     # Midpoint moves with both fingers; ground below it must remain anchored.
-    var old_mid:=Vector2(385,240)
+    var old_mid: Vector2=center+Vector2(35,0)
     var anchored: Variant=orbit.call("_plane_hit",old_mid)
-    orbit.call("_gui_input",_drag(0,Vector2(340,265)))
-    orbit.call("_gui_input",_drag(1,Vector2(510,265)))
-    var new_mid:=Vector2(425,265)
+    orbit.call("_gui_input",_drag(0,center+Vector2(-10,25)))
+    orbit.call("_gui_input",_drag(1,center+Vector2(160,25)))
+    var new_mid: Vector2=center+Vector2(75,25)
     var resulting: Variant=orbit.call("_plane_hit",new_mid)
     if not (anchored is Vector3 and resulting is Vector3):
         _fail("3D midpoint could not intersect terrain")
@@ -71,12 +72,12 @@ func _run() -> void:
     if Vector2(anchored.x,anchored.z).distance_to(Vector2(resulting.x,resulting.z))>1.0:
         _fail("two-finger translation lost the world-space anchor")
         return
-    orbit.call("_gui_input",_drag(1,Vector2(390,265)))
+    orbit.call("_gui_input",_drag(1,center+Vector2(40,25)))
     if float(orbit.get("distance"))<=close_distance:
         _fail("pinch inward did not zoom back out")
         return
-    orbit.call("_gui_input",_touch(0,Vector2(340,265),false))
-    orbit.call("_gui_input",_touch(1,Vector2(390,265),false))
+    orbit.call("_gui_input",_touch(0,center+Vector2(-10,25),false))
+    orbit.call("_gui_input",_touch(1,center+Vector2(40,25),false))
     if clicks.size()!=0 or not orbit.get("active_fingers").is_empty():
         _fail("pinch release placed a building or left stale fingers")
         return
@@ -84,13 +85,12 @@ func _run() -> void:
     var release:=InputEventMouseButton.new()
     release.button_index=MOUSE_BUTTON_LEFT
     release.pressed=false
-    release.position=Vector2(400,300)
+    release.position=center
     orbit.call("_gui_input",release)
     if clicks.size()!=0:
         _fail("orphaned mouse release generated a ground tap")
         return
     # A normal short single-finger tap must still place exactly once.
-    var center: Vector2=orbit.size*0.5
     orbit.call("_gui_input",_touch(0,center,true))
     orbit.call("_gui_input",_touch(0,center,false))
     if clicks.size()!=1:
