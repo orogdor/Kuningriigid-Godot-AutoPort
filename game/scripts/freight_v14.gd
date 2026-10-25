@@ -4,6 +4,7 @@ extends RefCounted
 ## Unlike v0.8 forest/quarry collection, this transports finished output
 ## from workplaces and does not re-charge resources or duplicate stock.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Access = preload("res://scripts/building_access_v22.gd")
 const MAX_HAULERS: int=2
 const LOAD_CAPACITY: float=12.0
 const WALK_DISTANCE: float=24.0
@@ -29,23 +30,9 @@ static func enqueue(state: Dictionary, origin: int, product: String, amount: flo
     made[product]=float(made.get(product,0))+amount
 
 static func _target(state: Dictionary, origin: int, start: Vector2) -> Vector2:
-    if origin<0 or origin>=state.get("buildings",[]).size():return Vector2(99999,99999)
-    var b: Dictionary=state["buildings"][origin]
-    var center:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
-    # Work around buildings (never pathfind through the building's footprint).
-    var best:=Vector2(99999,99999)
-    var best_dist: float=INF
-    for offset in [Vector2(20,0),Vector2(-20,0),Vector2(0,20),Vector2(0,-20),
-        Vector2(20,20),Vector2(-20,20),Vector2(20,-20),Vector2(-20,-20)]:
-        var candidate: Vector2=center+offset
-        if not Paths.bounded(Paths.grid(candidate)):continue
-        if Paths.blocked(state,Paths.grid(candidate),0):continue
-        if Paths.find_path(state,start,candidate,0).is_empty():continue
-        var d: float=start.distance_squared_to(candidate)
-        if d<best_dist:
-            best_dist=d
-            best=candidate
-    return best
+    # Door orientation comes from the saved building rotation; fallback
+    # candidates prevent freight deadlocks when a doorway is obstructed.
+    return Access.reachable(state,origin,start,0)
 
 static func _speed(state: Dictionary, pos: Vector2) -> float:
     var traffic: int=Paths.traffic_strength(state["detail_sim"],Paths.cell_key(Paths.grid(pos)))
@@ -141,7 +128,8 @@ static func _assign(state: Dictionary) -> void:
             _next_job(state,h)
     while haulers.size()<maximum and not sim["freight_queue"].is_empty():
         sim["freight_next_id"]=int(sim["freight_next_id"])+1
-        var worker: Dictionary={"id":int(sim["freight_next_id"]),"x":0.0,"z":0.0,
+        var hall_door: Vector2=Access.entrance(state["buildings"][0])
+        var worker: Dictionary={"id":int(sim["freight_next_id"]),"x":hall_door.x,"z":hall_door.y,
             "phase":"idle","origin":-1,"kind":"","load":0.0,"route":[]}
         if not _next_job(state,worker):break
         haulers.append(worker)
@@ -172,7 +160,9 @@ static func tick(state: Dictionary) -> void:
             h["phase"]="returning"
             h["route"]=[]
         elif phase=="returning" or phase=="return_empty":
-            if not Paths.move(h,Vector2.ZERO,_speed(state,current),state,0):continue
+            var hall_entry: Vector2=Access.reachable(state,0,current,0)
+            if hall_entry.x>1000.0:continue
+            if not Paths.move(h,hall_entry,_speed(state,current),state,0):continue
             if phase=="returning":
                 var kind: String=String(h.get("kind",""))
                 var amount: float=float(h.get("load",0))
