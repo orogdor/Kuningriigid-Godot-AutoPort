@@ -1,6 +1,7 @@
 extends SubViewportContainer
 ## 0.19: mouse orbit and scroll; single finger orbit/tap, two fingers pinch/pan.
 signal ground_clicked(position: Vector3)
+signal ground_hovered(position: Vector3)
 const MIN_DISTANCE: float=15.0
 const MAX_DISTANCE: float=180.0
 const HALF_WIDTH: float=112.5
@@ -65,7 +66,7 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     var next_span: float=next_a.distance_to(next_b)
     # Moving fingers apart brings the camera closer; never invert at zero span.
     if old_span>8.0 and next_span>8.0:
-        distance=clampf(distance*old_span/next_span,MIN_DISTANCE,MAX_DISTANCE)
+        distance=clampf(distance*powf(old_span/next_span,0.85),MIN_DISTANCE,MAX_DISTANCE)
     update_camera()
     # Keep the ground point previously beneath the midpoint beneath the
     # NEW midpoint. This simultaneously pans and provides anchored zoom.
@@ -103,14 +104,17 @@ func _gui_input(event: InputEvent) -> void:
             accept_event()
     elif event is InputEventMouseMotion and dragging:
         var motion: InputEventMouseMotion=event
-        yaw-=motion.relative.x*0.009
-        pitch=clampf(pitch+motion.relative.y*0.006,-1.42,-0.15)
+        yaw-=motion.relative.x*0.006
+        pitch=clampf(pitch+motion.relative.y*0.004,-1.42,-0.15)
         update_camera()
         accept_event()
     elif event is InputEventMouseMotion and mouse_left_held:
         var motion: InputEventMouseMotion=event
         move_distance+=motion.position.distance_to(click_origin)
         click_origin=motion.position
+    elif event is InputEventMouseMotion and not dragging and not mouse_left_held and active_fingers.is_empty():
+        var hovered: Variant=_plane_hit(event.position)
+        if hovered is Vector3:ground_hovered.emit(hovered)
     elif event is InputEventScreenTouch:
         var touch: InputEventScreenTouch=event
         if touch.pressed:
@@ -143,8 +147,8 @@ func _gui_input(event: InputEvent) -> void:
             active_fingers[finger.index]=finger.position
             var delta: Vector2=finger.position-old_position
             move_distance+=delta.length()
-            yaw-=delta.x*0.009
-            pitch=clampf(pitch+delta.y*0.006,-1.42,-0.15)
+            yaw-=delta.x*0.006
+            pitch=clampf(pitch+delta.y*0.004,-1.42,-0.15)
             update_camera()
         elif active_fingers.size()==2:
             move_distance=999.0
