@@ -31,7 +31,7 @@ static func stage(building: Dictionary, spec: Dictionary) -> int:
 static func _approach(state: Dictionary, from: Vector2, b: Dictionary) -> Vector2:
     var center:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
     var best: float=INF
-    var selected:=Vector2(INF,INF)
+    var selected:=Vector2(99999.0,99999.0)
     for delta in [Vector2(20,0),Vector2(-20,0),Vector2(0,20),Vector2(0,-20),
         Vector2(20,20),Vector2(-20,20),Vector2(20,-20),Vector2(-20,-20)]:
         var target: Vector2=center+delta
@@ -58,8 +58,8 @@ static func _match_jobs(state: Dictionary) -> void:
             worker["building"]=-1
             worker["phase"]="idle"
             worker["route"]=[]
-            worker["target_x"]=INF
-            worker["target_z"]=INF
+            worker["target_x"]=99999.0
+            worker["target_z"]=99999.0
         else:
             reserved[idx]=true
     for idx in range(state["buildings"].size()):
@@ -80,8 +80,8 @@ static func _match_jobs(state: Dictionary) -> void:
         agent["building"]=idx
         agent["phase"]="walking"
         agent["route"]=[]
-        agent["target_x"]=INF
-        agent["target_z"]=INF
+        agent["target_x"]=99999.0
+        agent["target_z"]=99999.0
         reserved[idx]=true
 
 static func tick(state: Dictionary, recipes: Dictionary) -> void:
@@ -103,13 +103,13 @@ static func tick(state: Dictionary, recipes: Dictionary) -> void:
             continue
         var current:=Vector2(float(worker.get("x",0)),float(worker.get("z",0)))
         var target:=Vector2(float(worker.get("target_x",INF)),float(worker.get("target_z",INF)))
-        var target_invalid: bool=not is_finite(target.x) or Paths.blocked(state,Paths.grid(target),-1)
+        var target_invalid: bool=absf(target.x)>1000.0 or Paths.blocked(state,Paths.grid(target),-1)
         if target_invalid:
             target=_approach(state,current,building)
             worker["route"]=[]
             worker["target_x"]=target.x
             worker["target_z"]=target.y
-        if not is_finite(target.x):
+        if absf(target.x)>1000.0:
             worker["phase"]="no_route"
             continue
         if current.distance_to(target)>0.01:
@@ -127,7 +127,6 @@ static func tick(state: Dictionary, recipes: Dictionary) -> void:
             worker["phase"]="finished"
             worker["building"]=-1
             worker["route"]=[]
-    sim["builders"]=sim["builders"]
 
 static func progress_report(state: Dictionary, recipes: Dictionary) -> Dictionary:
     var underway: int=0
