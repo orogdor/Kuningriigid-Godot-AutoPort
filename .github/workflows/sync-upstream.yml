@@ -85,6 +85,7 @@ jobs:
         working-directory: port
         run: |
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
       - name: Save generated rules to AutoPort repository only
         working-directory: port
         shell: bash
