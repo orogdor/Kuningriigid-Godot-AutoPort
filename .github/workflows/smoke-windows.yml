@@ -2,6 +2,11 @@ name: Test Windows launcher install and offline update
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/smoke-windows.yml'
+      - 'tools/smoke-windows.ps1'
   workflow_run:
     workflows: ["Build Android APK, Windows EXE and auto-update content"]
     types: [completed]
