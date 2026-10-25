@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'tools/**'
+      - 'package.json'
       - 'tests/**'
       - 'game/scripts/**'
       - 'game/project.godot'
