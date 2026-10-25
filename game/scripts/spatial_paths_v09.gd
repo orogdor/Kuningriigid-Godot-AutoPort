@@ -3,6 +3,7 @@ extends RefCounted
 ## obstacle/corner checks. Traffic emerges on traveled cells and fades when idle.
 ## This approximates detail-map travel, not yet a 1:1 Three.js pathfinder.
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
+const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const STEP: float = 10.0
 const EXTENT: int = 8
 const WIDTH: int = 2 * EXTENT + 1
@@ -37,7 +38,7 @@ static func blocked(state: Dictionary, cell: Vector2i, home_index: int) -> bool:
         if point.distance_to(occupied)<11.5:
             return true
     var sim: Dictionary=state.get("detail_sim",{})
-    if Terrain.blocked_cell(sim,cell):return true
+    if Nav.blocked(sim,cell):return true
     return false
 
 static func traffic_strength(sim: Dictionary, key: String) -> int:
@@ -94,7 +95,7 @@ static func occupancy(state: Dictionary, home_index: int) -> Dictionary:
 static func _blocked_fast(sim: Dictionary, cell: Vector2i, occupied: Dictionary) -> bool:
     if not bounded(cell):return true
     if occupied.has(cell_key(cell)):return true
-    return Terrain.blocked_cell(sim,cell)
+    return Nav.blocked(sim,cell)
 
 static func _heap_less(a: Dictionary, b: Dictionary) -> bool:
     var fa: float=float(a["score"])
@@ -156,18 +157,18 @@ static func find_path(state: Dictionary, start: Vector2, destination: Vector2, h
         for direction in DIRS:
             var other: Vector2i=node+direction
             if _blocked_fast(sim,other,occupied):continue
-            if Terrain.too_steep(sim,node,other):continue
+            if not Nav.passable_step(sim,node,other):continue
             if direction.x!=0 and direction.y!=0:
                 var corner_x:=node+Vector2i(direction.x,0)
                 var corner_y:=node+Vector2i(0,direction.y)
                 if _blocked_fast(sim,corner_x,occupied) or _blocked_fast(sim,corner_y,occupied):
                     continue
-                if Terrain.too_steep(sim,node,corner_x) or Terrain.too_steep(sim,node,corner_y):
+                if not Nav.passable_step(sim,node,corner_x) or not Nav.passable_step(sim,node,corner_y):
                     continue
             var next_key: String=cell_key(other)
             if seen.has(next_key):continue
             var factor: float=0.70 if traffic_strength(sim,next_key)>=ROAD_THRESHOLD else 1.0
-            var rise: float=absf(Terrain.height_at(sim,other.x*STEP,other.y*STEP)-Terrain.height_at(sim,node.x*STEP,node.y*STEP))
+            var rise: float=absf(Nav.ground(sim,other.x*STEP,other.y*STEP)-Nav.ground(sim,node.x*STEP,node.y*STEP))
             var move_cost: float=((14.0 if direction.x!=0 and direction.y!=0 else 10.0)+rise*3.0)*factor
             var next_cost: float=float(costs[key])+move_cost
             if not costs.has(next_key) or next_cost+0.0001<float(costs[next_key]):
@@ -211,12 +212,12 @@ static func connected_cells(state: Dictionary, start: Vector2, home_index: int=0
             var next: Vector2i=node+direction
             var key: String=cell_key(next)
             if visited.has(key) or _blocked_fast(sim,next,occupied):continue
-            if Terrain.too_steep(sim,node,next):continue
+            if not Nav.passable_step(sim,node,next):continue
             if direction.x!=0 and direction.y!=0:
                 var side_x:=node+Vector2i(direction.x,0)
                 var side_y:=node+Vector2i(0,direction.y)
                 if _blocked_fast(sim,side_x,occupied) or _blocked_fast(sim,side_y,occupied):continue
-                if Terrain.too_steep(sim,node,side_x) or Terrain.too_steep(sim,node,side_y):continue
+                if not Nav.passable_step(sim,node,side_x) or not Nav.passable_step(sim,node,side_y):continue
             visited[key]=true
             frontier.append(next)
     return visited
@@ -237,12 +238,13 @@ static func road_links(state: Dictionary) -> Array:
         for delta in [Vector2i(1,0),Vector2i(0,1),Vector2i(1,1),Vector2i(1,-1)]:
             var to: Vector2i=from+delta
             if not traffic.has(cell_key(to)):continue
-            if Terrain.too_steep(sim,from,to):continue
+            if _blocked_fast(sim,to,occupied):continue
+            if not Nav.passable_step(sim,from,to):continue
             if delta.x!=0 and delta.y!=0:
                 var corner_a:=from+Vector2i(delta.x,0)
                 var corner_b:=from+Vector2i(0,delta.y)
                 if _blocked_fast(sim,corner_a,occupied) or _blocked_fast(sim,corner_b,occupied):continue
-                if Terrain.too_steep(sim,from,corner_a) or Terrain.too_steep(sim,from,corner_b):continue
+                if not Nav.passable_step(sim,from,corner_a) or not Nav.passable_step(sim,from,corner_b):continue
             var a: Vector2=world(from)
             var b: Vector2=world(to)
             links.append({"a":a,"b":b,"strength":mini(int(traffic[key]),int(traffic[cell_key(to)]))})
