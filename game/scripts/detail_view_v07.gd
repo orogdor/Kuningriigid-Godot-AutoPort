@@ -52,7 +52,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.15 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.16 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -521,7 +521,7 @@ func select_building(kind: String) -> void:
 
 func _refresh_info() -> void:
     if info==null:return
-    var text_line: String="Detailruut %d × %d • %s • 225 × 195 m" % [selected.x,selected.y,selected_biome]
+    var text_line: String="%s • Detailruut %d × %d • %s • 225 × 195 m" % [String(city_state.get("city_name","Pealinn")),selected.x,selected.y,selected_biome]
     if can_build and city_state.has("realms"):
         var realm: Dictionary=city_state["realms"][0]
         var resources: Dictionary=realm["resources"]
@@ -573,7 +573,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.15: vankrid veavad tootmise sisendeid laost töökotta ning valmistooteid tagasi; veoüksused vajavad tööjõudu."
+    note.text="0.16: avatud linnal on oma töölised, ehitusplatsid, laovaru ja tootmine. Kaubakaravanid ühendavad kaks päris linna."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
