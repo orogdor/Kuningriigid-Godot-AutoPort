@@ -4,7 +4,7 @@ extends RefCounted
 ## no physical delivery paths, terrain deposits, districts, AI or battle.
 const Logic = preload("res://scripts/logic_v02.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
-const Construction = preload("res://scripts/construction_v11.gd")
+const Construction = preload("res://scripts/construction_v12.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -104,15 +104,25 @@ static func build(state: Dictionary, building_type: String) -> String:
             return "Ehituskoht on hõivatud või väljaspool linna"
     spend(stock,cost)
     state.erase("pending_site")
-    state["buildings"].append({"type":building_type,"team":0,"x":place.x,"z":place.y,
-        "hp":350,"ready":false,"progress":0.0,"timer":0.0})
+    var new_site: Dictionary={"type":building_type,"team":0,"x":place.x,"z":place.y,
+        "hp":350,"ready":false,"progress":0.0,"timer":0.0}
+    if state.has("detail_sim"):
+        # Wood/stone/planks were already paid by spend() above. 0.12
+        # tracks their delivery without deducting the same materials twice.
+        var prepaid: Dictionary={}
+        for material in ["wood","stone","plank"]:
+            if float(cost.get(material,0))>0.0:
+                prepaid[material]=float(cost[material])
+        new_site["supply_total"]=prepaid
+        new_site["supply_delivered"]={}
+    state["buildings"].append(new_site)
     return ""
 
 static func _demand(b: Dictionary, d: Dictionary) -> float:
     if bool(b.get("disabled",false)) or bool(b.get("virtual",false)) or float(b.get("hp",0)) <= 0:
         return 0.0
     if not bool(b.get("ready",false)):
-        return 1.0
+        return 2.0 if b.has("supply_total") else 1.0
     if d.has("out") or ["forester","warehouse","market","harbor"].has(String(b.get("type",""))):
         return float(d.get("workers",0))
     return 0.0
