@@ -1,0 +1,28 @@
+name: Test Windows launcher install and offline update
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/smoke-windows.yml'
+      - 'tools/smoke-windows.ps1'
+  workflow_run:
+    workflows: ["Build Android APK, Windows EXE and auto-update content"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and restart actual Windows EXE
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: ./tools/smoke-windows.ps1
