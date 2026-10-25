@@ -11,7 +11,7 @@ static func initialize(state: Dictionary) -> void:
     var sim: Dictionary=state["detail_sim"]
     if not sim.has("builders"):sim["builders"]=[]
     if not sim.has("builder_ids"):sim["builder_ids"]=0
-    sim["version"]=4
+    sim["version"]=maxi(4,int(sim.get("version",0)))
 
 static func required_turns(spec: Dictionary) -> int:
     return maxi(MIN_WORK_TURNS,int(ceil(float(spec.get("time",12.0))/15.0)))
