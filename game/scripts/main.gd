@@ -9,7 +9,7 @@ func _ready() -> void:
     column.add_theme_constant_override("separation", 18)
     add_child(column)
     var heading := Label.new()
-    heading.text = "Kuningriigid • Godot AutoPort"
+    heading.text = "Kuningriigid • Godot AutoPort 0.2.0"
     heading.add_theme_font_size_override("font_size", 27)
     column.add_child(heading)
     var report := Label.new()
@@ -24,5 +24,5 @@ func _ready() -> void:
     var tree: Dictionary = GeneratedRules.read_table("tech_tree")
     var goods: Dictionary = GeneratedRules.read_table("goods")
     var costs: Dictionary = GeneratedRules.read_table("era_costs")
-    report.text = "Lähtekoodi commit: %s\nTehnoloogiaid: %d\nKaupu: %d\nAjastute hinnakirju: %d\n\nSee on automaatse pordi andmekontroll, mitte veel mäng." % [
+    report.text = "Lähtekoodi commit: %s\nTehnoloogiaid: %d\nKaupu: %d\nAjastute hinnakirju: %d\n\nPortitud: 6 majanduse, teaduse ja asunike arvutusreeglit.\nSee on endiselt kontrollrakendus, mitte veel mängitav kampaania." % [
         String(manifest.get("source_commit","unknown")),tree.size(),goods.size(),costs.size()]
