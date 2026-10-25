@@ -78,7 +78,7 @@ func _test() -> void:
     if annex_root.get_node_or_null("DistrictTerrain")==null:
         fail("neighbor did not have its own rendered contiguous land plane")
         return
-    var size: Vector3=(annex_root.get_node("DistrictTerrain") as MeshInstance3D).mesh.size
+    var size: Vector3=((annex_root.get_node("DistrictTerrain") as MeshInstance3D).mesh as BoxMesh).size
     if not is_equal_approx(size.x,160.0) or not is_equal_approx(size.z,160.0):
         fail("adjacent terrain width/depth were not aligned to the exact gate distance")
         return
