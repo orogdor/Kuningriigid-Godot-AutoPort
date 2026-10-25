@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: autoport-releases
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:
