@@ -26,7 +26,7 @@ const manifestAsset = "Windows-files.json"
 
 var hexHash = regexp.MustCompile("^[a-f0-9]{64}$")
 var commitHash = regexp.MustCompile("^[a-f0-9]{40}$")
-var client = &http.Client{Timeout: 35*time.Second}
+var client = &http.Client{} // Use per-request context: 45 s metadata, 6 min engine download.
 
 type asset struct {
  Name string `json:"name"`
