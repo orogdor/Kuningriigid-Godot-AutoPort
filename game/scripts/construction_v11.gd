@@ -36,8 +36,8 @@ static func _approach(state: Dictionary, from: Vector2, b: Dictionary) -> Vector
         Vector2(20,20),Vector2(-20,20),Vector2(20,-20),Vector2(-20,-20)]:
         var target: Vector2=center+delta
         var point: Vector2i=Paths.grid(target)
-        if not Paths.bounded(point) or Paths.blocked(state,point,-1):continue
-        var path: Array=Paths.find_path(state,from,target,-1)
+        if not Paths.bounded(point) or Paths.blocked(state,point,0):continue
+        var path: Array=Paths.find_path(state,from,target,0)
         if path.is_empty():continue
         var cost: float=from.distance_to(target)
         if cost<best:
@@ -103,7 +103,7 @@ static func tick(state: Dictionary, recipes: Dictionary) -> void:
             continue
         var current:=Vector2(float(worker.get("x",0)),float(worker.get("z",0)))
         var target:=Vector2(float(worker.get("target_x",INF)),float(worker.get("target_z",INF)))
-        var target_invalid: bool=absf(target.x)>1000.0 or Paths.blocked(state,Paths.grid(target),-1)
+        var target_invalid: bool=absf(target.x)>1000.0 or Paths.blocked(state,Paths.grid(target),0)
         if target_invalid:
             target=_approach(state,current,building)
             worker["route"]=[]
@@ -114,7 +114,7 @@ static func tick(state: Dictionary, recipes: Dictionary) -> void:
             continue
         if current.distance_to(target)>0.01:
             worker["phase"]="walking"
-            var reached: bool=Paths.move(worker,target,WALK_SPEED*maxf(0.25,efficiency),state,-1)
+            var reached: bool=Paths.move(worker,target,WALK_SPEED*maxf(0.25,efficiency),state,0)
             if not reached:continue
         worker["phase"]="building"
         var spec: Dictionary=recipes.get(building.get("type",""),{})
