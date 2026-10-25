@@ -1,0 +1,332 @@
+extends Control
+## AutoPort 0.7 prototype: world-tile 3D detail scene using Godot primitives.
+## World elevation/coastal context follows 0.6 cells; not yet 1:1 Three.js meshes.
+signal return_requested
+signal build_requested(kind: String)
+signal turns_requested(count: int)
+const World = preload("res://scripts/world_gen_v06.gd")
+const CityEconomy = preload("res://scripts/city_sim_v05.gd")
+const CityRecipes = preload("res://scripts/generated_rules.gd")
+const Controller = preload("res://scripts/detail_camera_v07.gd")
+const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
+const SURFACE_WIDTH: float = 225.0
+const SURFACE_DEPTH: float = 195.0
+
+var world: Dictionary = {}
+var selected: Vector2i = Vector2i(-1,-1)
+var can_build: bool = false
+var city_state: Dictionary = {}
+var scene_root: Node3D
+var construction_root: Node3D
+var controller: SubViewportContainer
+var info: Label
+var actions: HFlowContainer
+var rendered_buildings: int = 0
+var selected_biome: String = ""
+
+func _ready() -> void:
+    set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    mouse_filter=Control.MOUSE_FILTER_STOP
+    var column:=VBoxContainer.new()
+    column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    column.add_theme_constant_override("separation",8)
+    add_child(column)
+    var top:=HBoxContainer.new()
+    column.add_child(top)
+    var heading:=Label.new()
+    heading.text="KUNINGRIIGID • GODOT 0.7 • 3D DETAILKAART"
+    heading.add_theme_font_size_override("font_size",20)
+    heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    top.add_child(heading)
+    var back:=Button.new()
+    back.text="Tagasi maailmakaardile"
+    back.pressed.connect(func(): return_requested.emit())
+    top.add_child(back)
+    info=Label.new()
+    info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    column.add_child(info)
+    controller=Controller.new()
+    controller.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    controller.size_flags_vertical=Control.SIZE_EXPAND_FILL
+    controller.custom_minimum_size=Vector2(300,180)
+    column.add_child(controller)
+    var viewport:=SubViewport.new()
+    viewport.size=Vector2i(960,600)
+    viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+    viewport.transparent_bg=false
+    viewport.handle_input_locally=true
+    controller.add_child(viewport)
+    scene_root=Node3D.new()
+    scene_root.name="WorldTile"
+    viewport.add_child(scene_root)
+    var environment:=WorldEnvironment.new()
+    var sky_settings:=Environment.new()
+    sky_settings.background_mode=Environment.BG_COLOR
+    sky_settings.background_color=Color("#a8ccdf")
+    sky_settings.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
+    sky_settings.ambient_light_color=Color("#b0c0cc")
+    sky_settings.ambient_light_energy=0.8
+    environment.environment=sky_settings
+    scene_root.add_child(environment)
+    var sun:=DirectionalLight3D.new()
+    sun.rotation_degrees=Vector3(-57,-36,0)
+    sun.light_energy=1.1
+    scene_root.add_child(sun)
+    var camera:=Camera3D.new()
+    camera.fov=58.0
+    camera.current=true
+    scene_root.add_child(camera)
+    controller.attach_camera(camera)
+    construction_root=Node3D.new()
+    construction_root.name="PlacedBuildings"
+    scene_root.add_child(construction_root)
+    actions=HFlowContainer.new()
+    actions.add_theme_constant_override("h_separation",6)
+    actions.add_theme_constant_override("v_separation",6)
+    column.add_child(actions)
+    _refresh_actions()
+
+func _material(color: Color, roughness: float=0.95) -> StandardMaterial3D:
+    var m:=StandardMaterial3D.new()
+    m.albedo_color=color
+    m.roughness=roughness
+    return m
+
+func _mesh(parent: Node3D, primitive: Mesh, pos: Vector3, color: Color, label: String) -> MeshInstance3D:
+    var result:=MeshInstance3D.new()
+    result.name=label
+    result.mesh=primitive
+    result.position=pos
+    result.material_override=_material(color)
+    parent.add_child(result)
+    return result
+
+func _box(parent: Node3D, pos: Vector3, scale: Vector3, color: Color, label: String) -> MeshInstance3D:
+    var mesh:=BoxMesh.new()
+    mesh.size=scale
+    return _mesh(parent,mesh,pos,color,label)
+
+func _cylinder(parent: Node3D, pos: Vector3, radius: float, height: float, color: Color, label: String) -> MeshInstance3D:
+    var mesh:=CylinderMesh.new()
+    mesh.top_radius=radius
+    mesh.bottom_radius=radius
+    mesh.height=height
+    return _mesh(parent,mesh,pos,color,label)
+
+func _roof(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
+    var mesh:=PrismMesh.new()
+    mesh.size=size
+    return _mesh(parent,mesh,pos,color,"PitchedRoof")
+
+func _tree(parent: Node3D, place: Vector3, scale_factor: float=1.0) -> void:
+    _cylinder(parent,place+Vector3(0,2.2*scale_factor,0),0.47*scale_factor,4.4*scale_factor,Color("#6d4a2b"),"Trunk")
+    var foliage:=SphereMesh.new()
+    foliage.radius=2.4*scale_factor
+    foliage.height=4.8*scale_factor
+    _mesh(parent,foliage,place+Vector3(0,5.5*scale_factor,0),Color("#315e37"),"Foliage")
+
+func _rock(parent: Node3D, pos: Vector3, factor: float) -> void:
+    var stone:=SphereMesh.new()
+    stone.radius=1.6*factor
+    stone.height=1.6*factor
+    var m:=_mesh(parent,stone,pos+Vector3(0,0.35*factor,0),Color("#787b76"),"Rock")
+    m.rotation_degrees=Vector3(0,37,18)
+
+func _elevation(x: float, z: float, base: float, plain: bool) -> float:
+    if plain:return 0.0
+    # Mild relief. Full web-game detail-sample parity belongs to a future port.
+    var wave: float=sin(x*0.046+selected.x*0.2)*cos(z*0.064+selected.y*0.1)
+    return base+wave*1.7
+
+func _surface(cell: Dictionary) -> void:
+    selected_biome=String(cell.get("biome","sea"))
+    var sea: bool=selected_biome=="sea"
+    var heights: float=clampf(float(cell.get("h",0))*0.02,-1.0,1.7)
+    var smooth_centre: bool=can_build
+    var material:=StandardMaterial3D.new()
+    material.vertex_color_use_as_albedo=true
+    material.roughness=0.98
+    var tool:=SurfaceTool.new()
+    tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var tiles_x: int=30
+    var tiles_z: int=26
+    for r in range(tiles_z):
+        for c in range(tiles_x):
+            var x0: float=(-0.5+float(c)/tiles_x)*SURFACE_WIDTH
+            var x1: float=(-0.5+float(c+1)/tiles_x)*SURFACE_WIDTH
+            var z0: float=(-0.5+float(r)/tiles_z)*SURFACE_DEPTH
+            var z1: float=(-0.5+float(r+1)/tiles_z)*SURFACE_DEPTH
+            var a:=Vector3(x0,_elevation(x0,z0,heights,smooth_centre),z0)
+            var b:=Vector3(x1,_elevation(x1,z0,heights,smooth_centre),z0)
+            var d:=Vector3(x0,_elevation(x0,z1,heights,smooth_centre),z1)
+            var e:=Vector3(x1,_elevation(x1,z1,heights,smooth_centre),z1)
+            var col:=Color("#b8ac80") if sea else Color("#86a769")
+            if selected_biome=="forest":col=Color("#547b4e")
+            elif selected_biome=="hills":col=Color("#999b91")
+            elif not sea and can_build:col=Color("#a7b779")
+            for v in [a,d,b,b,d,e]:
+                tool.set_color(col)
+                tool.add_vertex(v)
+    tool.generate_normals()
+    var ground:=MeshInstance3D.new()
+    ground.name="DetailTerrain"
+    ground.mesh=tool.commit()
+    ground.material_override=material
+    scene_root.add_child(ground)
+    if sea or _is_coastal(cell):
+        _box(scene_root,Vector3(0,-1.2,0),Vector3(SURFACE_WIDTH,0.25,SURFACE_DEPTH),
+            Color("#3b86a8"),"SeaLevel")
+    var rng:=RandomNumberGenerator.new()
+    rng.seed=int(world.get("seed",82026))+selected.x*10007+selected.y*19937
+    if not sea:
+        var tree_count: int=50 if selected_biome=="forest" else (6 if selected_biome=="hills" else 16)
+        for i in range(tree_count):
+            var x: float=rng.randf_range(-108,108)
+            var z: float=rng.randf_range(-92,92)
+            if can_build and absf(x)<55.0 and absf(z)<55.0:continue
+            _tree(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.7,1.35))
+        var rocks: int=25 if selected_biome=="hills" else 8
+        for i in range(rocks):
+            var x: float=rng.randf_range(-109,109)
+            var z: float=rng.randf_range(-89,89)
+            if can_build and absf(x)<47 and absf(z)<47:continue
+            _rock(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.8,1.6))
+    if bool(cell.get("river",false)):
+        _box(scene_root,Vector3(0,0.03,25),Vector3(SURFACE_WIDTH,0.08,8),
+            Color("#56b4d1"),"RiverPreview")
+
+func _is_coastal(cell: Dictionary) -> bool:
+    var c: int=int(cell.get("c",-1))
+    var r: int=int(cell.get("r",-1))
+    for delta in [Vector2i(-1,0),Vector2i(1,0),Vector2i(0,-1),Vector2i(0,1)]:
+        var neighbor: Dictionary=World.cell(world,c+delta.x,r+delta.y)
+        if not neighbor.is_empty() and not bool(neighbor.get("land",false)):return true
+    return false
+
+func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) -> void:
+    var timber:=Color("#805c3e") if completed else Color("#555e61")
+    var thatch:=Color("#b49b61") if completed else Color("#6a7272")
+    match kind:
+        "hall":
+            _box(parent,place+Vector3(0,4.1,0),Vector3(18,8,13),timber,"HallWalls")
+            _roof(parent,place+Vector3(0,10.4,0),Vector3(21,7,16),thatch)
+            _box(parent,place+Vector3(0,3,6.7),Vector3(3.1,6,0.5),Color("#473629"),"HallDoor")
+        "house":
+            _box(parent,place+Vector3(0,2.8,0),Vector3(9,5.6,8),timber,"HouseWalls")
+            _roof(parent,place+Vector3(0,6.8,0),Vector3(11,5,10),thatch)
+            _box(parent,place+Vector3(0,1.9,4.1),Vector3(2,3.8,0.3),Color("#4c392a"),"HouseDoor")
+        "lumber":
+            for i in range(4):
+                _cylinder(parent,place+Vector3(-4+i*2.6,0.6,0),0.8,9,Color("#816046"),"FelledLog")
+            _roof(parent,place+Vector3(0,6,0),Vector3(13,5,9),Color("#846f52"))
+        "well":
+            _cylinder(parent,place+Vector3(0,1.4,0),3.3,2.8,Color("#828b8a"),"StoneWell")
+            _cylinder(parent,place+Vector3(-3.2,4.5,0),0.35,6,Color("#815c3b"),"SupportA")
+            _cylinder(parent,place+Vector3(3.2,4.5,0),0.35,6,Color("#815c3b"),"SupportB")
+            _roof(parent,place+Vector3(0,8,0),Vector3(9,4,8),thatch)
+        "quarry":
+            for i in range(7):
+                var x: float=(i%3-1)*3.9
+                var z: float=(i/3-1)*3.4
+                _box(parent,place+Vector3(x,1.1,z),Vector3(3.3,2.2,3.0),Color("#91928a"),"QuarryStone")
+        "farm":
+            for i in range(6):
+                _box(parent,place+Vector3(-8+i*3.2,0.11,0),Vector3(1.5,0.22,18),
+                    Color("#8a7249"),"PlowedRow")
+                for j in range(5):
+                    var foliage:=SphereMesh.new()
+                    foliage.radius=0.65
+                    foliage.height=1.3
+                    _mesh(parent,foliage,place+Vector3(-8+i*3.2,0.8,-7+j*3.4),Color("#5e8d35"),"Crops")
+        _:
+            _box(parent,place+Vector3(0,2.5,0),Vector3(7,5,7),timber,"WorkshopWalls")
+            _roof(parent,place+Vector3(0,6,0),Vector3(9,4,9),thatch)
+
+func _clear_buildings() -> void:
+    for child in construction_root.get_children():
+        child.queue_free()
+
+func refresh_buildings() -> void:
+    if construction_root==null:return
+    _clear_buildings()
+    rendered_buildings=0
+    if can_build:
+        var buildings: Array=city_state.get("buildings",[])
+        for i in range(buildings.size()):
+            var building: Dictionary=buildings[i]
+            var ix: int=i%5
+            var iz: int=i/5
+            var pos:=Vector3((ix-2)*26.0,0.0,(iz-2)*27.0)
+            var holder:=Node3D.new()
+            holder.name=String(building.get("type","building"))+"_"+str(i)
+            construction_root.add_child(holder)
+            _building(holder,String(building.get("type","house")),pos,bool(building.get("ready",false)))
+            rendered_buildings+=1
+    _refresh_actions()
+    _refresh_info()
+
+func _refresh_info() -> void:
+    if info==null:return
+    var text_line: String="Detailruut %d × %d • %s • 225 × 195 m" % [selected.x,selected.y,selected_biome]
+    if can_build and city_state.has("realms"):
+        var realm: Dictionary=city_state["realms"][0]
+        var resources: Dictionary=realm["resources"]
+        text_line+=" | Elanikke %d | Puit %.0f | Kivi %.0f | Vesi %.0f | Käik %d" % [
+            int(realm.get("pop",3)),float(resources.get("wood",0)),
+            float(resources.get("stone",0)),float(resources.get("water",0)),
+            int(float(city_state.get("time",0))/60.0)]
+    else:
+        text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
+    info.text=text_line
+
+func _refresh_actions() -> void:
+    if actions==null:return
+    for child in actions.get_children():
+        child.queue_free()
+    if not can_build:
+        return
+    var turn:=Button.new()
+    turn.text="+10 käiku"
+    turn.pressed.connect(func(): turns_requested.emit(10))
+    actions.add_child(turn)
+    for kind in ["house","lumber","well","quarry","farm"]:
+        var button:=Button.new()
+        button.text="Ehita "+kind
+        button.disabled=not _can_build(kind)
+        button.pressed.connect(func(): build_requested.emit(kind))
+        actions.add_child(button)
+    var note:=Label.new()
+    note.text="Hooned kasutavad 0.5 linnamajanduse kulusid ja ehitusaega"
+    note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    actions.add_child(note)
+
+func _can_build(kind: String) -> bool:
+    if not city_state.has("realms"):return false
+    var defs: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{})
+    if not defs.has(kind):return false
+    var d: Dictionary=defs[kind]
+    if int(d.get("age",0))>int(city_state.get("age",0)):return false
+    for req in d.get("requires",[]):
+        var exists: bool=false
+        for b in city_state["buildings"]:
+            if String(b.get("type",""))==String(req) and bool(b.get("ready",false)):
+                exists=true
+                break
+        if not exists:return false
+    return CityEconomy.can_afford(city_state["realms"][0]["resources"],d.get("cost",{}))
+
+func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool) -> void:
+    world=next_world
+    selected=Vector2i(c,r)
+    city_state=city
+    can_build=capital
+    if scene_root==null:return
+    # Keep lighting and camera, discard old procedural terrain and natural props.
+    for child in scene_root.get_children():
+        if child==construction_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+            continue
+        child.queue_free()
+    var tile: Dictionary=World.cell(world,c,r)
+    if tile.is_empty():return
+    _surface(tile)
+    refresh_buildings()
