@@ -53,5 +53,5 @@ func _initialize() -> void:
         push_error("AUTOPORT_LOGIC_PARITY FAILED: %d/%d mismatches" % [failed, cases.size()])
         quit(1)
     else:
-        print("AUTOPORT_LOGIC_PARITY SUCCESS: %d/%d cases, source commit %s" % [cases.size(), String(doc.get("source_commit", "unknown"))])
+        print("AUTOPORT_LOGIC_PARITY SUCCESS: %d/%d cases, source commit %s" % [cases.size(), cases.size(), String(doc.get("source_commit", "unknown"))])
         quit(0)
