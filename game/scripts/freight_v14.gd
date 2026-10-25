@@ -105,25 +105,30 @@ static func _next_job(state: Dictionary,hauler: Dictionary) -> bool:
     var sim: Dictionary=state["detail_sim"]
     var queue: Array=sim["freight_queue"]
     var pos:=Vector2(float(hauler.get("x",0)),float(hauler.get("z",0)))
-    for job in queue:
-        var origin: int=int(job.get("origin",-1))
-        var direction: String=String(job.get("direction","output"))
-        if float(job.get("amount",0))<=0.0:continue
-        if _target(state,origin,pos).x>1000:continue
-        hauler["origin"]=origin
-        hauler["route"]=[]
-        if direction=="input":
-            # Inbound material is picked up from the town hall, not fabricated at the factory.
-            var cargo: Dictionary=_pick(queue,origin,"input")
-            if cargo.is_empty():continue
-            hauler["kind"]=cargo["kind"]
-            hauler["load"]=cargo["amount"]
-            hauler["phase"]="input_delivery"
-        else:
-            hauler["kind"]=""
-            hauler["load"]=0.0
-            hauler["phase"]="outbound"
-        return true
+    # Alternate input deliveries and output pickups when both are waiting.
+    # Prevent farm harvest backlog from starving processing-workshop inputs.
+    var last: String=String(sim.get("last_freight_direction","output"))
+    var preferred: String="input" if last=="output" else "output"
+    for wanted in [preferred,last]:
+        for job in queue:
+            var origin: int=int(job.get("origin",-1))
+            var direction: String=String(job.get("direction","output"))
+            if direction!=wanted or float(job.get("amount",0))<=0.0:continue
+            if _target(state,origin,pos).x>1000:continue
+            hauler["origin"]=origin
+            hauler["route"]=[]
+            if direction=="input":
+                var cargo: Dictionary=_pick(queue,origin,"input")
+                if cargo.is_empty():continue
+                hauler["kind"]=cargo["kind"]
+                hauler["load"]=cargo["amount"]
+                hauler["phase"]="input_delivery"
+            else:
+                hauler["kind"]=""
+                hauler["load"]=0.0
+                hauler["phase"]="outbound"
+            sim["last_freight_direction"]=direction
+            return true
     return false
 
 static func _assign(state: Dictionary) -> void:
