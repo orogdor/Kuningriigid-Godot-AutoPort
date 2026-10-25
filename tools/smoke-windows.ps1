@@ -85,7 +85,7 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $(
 
 # Prevent an old cached 0.3 rules-inspector from being mistaken for 0.5.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
-if ($contentScript -notmatch 'GODOT 0\\.5' -or $contentScript -notmatch 'Linnamajandus') {
+if ($contentScript -notmatch 'GODOT 0\.5' -or $contentScript -notmatch 'Linnamajandus') {
     throw "Installed project is not the AutoPort 0.5 city economy scene"
 }
 Write-Host "GODOT 0.5 CONTENT VERIFIED: city economy scene"
