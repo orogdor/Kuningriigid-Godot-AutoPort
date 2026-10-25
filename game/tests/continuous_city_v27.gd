@@ -6,6 +6,7 @@ const Screen=preload("res://content.tscn")
 const World=preload("res://scripts/world_gen_v06.gd")
 const Districts=preload("res://scripts/world_districts_v25.gd")
 const Continuous=preload("res://scripts/continuous_city_v27.gd")
+const Visuals30=preload("res://scripts/district_visuals_v30.gd")
 const Transit=preload("res://scripts/district_transit_v26.gd")
 
 func fail(reason: String) -> void:
@@ -85,11 +86,12 @@ func _test() -> void:
     if annex_root.get_node_or_null("house_"+str(annex_index))==null:
         fail("annex house was not rendered beside the capital without changing maps")
         return
-    var seam: bool=false
+    var expected_streets: int=Visuals30.connections(city,world,home,detail.shown_district_tiles).size()
+    var street_count: int=0
     for node in detail.combined_root.get_children():
-        if String(node.name).begins_with("ContinuousStreet_"):seam=true
-    if not seam:
-        fail("two owned neighboring tiles lacked their connecting 3D street")
+        if String(node.name).begins_with("ContinuousStreet_"):street_count+=1
+    if street_count!=expected_streets:
+        fail("visible 3D streets disagree with physically A*-passable shared gates")
         return
     if detail.controller.max_distance<=180.0:
         fail("multi-district camera stayed restricted to original detail tile")
