@@ -6,6 +6,7 @@ extends RefCounted
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Access = preload("res://scripts/building_access_v22.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
+const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const STEP: float = 10.0
 const WALK_PER_TURN: float = 24.0
 const GATHER_AMOUNT: float = 5.0
@@ -61,12 +62,17 @@ static func can_place(state: Dictionary, point: Vector2, district: String="") ->
         if String(b.get("district",""))!=district:continue
         var pos:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
         if pos.distance_to(p)<15.5:return false
-    if Terrain.river_lane(state.get("detail_sim",{}),p.x,p.y):return false
     var site_sim: Dictionary=state.get("detail_sim",{})
-    var local: Vector2i=Paths.grid(p)
-    if Terrain.too_steep(site_sim,local,local+Vector2i(1,0)) or Terrain.too_steep(site_sim,local,local+Vector2i(0,1)):
+    if district!="":
+        site_sim=state.get("transport_v26",{}).get("surfaces",{}).get(district,site_sim)
+    if Nav.enabled(site_sim):
+        if Nav.underwater(site_sim,p):return false
+    elif Terrain.river_lane(site_sim,p.x,p.y):
         return false
-    for site in state.get("detail_sim",{}).get("sites",[]):
+    var local: Vector2i=Paths.grid(p)
+    if not Nav.passable_step(site_sim,local,local+Vector2i(1,0)) or not Nav.passable_step(site_sim,local,local+Vector2i(0,1)):
+        return false
+    for site in site_sim.get("sites",[]):
         if float(site.get("remaining",0))>0.0:
             var node:=Vector2(float(site["x"]),float(site["z"]))
             if node.distance_to(p)<9.0:return false
