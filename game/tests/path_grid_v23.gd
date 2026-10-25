@@ -64,6 +64,17 @@ func _test() -> void:
     if samples!=867 or routes<5:
         fail("dense map test did not exercise enough grids and routes")
         return
+    # Repeated identical route queries must remain deterministic, and A*
+    # must not write temporary planning state into persistent save data.
+    var checksum_before: String=JSON.stringify(state)
+    var first_route: Array=Paths.find_path(state,Vector2(-70,-70),Vector2(-20,-70),-1)
+    var second_route: Array=Paths.find_path(state,Vector2(-70,-70),Vector2(-20,-70),-1)
+    if JSON.stringify(first_route)!=JSON.stringify(second_route):
+        fail("heap search was not deterministic for the same unchanged city")
+        return
+    if JSON.stringify(state)!=checksum_before:
+        fail("A* planning mutated the saved economic or city state")
+        return
     # Road junctions: four consecutively travelled cells join into three
     # continuous safe segments. Removing traffic prevents new connectors.
     var roads_state: Dictionary=City.default_state()
