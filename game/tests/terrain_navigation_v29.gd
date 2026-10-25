@@ -69,6 +69,9 @@ func _test() -> void:
     if Nav.passable_step(sim,bridge_cell,other):
         fail("A-star jumped across a 12m-wide river despite no bridge")
         return
+    if Nav.passable_step(sim,Vector2i(3,2),Vector2i(4,3)):
+        fail("diagonal A-star jump crossed the same visible river")
+        return
     # Natural ford x=0 exists in both visible models; x=30 is reserved
     # for a player-built bridge, and must be closed until payment.
     var ford: Vector2=Vector2(0,25)
