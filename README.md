@@ -62,3 +62,13 @@ Olulised failid: `game/scripts/logic_v02.gd`, `game/tests/logic_parity.gd` ja `t
 5. **Android:** alles seejärel APK ning uuendussüsteem ja telefonitestid.
 
 **Oluline:** kontrolltabelite edukas import ei tähenda, et kogu Three.js mängumehaanika oleks Godotisse üle kantud. Ka käsitsi Godoti-spetsiifilist tööd jääb vaja.
+
+## AutoPort 0.3: Windows EXE, Android APK ja uuendatav sisupakett
+
+Püsivad käivitajad on saadaval [GitHubi viimases väljalaskes](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/latest): `Kuningriigid.exe` (Windows x64), `Kuningriigid.apk` (Android ARM64) ja `Kuningriigid-Content.pck` (mõlema mängusisu).
+
+Käivitaja küsib igal avamisel avalikust GitHub Releases API-st viimast väljalaset, leiab `Kuningriigid-Content.pck` SHA-256 räsi, võrdleb seda oma vahemäluga, laadib muutunud paketi alla ja kontrollib SHA-256 täpset vastavust enne laadimist. Kui võrku pole, avaneb varem kontrollitud või APK/EXE kaasa pandud sisu. Pakett laaditakse läbi `ProjectSettings.load_resource_pack()` ja seejärel käivitatakse `res://content.tscn`. Käivitaja ise ei kirjuta APK-d ega EXE-d üle.
+
+Automaatne ehitus: `.github/workflows/build-apps.yml` ekspordib Godot 4.4.1 abil Windowsi EXE, Androidi test-APK ja PCK, lisab kontrollsummad ning avaldab GitHub Releases'i. Lisaks kontrollib see lõpetatud ajastatud veebimängu sünkroonimist ja jätab muutumata lähtekoodi korral kordusväljalaske tegemata.
+
+**Piirangud:** Androidi test-APK allkirjastatakse iga CI ehituse ajutise debug-võtmega. Sisupaketi uuendamine ei vaja uut APK paigaldamist, kuid uue APK versiooni installimine eelmise peale võib allkirja erinevuse tõttu nõuda vana APK eemaldamist. Päris ametlikuks APK uuendamiseks tuleb seadistada püsiv, salajas hoitav allkirjastamisvõti GitHubi Secrets'isse; seda ei tohi repositooriumis avaldada. Windowsi ja Androidi koodiga seotud mootoriparandused nõuavad mõnikord uue APK/EXE käsitsi paigaldamist. Praegune mängusisu on endiselt pordi kontrollrakendus.
