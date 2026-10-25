@@ -66,7 +66,7 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     var next_span: float=next_a.distance_to(next_b)
     # Moving fingers apart brings the camera closer; never invert at zero span.
     if old_span>8.0 and next_span>8.0:
-        distance=clampf(distance*powf(old_span/next_span,0.85),MIN_DISTANCE,MAX_DISTANCE)
+        distance=clampf(distance*pow(old_span/next_span,0.85),MIN_DISTANCE,MAX_DISTANCE)
     update_camera()
     # Keep the ground point previously beneath the midpoint beneath the
     # NEW midpoint. This simultaneously pans and provides anchored zoom.
