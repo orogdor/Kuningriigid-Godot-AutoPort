@@ -2,10 +2,13 @@ extends Control
 ## AutoPort 0.6 atlas screen: click a tile, zoom, pan, and return to 0.5 city.
 signal open_city_requested
 signal open_detail_requested(c: int, r: int)
+signal expand_requested(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
+const Districts = preload("res://scripts/world_districts_v25.gd")
 const SAVE_PATH: String = "user://autoport_world_v06.json"
 var world: Dictionary = {}
+var district_city: Dictionary={}
 var map_canvas: Control
 var status_label: Label
 var info_label: Label
@@ -22,7 +25,7 @@ func _ready() -> void:
     bar.add_theme_constant_override("separation",10)
     top.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.24"
+    title.text="KUNINGRIIGID • GODOT 0.25"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
@@ -34,6 +37,11 @@ func _ready() -> void:
     detail_button.text="Ava 3D detailkaart"
     detail_button.pressed.connect(open_selected_detail)
     bar.add_child(detail_button)
+    var annex:=Button.new()
+    annex.text="Liida linna ruut"
+    annex.pressed.connect(func():
+        if selected_cell.x>=0:expand_requested.emit(selected_cell.x,selected_cell.y))
+    bar.add_child(annex)
     var new_world:=Button.new()
     new_world.text="Uus maailm"
     new_world.pressed.connect(regenerate)
@@ -78,6 +86,7 @@ func _save_settings() -> void:
 func _generate() -> void:
     world=World.generate(seed,true)
     map_canvas.set_world(world)
+    _repaint_districts()
     if world["starts"].size()>0:
         var first: Dictionary=world["starts"][0]
         selected_cell=Vector2i(int(first["c"]),int(first["r"]))
@@ -93,6 +102,17 @@ func regenerate() -> void:
     status_label.text="Uue maailma genereerimine..."
     call_deferred("_generate")
 
+func set_city_districts(city: Dictionary) -> void:
+    district_city=city
+    _repaint_districts()
+
+func _repaint_districts() -> void:
+    if map_canvas==null or world.is_empty():return
+    var occupied: Array=[]
+    for p in Districts.cells(district_city,world):
+        occupied.append({"c":p.x,"r":p.y})
+    map_canvas.set_city_districts(occupied,Districts.connections(district_city,world))
+
 func _on_selected(c: int,r: int) -> void:
     selected_cell=Vector2i(c,r)
     var cell: Dictionary=World.cell(world,c,r)
@@ -103,6 +123,8 @@ func _on_selected(c: int,r: int) -> void:
     if bool(cell.get("river",false)):note=" • Jõgi"
     if biome=="sea":note+=" • Laevatamine tuleb hiljem"
     if biome=="hills":note+=" • Läbimatu mäestik"
+    if Districts.owns(district_city,world,c,r):
+        note+=" • Sinu linna territoorium"
     var home: String=""
     for i in range(world["starts"].size()):
         var s: Dictionary=world["starts"][i]
