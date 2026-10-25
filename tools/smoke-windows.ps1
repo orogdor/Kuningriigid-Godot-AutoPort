@@ -83,10 +83,10 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit 
 $p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
-# The active file-by-file release must contain 0.11 bridges and terrain-aware routing.
+# The active file-by-file release must contain the 0.11 physical builder and construction code.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
-if ($contentScript -notmatch 'GODOT 0\.10' -or $contentScript -notmatch 'Linnamajandus') {
-    throw "Installed project is not the AutoPort 0.11 city, river bridges and terrain prototype"
+if ($contentScript -notmatch 'GODOT 0\.11' -or $contentScript -notmatch 'Linnamajandus') {
+    throw "Installed project is not the AutoPort 0.11 city, visible builders and staged construction"
 }
 foreach ($part in @("scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
     if (-not (Test-Path (Join-Path $game $part))) {
