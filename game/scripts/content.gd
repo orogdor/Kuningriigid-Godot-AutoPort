@@ -4,6 +4,7 @@ extends Control
 const City = preload("res://scripts/city_sim_v05.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const WorldMap = preload("res://scripts/world_map_v06.gd")
+const DetailView = preload("res://scripts/detail_view_v07.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -17,6 +18,7 @@ const RESOURCE_LABELS: Dictionary = {
 var city: Dictionary = {}
 var city_scroll: ScrollContainer
 var world_view: Control
+var detail_view: Control
 var recipes: Dictionary = {}
 var stat_text: Label
 var population_bar: ProgressBar
@@ -48,16 +50,38 @@ func _ready() -> void:
     add_child(world_view)
     world_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     world_view.open_city_requested.connect(_show_city)
+    world_view.open_detail_requested.connect(_show_detail)
+    detail_view=DetailView.new()
+    add_child(detail_view)
+    detail_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    detail_view.return_requested.connect(_show_world)
+    detail_view.build_requested.connect(_build)
+    detail_view.turns_requested.connect(_advance)
+    detail_view.hide()
     city_scroll.hide()
 
 func _show_city() -> void:
     if world_view != null:world_view.hide()
+    if detail_view != null:detail_view.hide()
     if city_scroll != null:city_scroll.show()
     _refresh()
 
 func _show_world() -> void:
     if city_scroll != null:city_scroll.hide()
+    if detail_view != null:detail_view.hide()
     if world_view != null:world_view.show()
+
+func _show_detail(c: int, r: int) -> void:
+    if world_view == null or detail_view == null or world_view.world.is_empty():
+        return
+    var capital: bool=false
+    if world_view.world["starts"].size()>0:
+        var home: Dictionary=world_view.world["starts"][0]
+        capital=(int(home["c"])==c and int(home["r"])==r)
+    detail_view.open_tile(world_view.world,c,r,city,capital)
+    if city_scroll != null:city_scroll.hide()
+    if world_view != null:world_view.hide()
+    detail_view.show()
 
 func _load_city() -> Dictionary:
     if FileAccess.file_exists(SAVE_PATH):
@@ -181,12 +205,16 @@ func _advance(n: int) -> void:
         event_message += " Toidu või vee puudus!"
     _save()
     _refresh()
+    if detail_view != null and detail_view.visible:
+        detail_view.refresh_buildings()
 
 func _build(kind: String) -> void:
     var result: String = City.build(city,kind)
     event_message = result if result != "" else "Alustati ehitamist: " + String(recipes[kind].get("name",kind))
     _save()
     _refresh()
+    if detail_view != null and detail_view.visible:
+        detail_view.refresh_buildings()
 
 func _affordable(kind: String) -> bool:
     var d: Dictionary = recipes[kind]
