@@ -3,9 +3,11 @@ extends SubViewportContainer
 signal ground_clicked(position: Vector3)
 signal ground_hovered(position: Vector3)
 const MIN_DISTANCE: float=15.0
-const MAX_DISTANCE: float=180.0
-const HALF_WIDTH: float=112.5
-const HALF_DEPTH: float=97.5
+var max_distance: float=180.0
+var min_x: float=-112.5
+var max_x: float=112.5
+var min_z: float=-97.5
+var max_z: float=97.5
 
 var orbit_camera: Camera3D
 var yaw: float=-0.65
@@ -22,6 +24,28 @@ var multitouch_active: bool=false
 func _ready() -> void:
     stretch=true
     mouse_filter=Control.MOUSE_FILTER_STOP
+
+func set_city_bounds(bounds: Dictionary) -> void:
+    min_x=float(bounds.get("xmin",-112.5))
+    max_x=float(bounds.get("xmax",112.5))
+    min_z=float(bounds.get("zmin",-97.5))
+    max_z=float(bounds.get("zmax",97.5))
+    max_distance=maxf(180.0,float(bounds.get("span",180.0))*1.35)
+    look_at.x=clampf(look_at.x,min_x,max_x)
+    look_at.z=clampf(look_at.z,min_z,max_z)
+    distance=clampf(distance,MIN_DISTANCE,max_distance)
+    update_camera()
+
+func overview(bounds: Dictionary) -> void:
+    set_city_bounds(bounds)
+    look_at=bounds.get("midpoint",Vector3.ZERO)
+    distance=clampf(float(bounds.get("span",160.0))*1.20,76.0,max_distance)
+    update_camera()
+
+func focus(point: Vector3) -> void:
+    look_at.x=clampf(point.x,min_x,max_x)
+    look_at.z=clampf(point.z,min_z,max_z)
+    update_camera()
 
 func attach_camera(camera: Camera3D) -> void:
     orbit_camera=camera
@@ -66,26 +90,26 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     var next_span: float=next_a.distance_to(next_b)
     # Moving fingers apart brings the camera closer; never invert at zero span.
     if old_span>8.0 and next_span>8.0:
-        distance=clampf(distance*pow(old_span/next_span,0.85),MIN_DISTANCE,MAX_DISTANCE)
+        distance=clampf(distance*pow(old_span/next_span,0.85),MIN_DISTANCE,max_distance)
     update_camera()
     # Keep the ground point previously beneath the midpoint beneath the
     # NEW midpoint. This simultaneously pans and provides anchored zoom.
     var after: Variant=_plane_hit(next_middle)
     if before is Vector3 and after is Vector3:
         look_at+=before-after
-        look_at.x=clampf(look_at.x,-HALF_WIDTH,HALF_WIDTH)
-        look_at.z=clampf(look_at.z,-HALF_DEPTH,HALF_DEPTH)
+        look_at.x=clampf(look_at.x,min_x,max_x)
+        look_at.z=clampf(look_at.z,min_z,max_z)
         update_camera()
 
 func _gui_input(event: InputEvent) -> void:
     if event is InputEventMouseButton:
         var mouse_button: InputEventMouseButton=event
         if mouse_button.button_index==MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
-            distance=clampf(distance*0.88,MIN_DISTANCE,MAX_DISTANCE)
+            distance=clampf(distance*0.88,MIN_DISTANCE,max_distance)
             update_camera()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
-            distance=clampf(distance*1.12,MIN_DISTANCE,MAX_DISTANCE)
+            distance=clampf(distance*1.12,MIN_DISTANCE,max_distance)
             update_camera()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_RIGHT:
