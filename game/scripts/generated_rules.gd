@@ -2,7 +2,7 @@ extends RefCounted
 ## The exported JSON serves both Godot runtime and parity validation.
 const ALLOWED: Array[String] = [
     "manifest", "tech_tree", "tech_reforms", "production_reforms", "goods", "good_buildings",
-    "food_needs", "era_costs", "era_techs", "bronze_min_turns", "bronze_fortify_pop",
+    "food_needs", "era_costs", "era_techs", "city_buildings", "bronze_min_turns", "bronze_fortify_pop",
     "bronze_full_wall_pop", "science_per_resident", "science_per_city", "science_per_turn", "eureka_fraction"]
 
 static func read_table(table: String) -> Variant:
