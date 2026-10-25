@@ -27,6 +27,7 @@ const SURFACE_DEPTH: float = 195.0
 var world: Dictionary = {}
 var selected: Vector2i = Vector2i(-1,-1)
 var can_build: bool = false
+var district_id: String=""
 var city_state: Dictionary = {}
 var scene_root: Node3D
 var construction_root: Node3D
@@ -64,7 +65,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.24 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.25 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -351,6 +352,7 @@ func refresh_buildings() -> void:
         var buildings: Array=city_state.get("buildings",[])
         for i in range(buildings.size()):
             var building: Dictionary=buildings[i]
+            if String(building.get("district",""))!=district_id:continue
             var fallback:=Vector2(float((i%5-2)*26),float((i/5-2)*27))
             var pos:=Vector3(float(building.get("x",fallback.x)),0.0,float(building.get("z",fallback.y)))
             var holder:=Node3D.new()
@@ -515,13 +517,18 @@ func _refresh_roads() -> void:
     # Actual worn footpaths still arise ONLY from A* traffic.
     var buildings: Array=city_state.get("buildings",[])
     var connected: Dictionary={}
-    if not buildings.is_empty():
+    if district_id=="" and not buildings.is_empty():
         connected=Paths.connected_cells(city_state,Access.entrance(buildings[0]),0)
     for i in range(buildings.size()):
         var building: Dictionary=buildings[i]
+        if String(building.get("district",""))!=district_id:continue
         if float(building.get("hp",1.0))<=0.0:continue
         var centre: Vector2=Access.center(building)
         var entry: Vector2=Access.reachable_from_map(city_state,i,connected,0)
+        if district_id!="":
+            # In 0.25 an annex is a separate 3D tile. Its cross-tile
+            # logistics are not yet a single 3D pathfinding graph.
+            entry=Access.entrance(building)
         if entry.x>1000.0:continue
         var side: Vector2=(entry-centre).normalized()
         var mid: Vector2=centre+side*13.5
@@ -607,7 +614,7 @@ func _refresh_grid() -> void:
         for z in range(-7,8):
             for x in range(-7,8):
                 var point:=Vector2(float(x)*Spatial.STEP,float(z)*Spatial.STEP)
-                var allowed: bool=Spatial.can_place(city_state,point)
+                var allowed: bool=Spatial.can_place(city_state,point,district_id)
                 var shade:=Color(0.19,0.89,0.52,0.31) if allowed else Color(0.91,0.24,0.22,0.25)
                 _placement_tile(point,shade,"BuildPlotOpen" if allowed else "BuildPlotBlocked")
     placement_marker=_placement_tile(Vector2.ZERO,Color(1.0,0.83,0.27,0.72),"BuildPlacementPreview",9.4)
@@ -636,7 +643,7 @@ func _refresh_grid() -> void:
 func _set_placement_marker(cell: Vector2) -> void:
     placement_cell=cell
     if placement_marker==null:return
-    var valid: bool=can_build and Spatial.can_place(city_state,cell)
+    var valid: bool=can_build and Spatial.can_place(city_state,cell,district_id)
     var material: StandardMaterial3D=placement_marker.material_override as StandardMaterial3D
     material.albedo_color=Color(0.99,0.82,0.23,0.78) if valid else Color(1.0,0.14,0.19,0.83)
     placement_marker.position=Vector3(cell.x,0.32,cell.y)
@@ -684,7 +691,7 @@ func _ground_clicked(pos: Vector3) -> void:
         return
     var snapped: Vector2=Spatial.snap(Vector2(pos.x,pos.z))
     _set_placement_marker(snapped)
-    if not Spatial.can_place(city_state,snapped):
+    if not Spatial.can_place(city_state,snapped,district_id):
         if info!=null:info.text="Ehituskoht on hõivatud või väljaspool linna: "+str(snapped)
         return
     var kind: String=pending_build
@@ -701,8 +708,10 @@ func select_building(kind: String) -> void:
     # Preserve the original 0-degree starting orientation for all legacy
     # interactions. The separate planning button applies a street-aligned
     # facing only when the player explicitly requests it.
-    suggested_site=Planner.plan(city_state,kind)
+    suggested_site=Planner.plan(city_state,kind,district_id)
     placement_cell=suggested_site.get("position",Spatial.next_free(city_state))
+    if district_id!="" and suggested_site.is_empty():
+        placement_cell=Vector2(INF,INF)
     if placement_label!=null:
         placement_label.text="EHITUS: "+kind+" — plaanitud krunt on kollane. Pööra või vali muu roheline ruut."
     _refresh_grid()
@@ -710,7 +719,7 @@ func select_building(kind: String) -> void:
 
 func _recommend_placement() -> void:
     if pending_build=="" or pending_build=="bridge" or not can_build:return
-    suggested_site=Planner.plan(city_state,pending_build)
+    suggested_site=Planner.plan(city_state,pending_build,district_id)
     if suggested_site.is_empty():
         if placement_label!=null:placement_label.text="Vaba ligipääsetavat krunti ei leitud."
         return
@@ -726,6 +735,7 @@ func _recommend_placement() -> void:
 func _refresh_info() -> void:
     if info==null:return
     var text_line: String="%s • Detailruut %d × %d • %s • 225 × 195 m" % [String(city_state.get("city_name","Pealinn")),selected.x,selected.y,selected_biome]
+    if district_id!="":text_line+=" • Linna laiendus (ühine ladu)"
     if can_build and city_state.has("realms"):
         var realm: Dictionary=city_state["realms"][0]
         var resources: Dictionary=realm["resources"]
@@ -795,7 +805,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.24: linna krundiplaneerija, jagatud 3D materjalid ja kiirem uksetänavate arvutus."
+    note.text="0.25: naaberlinnaosade ehituskrundid ja ühine linnamajandus; ülemaailmne kaubatee on veel prototüüp."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -827,11 +837,12 @@ func _can_build(kind: String) -> bool:
         if not exists:return false
     return CityEconomy.can_afford(city_state["realms"][0]["resources"],d.get("cost",{}))
 
-func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool) -> void:
+func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool, district: String="") -> void:
     world=next_world
     selected=Vector2i(c,r)
     city_state=city
     can_build=capital
+    district_id=district
     pending_build=""
     placement_rotation=0
     placement_cell=Vector2(INF,INF)
@@ -841,10 +852,13 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     if can_build:
         Spatial.initialize(city_state)
         Freight.initialize(city_state)
-        var terrain_sim: Dictionary=city_state["detail_sim"]
-        var current_tile: Dictionary=World.cell(world,c,r)
-        terrain_sim["terrain"]=String(current_tile.get("biome","plains"))
-        terrain_sim["river"]=bool(current_tile.get("river",false))
+        # Annexed tiles have their own surface; do not overwrite the
+        # capital's stored local terrain/river routing when opening one.
+        if district_id=="":
+            var terrain_sim: Dictionary=city_state["detail_sim"]
+            var current_tile: Dictionary=World.cell(world,c,r)
+            terrain_sim["terrain"]=String(current_tile.get("biome","plains"))
+            terrain_sim["river"]=bool(current_tile.get("river",false))
     if scene_root==null:return
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
