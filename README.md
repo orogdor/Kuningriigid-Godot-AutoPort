@@ -111,3 +111,13 @@ GitHub Actions ehitab EXE ja Androidi APK, genereerib Windowsi manifesti ning av
 **Piirang:** kinnitatud on GitHub Actionsi Windowsi käivitaja koostamine, 29-failise manifesti genereerimine, Godoti impordi test ning APK ehitamine. Tegelikku esmakäivitust Windowsi graafilisel töölaual tuleb veel eraldi kontrollida. Godoti port ise näitab praegu reeglite eelvaadet, mitte veel mängitavat maailma.
 
 **Windowsi integratsioonitest läbitud 25.10.2026:** [GitHub Actions #40174914067](https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/40174914067) tõmbas esmakäivitusel alla käivitaja, eraldi Godoti mootori ja mängufailid, kontrollis päris failistruktuuri, käivitas Godoti projekti peata režiimis ning kinnitas teise käivituse ilma internetita. Mängu täielikku kasutajaliidest pole veel eraldi testitud.
+
+## AutoPort 0.5 — mängitav kiviaja linnamajandus
+
+`game/scripts/city_sim_v05.gd` sisaldab ühe linna GDScripti majandussimulatsiooni. `game/scripts/content.gd` pakub interaktiivset ehitusmenüüd, hoonete töö- ja ehitusstaatust, varusid, elanike ja majade mahtu, toitlustust, veevaru, teaduse baasmäära, 1/10/200 käigu nuppe, automaatset käiguvahetust ning salvestust `user://autoport_city_v05.json` kaudu.
+
+Mänguajad: üks käik on üks mänguminut; toidukulu `0,60` ja veekulu `0,45` elaniku kohta minutis, linnahalli mahutavus `4` ja elamu lisamahutavus `1,5`. Majanduse tootmistsüklid, ehituskulud, hoonete nõuded, töötajate tõhusus ja elanike kasv on võetud originaalist `economy.js`, `labor.js` ja kontrollitud `civilization-core.js` muudatustest. Veebimängu ennast ei muudeta.
+
+**Pariteedikontroll:** `tools/generate-city-v05-fixtures.mjs` käivitab originaalse `economy.js::tickEconomy()` kuues stsenaariumis **200 järjestikust käiku** ning `game/tests/city_v05_parity.gd` kontrollib kõiki 1200 tulemust Godoti enda arvutustega. Test hõlmab tootmist, tööliste jaotust, ehituse valmimist, toidu/vee tarbimist, puudusest tingitud elanike vähenemist ja turu- ning jõukusboonust. `game/tests/city_v05_ui.gd` kontrollib stseeni käivitamist, hoone ehitamist, kümmet käiku ja salvestust. Mõlemad testid peavad läbima GitHub Actionsi enne uut väljalaset.
+
+**Oluline piirang:** see on sihilikult piiratud, aga reeglitruu *ühe linna* majanduskatse. Allalaaditav linn ei ole veel 3D-maailm ega terviklik RTS. Simulatsioonis jõuavad kaubad abstraktselt kohe lattu, maardlate ammendumist, kaugtranspordi, põldude geomeetriat, AI linnade otsuseid ja sõdu veel ei arvutata. Teadus on näidatud elanike baasmäärana, täielik avastuste uurimine on alles lisamata. AutoPort 0.5 alustatakse vana käivitajaga uue sisupaketina; Windows saab üksikfailid GitHubist ja Android jätkab PCK uuendust.
