@@ -156,6 +156,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_rotation_v21.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/building_access_v22.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/path_grid_v23.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_growth_v24.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v08_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/spatial_paths_v09.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_terrain_v10.gd
@@ -218,12 +219,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.23.${{ github.run_number }}"
+          VERSION="v0.24.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.23 uses a binary-heap A-star queue and precomputed per-route obstacle grids to accelerate dense 3D towns, plus safe continuous traffic-driven street connectors that decay when unused. Retains rotated building entrances, resources, caravans, and legacy save compatibility. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
+            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.24 adds a deterministic compact urban plot planner, routes all visual entrances using one connected road network, and reuses identical 3D box meshes/materials for improved dense-town performance. Preserves 0.23 A-star, housing costs, rotation, freight and old saves. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
             --latest
