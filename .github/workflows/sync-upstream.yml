@@ -57,6 +57,14 @@ jobs:
         run: |
           UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
           node tools/generate-logic-fixtures.mjs --source ../upstream --out game/tests/logic_parity_cases.json --commit "$UPSTREAM_SHA"
+      - name: Generate upstream-backed city recipes and 6 x 200-turn reference simulation
+        working-directory: port
+        shell: bash
+        run: |
+          UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
+          node tools/generate-city-v05-fixtures.mjs --source ../upstream \
+            --definitions game/data/generated/city_buildings.json \
+            --fixtures game/tests/city_v05_fixtures.json --commit "$UPSTREAM_SHA"
       - name: Validate Godot 4 import and headless launch
         working-directory: port
         shell: bash
@@ -73,6 +81,10 @@ jobs:
         working-directory: port
         run: |
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/logic_parity.gd
+      - name: Verify 200 turns of real upstream economy.js against Godot 0.5
+        working-directory: port
+        run: |
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
       - name: Save generated rules to AutoPort repository only
         working-directory: port
         shell: bash
@@ -85,6 +97,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             node tools/port.mjs --source ../upstream --out game/data/generated --commit "$UPSTREAM_SHA"
+            node tools/generate-city-v05-fixtures.mjs --source ../upstream \
+              --definitions game/data/generated/city_buildings.json \
+              --fixtures game/tests/city_v05_fixtures.json --commit "$UPSTREAM_SHA"
             git add game/data/generated/
             if git diff --cached --quiet; then
               echo 'Rules already synced.'
