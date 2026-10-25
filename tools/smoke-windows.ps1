@@ -83,12 +83,16 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit 
 $p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
-# Prevent an old cached 0.3 rules-inspector from being mistaken for 0.5.
+# Prevent old 0.3 inspector from being mistaken for the 0.8 detail prototype.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
-if ($contentScript -notmatch 'GODOT 0\.5' -or $contentScript -notmatch 'Linnamajandus') {
-    throw "Installed project is not the AutoPort 0.5 city economy scene"
+if ($contentScript -notmatch 'GODOT 0\.8' -or $contentScript -notmatch 'Linnamajandus') {
+    throw "Installed project is not the AutoPort 0.8 city and 3D detail prototype"
 }
-Write-Host "GODOT 0.5 CONTENT VERIFIED: city economy scene"
+if (-not (Test-Path (Join-Path $game "scripts/spatial_economy_v08.gd")) -or
+    -not (Test-Path (Join-Path $game "tests/detail_v08_ui.gd"))) {
+    throw "Missing spatial economy and worker interaction files"
+}
+Write-Host "GODOT 0.8 CONTENT VERIFIED: city economy, detail map and physical workers"
 
 $count = (Get-ChildItem -Path $game -Recurse -File | Measure-Object).Count
 if ($count -lt 20) { throw "Expected game directory with many distinct files; found $count" }
