@@ -2,10 +2,13 @@
 package main
 
 import (
+ "os"
+ "fmt"
  "syscall"
  "unsafe"
 )
 func showFatal(message string){
+ if os.Getenv("CI") == "true" {fmt.Fprintln(os.Stderr,message);return}
  dll:=syscall.NewLazyDLL("user32.dll")
  proc:=dll.NewProc("MessageBoxW")
  title,_:=syscall.UTF16PtrFromString("Kuningriigid")
