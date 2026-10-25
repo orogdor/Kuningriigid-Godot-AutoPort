@@ -56,6 +56,7 @@ func _ready() -> void:
     detail_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     detail_view.return_requested.connect(_show_world)
     detail_view.build_requested.connect(_build)
+    detail_view.build_at_requested.connect(_build_at)
     detail_view.turns_requested.connect(_advance)
     detail_view.hide()
     city_scroll.hide()
@@ -79,6 +80,7 @@ func _show_detail(c: int, r: int) -> void:
         var home: Dictionary=world_view.world["starts"][0]
         capital=(int(home["c"])==c and int(home["r"])==r)
     detail_view.open_tile(world_view.world,c,r,city,capital)
+    if capital:_save()
     if city_scroll != null:city_scroll.hide()
     if world_view != null:world_view.hide()
     detail_view.show()
@@ -128,7 +130,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.5",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.8",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -173,7 +175,7 @@ func _setup_ui() -> void:
     body.add_child(construction_rows)
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.6: maailmakaardi proovivaade ja 0.5 linnamajandus on ühendatud. Maardlad, füüsiline kaubavedu, AI ja sõjad tulevad hiljem."
+    note.text="0.8: detailkaardi ehitusalad, liikuvad metsa- ja kivikorjajad ning lõplikud kohalikud maavarad. AI, teed ja sõjad tulevad hiljem."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -215,6 +217,12 @@ func _build(kind: String) -> void:
     _refresh()
     if detail_view != null and detail_view.visible:
         detail_view.refresh_buildings()
+
+func _build_at(kind: String, x: float, z: float) -> void:
+    city["pending_site"]={"x":x,"z":z}
+    _build(kind)
+    city.erase("pending_site")
+    _save()
 
 func _affordable(kind: String) -> bool:
     var d: Dictionary = recipes[kind]
