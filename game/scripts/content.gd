@@ -197,7 +197,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.18",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.19",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -260,7 +260,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.18: mobiilis kahe sõrmega maailmakaardi suum; 0.17 kaubakaravanid ja teise linna ehitus-AI säilivad."
+    note.text="0.19: kahe sõrmega 3D kaamera suum ja nihutamine; 0.18 maailmakaardi žestid ning 0.17 kaubandus säilivad."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
