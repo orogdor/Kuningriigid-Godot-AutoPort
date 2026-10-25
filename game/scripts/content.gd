@@ -7,6 +7,7 @@ const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
 const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const WorldMap = preload("res://scripts/world_map_v06.gd")
+const WorldGen = preload("res://scripts/world_gen_v06.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
@@ -29,6 +30,8 @@ var workshop_rows: VBoxContainer
 var construction_rows: VBoxContainer
 var info_text: Label
 var trade_label: Label
+var satellite_label: Label
+var detail_town: String="capital"
 var auto_button: Button
 var timer: Timer
 var event_message: String = "Alusta kiviaegse linna rajamist."
@@ -67,7 +70,56 @@ func _ready() -> void:
     detail_view.hide()
     city_scroll.hide()
 
+func _detail_state() -> Dictionary:
+    if detail_town=="outpost" and Trade.has_outpost(city):
+        return Trade.ensure_city(city)
+    return city
+
+func _satellite_tile() -> Dictionary:
+    if not Trade.has_outpost(city) or world_view==null or world_view.world.is_empty():return {}
+    var trade: Dictionary=city["trade_v15"]
+    if trade.has("position"):
+        return trade["position"]
+    var home: Dictionary=world_view.world["starts"][0]
+    var hc: int=int(home["c"])
+    var hr: int=int(home["r"])
+    for radius in range(3,12):
+        for dz in range(-radius,radius+1):
+            for dx in range(-radius,radius+1):
+                if maxi(absi(dx),absi(dz))!=radius:continue
+                var c: int=hc+dx
+                var r: int=hr+dz
+                var cell: Dictionary=WorldGen.cell(world_view.world,c,r)
+                if cell.is_empty() or not bool(cell.get("land",false)):continue
+                if String(cell.get("biome","")) in ["sea","hills"]:continue
+                var occupied: bool=false
+                for st in world_view.world.get("starts",[]):
+                    if int(st["c"])==c and int(st["r"])==r:occupied=true
+                if occupied:continue
+                trade["position"]={"c":c,"r":r,"seed":int(world_view.world.get("seed",0))}
+                return trade["position"]
+    return {}
+
+func _open_satellite() -> void:
+    if not Trade.has_outpost(city):
+        event_message="Asuta kõigepealt teine linn"
+        _refresh()
+        return
+    var location: Dictionary=_satellite_tile()
+    if location.is_empty():
+        event_message="Teisele linnale ei leitud sobivat maismaaruutu"
+        _refresh()
+        return
+    detail_town="outpost"
+    var satellite: Dictionary=Trade.ensure_city(city)
+    detail_view.open_tile(world_view.world,int(location["c"]),int(location["r"]),satellite,true)
+    _save()
+    city_scroll.hide()
+    world_view.hide()
+    detail_view.show()
+
 func _show_city() -> void:
+    detail_town="capital"
     if world_view != null:world_view.hide()
     if detail_view != null:detail_view.hide()
     if city_scroll != null:city_scroll.show()
@@ -85,8 +137,14 @@ func _show_detail(c: int, r: int) -> void:
     if world_view.world["starts"].size()>0:
         var home: Dictionary=world_view.world["starts"][0]
         capital=(int(home["c"])==c and int(home["r"])==r)
-    detail_view.open_tile(world_view.world,c,r,city,capital)
-    if capital:_save()
+    var satellite: bool=false
+    if Trade.has_outpost(city):
+        var loc: Dictionary=_satellite_tile()
+        satellite=not loc.is_empty() and int(loc["c"])==c and int(loc["r"])==r
+    detail_town="outpost" if satellite else "capital"
+    var active: Dictionary=Trade.ensure_city(city) if satellite else city
+    detail_view.open_tile(world_view.world,c,r,active,capital or satellite)
+    if capital or satellite:_save()
     if city_scroll != null:city_scroll.hide()
     if world_view != null:world_view.hide()
     detail_view.show()
@@ -136,7 +194,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.15",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.16",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -184,15 +242,19 @@ func _setup_ui() -> void:
     trade_label=_heading("",15)
     trade_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(trade_label)
+    satellite_label=_heading("",15)
+    satellite_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    body.add_child(satellite_label)
     var trading:=HFlowContainer.new()
     body.add_child(trading)
     trading.add_child(_button("Asuta teine linn",_found_trade_city))
+    trading.add_child(_button("Ava teise linna 3D detailkaart",_open_satellite))
     trading.add_child(_button("Saada 5 puitu teise linna",func(): _trade_send("outpost","wood",5.0)))
     trading.add_child(_button("Saada 5 leiba teise linna",func(): _trade_send("outpost","bread",5.0)))
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.15: vankrid veavad nüüd ka sisendmaterjale ja kaubakaravanid ühendavad kaks eraldi ladu. Teise linna ehitus ja AI pole veel üle toodud."
+    note.text="0.16: teine linn areneb eraldi, oma elanike, hoonete ja laoga. Ava teise linna 3D kaart ning ehita sinna maju ja tootmishooneid. AI pole veel üle toodud."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -240,7 +302,7 @@ func _advance(n: int) -> void:
         detail_view.refresh_buildings()
 
 func _build(kind: String) -> void:
-    var result: String = City.build(city,kind)
+    var result: String = City.build(_detail_state(),kind)
     event_message = result if result != "" else "Alustati ehitamist: " + String(recipes[kind].get("name",kind))
     _save()
     _refresh()
@@ -248,20 +310,21 @@ func _build(kind: String) -> void:
         detail_view.refresh_buildings()
 
 func _build_at(kind: String, x: float, z: float) -> void:
-    city["pending_site"]={"x":x,"z":z}
+    var active: Dictionary=_detail_state()
+    active["pending_site"]={"x":x,"z":z}
     _build(kind)
-    city.erase("pending_site")
+    active.erase("pending_site")
     _save()
 
 func _change_priority(index: int, level: String) -> void:
-    if Schedule.change_priority(city,index,level):
+    if Schedule.change_priority(_detail_state(),index,level):
         event_message="Ehitus #%d on nüüd %s prioriteediga." % [index,level]
         _save()
         _refresh()
         if detail_view!=null and detail_view.visible:detail_view.refresh_buildings()
 
 func _build_bridge(x: float) -> void:
-    var outcome: String=Spatial.build_bridge(city,x)
+    var outcome: String=Spatial.build_bridge(_detail_state(),x)
     event_message="Sild valmis X %.0f meetri kohal" % x if outcome=="" else outcome
     _save()
     _refresh()
@@ -300,6 +363,15 @@ func _refresh() -> void:
         shown.append("%s: %.1f" % [RESOURCE_LABELS[kind],float(stock.get(kind,0))])
     stat_text.text += "     ".join(shown)
     if trade_label!=null:trade_label.text=Trade.overview(city)
+    if satellite_label!=null:
+        if Trade.has_outpost(city):
+            var satellite: Dictionary=Trade.ensure_city(city)
+            var sr: Dictionary=satellite["realms"][0]
+            var ss: Dictionary=sr["resources"]
+            satellite_label.text="Teise linna elanikud %d / %.0f | Ehitised %d | Puit %.0f | Vesi %.0f | Leib %.0f | Käik %d" % [
+                int(sr["pop"]),City.housing_capacity(satellite["buildings"]),satellite["buildings"].size(),
+                float(ss.get("wood",0)),float(ss.get("water",0)),float(ss.get("bread",0)),int(float(satellite["time"])/60)]
+        else:satellite_label.text="Teise linna iseseisev majandus avaneb pärast asutamist."
     population_bar.max_value=maxf(1.0,cap)
     population_bar.value=pop
     var next_growth: float = float(realm.get("growthNeed",2.3+pop*0.28))
