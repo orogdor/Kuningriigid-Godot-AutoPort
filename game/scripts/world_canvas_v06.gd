@@ -16,6 +16,8 @@ var trade_route: Dictionary={}
 var trade_caravans: Array=[]
 var city_district_tiles: Array=[]
 var city_district_links: Array=[]
+var city_agents: Array=[]
+var capital_district_id: String=""
 # Track physical fingers independently; never select a tile after a pinch.
 var touch_points: Dictionary={}
 var gesture_active: bool=false
@@ -64,6 +66,11 @@ func set_trade_route(route: Dictionary, moving: Array) -> void:
 func set_city_districts(tiles: Array, links: Array) -> void:
     city_district_tiles=tiles.duplicate(true)
     city_district_links=links.duplicate(true)
+    queue_redraw()
+
+func set_city_agents(agents: Array, capital: String) -> void:
+    city_agents=agents.duplicate(true)
+    capital_district_id=capital
     queue_redraw()
 
 func fit_to_view() -> void:
@@ -157,6 +164,22 @@ func _draw() -> void:
         var b: Vector2=point(float(other.get("c",0))+0.5,float(other.get("r",0))+0.5)
         draw_line(a,b,Color("#483427"),maxf(1.5,zoom*0.52),true)
         draw_line(a,b,Color("#ebbd79"),maxf(1.0,zoom*0.22),true)
+    # Each moving wagon/builder has an exact current world tile and a
+    # local 3D position. Keep map pins anchored across the full route.
+    for agent in city_agents:
+        var district: String=String(agent.get("district",""))
+        if district=="":district=capital_district_id
+        var parts: PackedStringArray=district.split(":")
+        if parts.size()!=2:continue
+        var c: float=float(int(parts[0]))
+        var r: float=float(int(parts[1]))
+        var local_x: float=clampf(float(agent.get("x",0.0)),-70.0,70.0)
+        var local_z: float=clampf(float(agent.get("z",0.0)),-70.0,70.0)
+        var loc: Vector2=point(c+0.5+local_x/160.0,r+0.5+local_z/160.0)
+        var is_wagon: bool=String(agent.get("role","")) in ["wagon","input_wagon","material"]
+        draw_circle(loc,maxf(2.5,zoom*0.22),Color("#ef8639") if is_wagon else Color("#dfeacf"))
+        if float(agent.get("load",0))>0.0:
+            draw_arc(loc,maxf(3.5,zoom*0.33),0.0,TAU,12,Color("#493024"),1.1,true)
     var colors: Array[Color]=[Color("#e9f6ff"),Color("#ff9f87"),Color("#ffc85d"),Color("#bb95e8")]
     for i in range(world.get("starts",[]).size()):
         var site: Dictionary=world["starts"][i]
