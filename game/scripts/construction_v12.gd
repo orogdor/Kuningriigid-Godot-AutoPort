@@ -4,6 +4,7 @@ extends RefCounted
 ## The build cost remains deducted ONCE in City.build; workers move those
 ## already-reserved resources from town hall to a construction site.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
+const Access=preload("res://scripts/building_access_v22.gd")
 const Old = preload("res://scripts/construction_v11.gd")
 const Scheduler = preload("res://scripts/construction_scheduler_v13.gd")
 const MAX_CREW_PER_SITE: int=2
@@ -76,23 +77,9 @@ static func _idle(worker: Dictionary) -> void:
 static func _assign(state: Dictionary) -> void:
     Scheduler.assign(state)
 
-static func _approach(state: Dictionary, worker: Dictionary, building: Dictionary) -> Vector2:
-    var center:=Vector2(float(building.get("x",0)),float(building.get("z",0)))
+static func _approach(state: Dictionary, worker: Dictionary, index: int) -> Vector2:
     var current:=Vector2(float(worker.get("x",0)),float(worker.get("z",0)))
-    var candidate:=Vector2(99999.0,99999.0)
-    var best: float=INF
-    for dx in [-20.0,0.0,20.0]:
-        for dz in [-20.0,0.0,20.0]:
-            if dx==0.0 and dz==0.0:continue
-            var position:=center+Vector2(dx,dz)
-            if not Paths.bounded(Paths.grid(position)) or Paths.blocked(state,Paths.grid(position),0):
-                continue
-            if Paths.find_path(state,current,position,0).is_empty():continue
-            var score: float=current.distance_to(position)
-            if score<best:
-                best=score
-                candidate=position
-    return candidate
+    return Access.reachable(state,index,current,0)
 
 static func _move(worker: Dictionary, position: Vector2, state: Dictionary, effort: float) -> bool:
     if absf(position.x)>1000:return false
@@ -133,7 +120,8 @@ static func tick(state: Dictionary, specs: Dictionary) -> void:
         # Hall is a permitted A* origin; the path planner ignores its
         # collision hull only for these resident construction crews.
         if phase=="to_hall":
-            if not _move(worker,Vector2.ZERO,state,efficiency):continue
+            var hall_entry: Vector2=Access.reachable(state,0,pos,0)
+            if not _move(worker,hall_entry,state,efficiency):continue
             worker["phase"]="loading"
             phase="loading"
         if phase=="loading":
@@ -148,7 +136,7 @@ static func tick(state: Dictionary, specs: Dictionary) -> void:
                 worker["route"]=[]
             phase="to_site"
         if phase=="to_site" or phase=="working" or phase=="waiting_material":
-            var site_position: Vector2=_approach(state,worker,b)
+            var site_position: Vector2=_approach(state,worker,idx)
             if absf(site_position.x)>1000:
                 worker["phase"]="no_route"
                 continue
