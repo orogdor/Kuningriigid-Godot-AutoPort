@@ -198,3 +198,159 @@ static func terrain(seed: int, with_islands: bool = true) -> Dictionary:
                 "river":false, "river_to":-1, "river_flow":0})
     return {"seed":seed,"cols":COLS,"rows":ROWS,"layout":landform,"cells":cells,
         "land_count":land_count,"mountain_count":mountain_count}
+
+static func coastal_starts(world: Dictionary) -> Array:
+    # Same shoreline quality/separation strategy as coastal-starts.js,
+    # sampled over the new Godot height approximation.
+    var cells: Array = world["cells"]
+    var preferred: Array = world["layout"]["starts"]
+    var candidates: Array = []
+    var neighbors: Array[Vector2i] = [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]
+    for r in range(3, ROWS-3):
+        for c in range(3, COLS-3):
+            var cell: Dictionary = cells[r*COLS+c]
+            var h: float = float(cell["h"])
+            if h <= 1.25 or h >= 30.0:
+                continue
+            var at_coast: bool = false
+            for d in neighbors:
+                if float(cells[(r+d.y)*COLS+c+d.x]["h"]) <= 0.0:
+                    at_coast=true
+            if not at_coast:
+                continue
+            var dry: int=0
+            var local: int=0
+            var shelter: int=0
+            for dr in range(-2,3):
+                for dc in range(-2,3):
+                    var a: float=float(cells[(r+dr)*COLS+c+dc]["h"])
+                    if a>0.0 and a<30.0:
+                        dry+=1
+                        if absi(dc)<=1 and absi(dr)<=1: local+=1
+                    if absi(dc)+absi(dr)==1 and a>0.0: shelter+=1
+            if dry<11 or local<5 or shelter<2:
+                continue
+            var quality: float=dry*0.32+local*0.8+shelter*1.4-maxf(0.0,h-18.0)*0.3
+            candidates.append({"c":c,"r":r,"quality":quality})
+    var starts: Array = []
+    for team in range(4):
+        var target: Dictionary=preferred[team] if team<preferred.size() else {"c":int(COLS*(0.23 if team%2==0 else 0.77)),"r":int(ROWS*(0.23 if team<2 else 0.77))}
+        var score: float=-INF
+        var winner: Variant=null
+        for p in candidates:
+            var nearest: float=INF
+            for s in starts:
+                nearest=minf(nearest,Vector2(float(s["c"])-p["c"],float(s["r"])-p["r"]).length())
+            if nearest<28.0:continue
+            var distance: float=Vector2(float(target["c"])-p["c"],float(target["r"])-p["r"]).length()
+            var potential: float=-distance*1.15+float(p["quality"])+(minf(nearest,70.0)*0.38 if not is_inf(nearest) else 0.0)
+            if potential>score:
+                winner=p
+                score=potential
+        if winner==null:
+            break
+        starts.append({"c":winner["c"],"r":winner["r"]})
+    return starts
+
+static func _heap_push(heap: Array, cost: float, index: int) -> void:
+    var i: int=heap.size()
+    heap.append([cost,index])
+    while i>0:
+        var parent: int=(i-1)/2
+        if float(heap[parent][0])<=cost:break
+        heap[i]=heap[parent]
+        i=parent
+    heap[i]=[cost,index]
+
+static func _heap_pop(heap: Array) -> Array:
+    var top: Array=heap[0]
+    var last: Array=heap.pop_back()
+    if heap.size()>0:
+        var i: int=0
+        while i*2+1<heap.size():
+            var child: int=i*2+1
+            if child+1<heap.size() and float(heap[child+1][0])<float(heap[child][0]):
+                child+=1
+            if float(heap[child][0])>=float(last[0]):break
+            heap[i]=heap[child]
+            i=child
+        heap[i]=last
+    return top
+
+static func add_drainage(world: Dictionary) -> void:
+    # Priority-flood drainage tree as in world-geography.js.
+    # Only the underlying heights differ until continuous terrain is ported.
+    var cells: Array=world["cells"]
+    var total: int=COLS*ROWS
+    var visited:=PackedByteArray()
+    visited.resize(total)
+    visited.fill(0)
+    var down:=PackedInt32Array()
+    down.resize(total)
+    down.fill(-1)
+    var accumulation:=PackedFloat64Array()
+    accumulation.resize(total)
+    accumulation.fill(1.0)
+    var heap: Array=[]
+    var ordering:=PackedInt32Array()
+    for i in range(total):
+        var cell: Dictionary=cells[i]
+        if not bool(cell["land"]) or int(cell["c"])==0 or int(cell["r"])==0 or int(cell["c"])==COLS-1 or int(cell["r"])==ROWS-1:
+            visited[i]=1
+            _heap_push(heap,float(cell["h"]),i)
+    while not heap.is_empty():
+        var item: Array=_heap_pop(heap)
+        var current: int=int(item[1])
+        var elevation: float=float(item[0])
+        ordering.append(current)
+        var c: int=current%COLS
+        var r: int=current/COLS
+        for delta in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
+            var x: int=c+delta.x
+            var y: int=r+delta.y
+            if x<0 or y<0 or x>=COLS or y>=ROWS:continue
+            var adjacent: int=y*COLS+x
+            if visited[adjacent]!=0:continue
+            visited[adjacent]=1
+            down[adjacent]=current
+            _heap_push(heap,maxf(float(cells[adjacent]["h"]),elevation+0.00001),adjacent)
+    for k in range(ordering.size()-1,-1,-1):
+        var i: int=ordering[k]
+        var parent: int=down[i]
+        if parent>=0:accumulation[parent]+=accumulation[i]
+    var count: int=0
+    for i in range(total):
+        var cell: Dictionary=cells[i]
+        if not bool(cell["land"]) or down[i]<0 or accumulation[i]<37.0 or float(cell["h"])<1.5:continue
+        var near_start: bool=false
+        for start in world["starts"]:
+            if absi(int(start["c"])-int(cell["c"]))+absi(int(start["r"])-int(cell["r"]))<2:
+                near_start=true
+        if near_start:continue
+        cell["river"]=true
+        cell["river_to"]=int(down[i])
+        cell["river_flow"]=int(round(accumulation[i]))
+        count+=1
+    world["drainage_down"]=down
+    world["river_count"]=count
+
+static func generate(seed: int=82026, with_islands: bool=true) -> Dictionary:
+    var world: Dictionary=terrain(seed,with_islands)
+    world["starts"]=coastal_starts(world)
+    add_drainage(world)
+    return world
+
+static func cell(world: Dictionary, c: int, r: int) -> Dictionary:
+    if c<0 or r<0 or c>=COLS or r>=ROWS:return {}
+    return world["cells"][r*COLS+c]
+
+static func river_reaches_sea(world: Dictionary, c: int, r: int) -> bool:
+    var down: PackedInt32Array=world.get("drainage_down",PackedInt32Array())
+    var pos: int=r*COLS+c
+    if pos<0 or pos>=down.size():return false
+    var steps: int=0
+    while pos>=0 and steps<COLS*ROWS:
+        if not bool(world["cells"][pos]["land"]):return true
+        pos=down[pos]
+        steps+=1
+    return false
