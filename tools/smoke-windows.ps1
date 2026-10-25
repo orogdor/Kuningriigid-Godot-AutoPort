@@ -51,6 +51,15 @@ Start-And-Wait-Launcher
 Start-Sleep -Seconds 3
 Kill-Test-Engine
 
+# Every first install must visibly advance the update percentage to 100%.
+$progressLog = Join-Path $env:KUNINGRIIGID_HOME "last-update-progress.log"
+if (-not (Test-Path $progressLog)) { throw "Missing UPDATE progress tracking log" }
+$progressText = Get-Content $progressLog -Raw
+if (-not ($progressText -match '0% UPDATE' -and $progressText -match '100% UPDATE')) {
+    throw "Expected UPDATE progress from 0% to 100%; got $progressText"
+}
+Write-Host "UPDATE PROGRESS OK: percentage from 0 to 100"
+
 $stateFile = Join-Path $env:KUNINGRIIGID_HOME "active.json"
 if (-not (Test-Path $stateFile)) { throw "Missing installed version state" }
 $state = Get-Content $stateFile -Raw | ConvertFrom-Json
@@ -74,6 +83,13 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit 
 $p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
+# Prevent an old cached 0.3 rules-inspector from being mistaken for 0.5.
+$contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
+if ($contentScript -notmatch 'GODOT 0\\.5' -or $contentScript -notmatch 'Linnamajandus') {
+    throw "Installed project is not the AutoPort 0.5 city economy scene"
+}
+Write-Host "GODOT 0.5 CONTENT VERIFIED: city economy scene"
+
 $count = (Get-ChildItem -Path $game -Recurse -File | Measure-Object).Count
 if ($count -lt 20) { throw "Expected game directory with many distinct files; found $count" }
 Write-Host "EXTRACTED GAME OK: $count separate files"
@@ -82,4 +98,8 @@ Write-Host "OFFLINE RELAUNCH: updater must open cached installed version"
 Start-And-Wait-Launcher -Offline
 Start-Sleep -Seconds 2
 Kill-Test-Engine
-Write-Host "WINDOWS BOOTSTRAP TEST SUCCESS: first install and offline startup"
+$offlineText = Get-Content $progressLog -Raw
+if (-not ($offlineText -match '0% UPDATE' -and $offlineText -match '100% UPDATE')) {
+    throw "Cached/offline startup did not complete update progress"
+}
+Write-Host "WINDOWS BOOTSTRAP TEST SUCCESS: 0.5 content, update progress, first install and offline startup"
