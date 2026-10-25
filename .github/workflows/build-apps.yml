@@ -9,6 +9,8 @@ on:
     branches: [main]
     paths:
       - 'game/**'
+      - 'launcher/**'
+      - 'tools/build-windows-manifest.py'
       - '.github/workflows/build-apps.yml'
       - '.github/workflows/sync-upstream.yml'
 
@@ -64,6 +66,10 @@ jobs:
         with:
           ref: main
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -115,14 +121,21 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
 
-      - name: Build standalone Windows launcher EXE and content pack
+      - name: Build small native Windows launcher and structured game manifest
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-release "Windows Desktop" "$PWD/dist/Kuningriigid.exe"
+          (cd launcher && go test ./... && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -H=windowsgui" -o "$GITHUB_WORKSPACE/dist/Kuningriigid.exe" .)
+          python3 tools/build-windows-manifest.py --source game --out dist/Windows-files.json --commit "$(git rev-parse HEAD)"
+          curl -fL --retry 3 -o /tmp/godot-windows.zip             https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_win64.exe.zip
+          mkdir -p /tmp/godot-windows
+          unzip -q /tmp/godot-windows.zip -d /tmp/godot-windows
+          cp /tmp/godot-windows/Godot_v4.4.1-stable_win64.exe dist/Kuningriigid-Engine.exe
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-pack "Windows Desktop" "$PWD/dist/Kuningriigid-Content.pck"
           test -s dist/Kuningriigid.exe
+          test -s dist/Kuningriigid-Engine.exe
+          test -s dist/Windows-files.json
           test -s dist/Kuningriigid-Content.pck
 
       - name: Build Android ARM64 APK
@@ -135,7 +148,7 @@ jobs:
       - name: Validate artifacts and document hashes
         shell: bash
         run: |
-          (cd dist && sha256sum Kuningriigid.exe Kuningriigid.apk Kuningriigid-Content.pck > SHA256SUMS.txt)
+          (cd dist && sha256sum Kuningriigid.exe Kuningriigid-Engine.exe Windows-files.json Kuningriigid.apk Kuningriigid-Content.pck > SHA256SUMS.txt)
           cat dist/SHA256SUMS.txt
           ls -lh dist/
 
@@ -152,11 +165,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.3.${{ github.run_number }}"
+          VERSION="v0.4.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           gh release create "$VERSION" \
-            dist/Kuningriigid.exe dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
+            dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. Android APK + Windows EXE check for newer SHA-256 verified content packs on each launch. APK is a debug-signed test build; gameplay remains a preview." \
+            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. This is still a Godot port preview." \
             --latest
