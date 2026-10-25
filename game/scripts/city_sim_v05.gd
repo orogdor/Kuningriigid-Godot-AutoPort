@@ -3,6 +3,7 @@ extends RefCounted
 ## Matches the deterministic subset of economy.js::tickEconomy for dt=60:
 ## no physical delivery paths, terrain deposits, districts, AI or battle.
 const Logic = preload("res://scripts/logic_v02.gd")
+const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -90,9 +91,19 @@ static func build(state: Dictionary, building_type: String) -> String:
     var cost: Dictionary = spec.get("cost",{})
     if not can_afford(stock,cost):
         return "Ehitusmaterjale ei jätku"
-    spend(stock,cost)
     var count: int = state["buildings"].size()
-    state["buildings"].append({"type":building_type,"team":0,"x":float(count)*2.0,"z":0.0,
+    var place: Vector2=Vector2(float(count)*2.0,0.0)
+    if state.has("detail_sim"):
+        var proposed: Variant=state.get("pending_site",null)
+        if proposed is Dictionary:
+            place=Spatial.snap(Vector2(float(proposed.get("x",0)),float(proposed.get("z",0))))
+        else:
+            place=Spatial.next_free(state)
+        if not is_finite(place.x) or not Spatial.can_place(state,place):
+            return "Ehituskoht on hõivatud või väljaspool linna"
+    spend(stock,cost)
+    state.erase("pending_site")
+    state["buildings"].append({"type":building_type,"team":0,"x":place.x,"z":place.y,
         "hp":350,"ready":false,"progress":0.0,"timer":0.0})
     return ""
 
@@ -155,6 +166,10 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
             continue
         if not d.has("out"):
             continue
+        # On spatial-enabled capitals, lumber and quarry receive stock ONLY
+        # when 3D workers deliver finite tree/stone cargo to the workshop.
+        if state.has("detail_sim") and String(b.get("type","")) in ["lumber","quarry"]:
+            continue
         var input: Dictionary = d.get("input",{})
         if not input.is_empty() and not can_afford(stock,input):
             continue
@@ -170,6 +185,8 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
     for c in cargo:
         var resource_key: String = c["key"]
         stock[resource_key] = float(stock.get(resource_key,0)) + float(c["amount"])
+    if state.has("detail_sim"):
+        Spatial.tick(state)
     state["time"] = float(state.get("time",0)) + DT
     var cap: float = housing_capacity(buildings)
     var food_need: float = floor(pop * 0.60 * 100.0 + 0.5) / 100.0
