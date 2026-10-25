@@ -20,6 +20,7 @@ const Planner = preload("res://scripts/city_planner_v24.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Continuous = preload("res://scripts/continuous_city_v27.gd")
 const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
+const Visuals30 = preload("res://scripts/district_visuals_v30.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -37,6 +38,8 @@ var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
 var terrain_mesh_builds: int=0
 var prop_builds: int=0
+var active_building_mesh_builds: int=0
+var street_cache_signature: String=""
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -76,7 +79,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.29 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.30 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -523,35 +526,46 @@ func _construction_site(parent: Node3D, kind: String, place: Vector3, building: 
 
 func _clear_buildings() -> void:
     for child in construction_root.get_children():
-        child.queue_free()
+        child.free()
 
 func refresh_buildings() -> void:
     if construction_root==null:return
-    _clear_buildings()
     rendered_buildings=0
     if can_build:
         var buildings: Array=city_state.get("buildings",[])
+        var required: Dictionary={}
+        var definitions: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{})
         for i in range(buildings.size()):
             var building: Dictionary=buildings[i]
             if String(building.get("district",""))!=district_id:continue
+            var kind: String=String(building.get("type","building"))
+            var label: String=kind+"_"+str(i)
+            required[label]=true
+            var complete: bool=bool(building.get("ready",false))
+            var stage: int=3 if complete else Construction.stage(building,definitions.get(kind,{}))
+            var sig: String=str(stage)+":"+str(complete)+":"+str(int(building.get("rotation",0)))
+            var holder: Node3D=construction_root.get_node_or_null(label) as Node3D
+            if holder!=null and String(holder.get_meta("visual_sig",""))!=sig:
+                holder.free()
+                holder=null
+            if holder==null:
+                holder=Node3D.new()
+                holder.name=label
+                holder.set_meta("visual_sig",sig)
+                construction_root.add_child(holder)
+                _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
+                    Color("#b7a381"),"FrontDoorStep")
+                if complete:
+                    _building(holder,kind,Vector3.ZERO,true)
+                else:
+                    _construction_site(holder,kind,Vector3.ZERO,building)
+                active_building_mesh_builds+=1
             var fallback:=Vector2(float((i%5-2)*26),float((i/5-2)*27))
-            var pos:=Vector3(float(building.get("x",fallback.x)),0.0,float(building.get("z",fallback.y)))
-            var holder:=Node3D.new()
-            holder.name=String(building.get("type","building"))+"_"+str(i)
-            construction_root.add_child(holder)
-            # All building meshes use local coordinates; rotate the entire
-            # finished structure or scaffold without moving its footprint.
-            holder.position=pos
+            holder.position=Vector3(float(building.get("x",fallback.x)),0.0,float(building.get("z",fallback.y)))
             holder.rotation_degrees.y=float(building.get("rotation",0))
-            # The entrance marker rotates with the house facade. It is a
-            # physical visual landmark, not a new obstacle or save field.
-            _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
-                Color("#b7a381"),"FrontDoorStep")
-            if bool(building.get("ready",false)):
-                _building(holder,String(building.get("type","house")),Vector3.ZERO,true)
-            else:
-                _construction_site(holder,String(building.get("type","house")),Vector3.ZERO,building)
             rendered_buildings+=1
+        for old in construction_root.get_children():
+            if not required.has(String(old.name)):old.free()
         _refresh_resource_meshes()
         _refresh_worker_meshes()
         _refresh_freight_meshes()
@@ -561,6 +575,7 @@ func refresh_buildings() -> void:
         _refresh_bridges()
         _render_neighbors()
     else:
+        _clear_buildings()
         # Changing from the capital to an unowned tile must not leave
         # the old town's 3D workers, paths or resources on screen.
         for group in [resource_root,worker_root,freight_root,plot_root,roads_root,bridge_root]:
@@ -1110,7 +1125,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.29: nähtav jõgi, sillad, koolmed ja 3D kõrgused vastavad tegelikule rajaleidmisele."
+    note.text="0.30: tänavad järgivad päris läbitavaid väravaid; hoonete ja maastiku 3D objekte taaskasutatakse."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -1179,6 +1194,9 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
         for previous in combined_root.get_children():previous.free()
     terrain_mesh_builds=0
     prop_builds=0
+    active_building_mesh_builds=0
+    street_cache_signature=""
+    _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
         if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
