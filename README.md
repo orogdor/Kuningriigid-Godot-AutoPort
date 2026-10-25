@@ -279,3 +279,12 @@ Metsamaja ja kivimurru töölised väljuvad töökoja uksest ja naasevad sinna; 
 Godoti 3D detailkaardil on pööratav `FrontDoorStep` ning `DoorAccessPath_*` ja `DoorAccessPoint_*` ühendused. Tegelikud pikemad teed tekivad ja kuluvad endiselt ainult liikumisest; lühikesed ehitise juurdepääsulõigud on illustratiivsed. Ehitise keeramisega ei teki uusi teid automaatselt läbi ehitiste, jõgede ega järsakute.
 
 Uus test `game/tests/building_access_v22.gd` kontrollib nelja suunda, A* läbipääsetavust, ehitajate ja vankrite sihtkohti, blokeeritud ukse varuteed, kuue ühiku kauba säilimist, vana salvestuse +Z suunda ning 3D ukseesise nähtavust. Mõlemasse GitHub Actionsi töövoogu on lisatud sama test ning väljalaskeskripti versioon on `v0.22.<run_number>`. Automaattestide edukus ja uue APK/EXE avaldamine vajavad eraldi kinnitust.
+
+
+## AutoPort 0.23 — kiiremad linnateed ja ühendatud tänavad
+
+A* rajaleidmine on ümber tehtud: iga marsruudi jaoks arvutatakse hoonete läbimatud 10-meetrised ruudud ainult ühe korra (`Paths.occupancy`), mitte enam iga naabri uurimise ajal. Avatud punktide valik toimub kaheharulise prioriteedijärjekorra (binary heap) abil, mitte kogu järjekorra korduva läbivaatamisega. Nähtav maastik, 8 liikumissuunda, jõekoolmed, sillad, kaldepiirangud ja hoonete läbimatus jäävad kehtima. Marsruutide andmekuju ja salvestusfaili skeem ei muutu.
+
+Uus `Paths.road_links` ühendab kõrvuti asuvad, piisavalt palju kasutatud teeruudud kitsaste 3D tänavalõikudega, sealhulgas turvalistes diagonaalsuundades. Ühendusi ei joonistata läbi hoonete, liiga järskude tõusude ega blokeeritud jõeruudu; otse läbi diagonalnurga minek on keelatud. Tänavad kujunevad kasutusest ja kaovad, kui neid ei kasutata. Varasemad 0.22 hooneukse ühendused ja 0.21 hoone pööramissuunad säilivad. Tegemist on endiselt esialgse väikese linna Godoti tänavasüsteemiga, mitte kogu veebimängu tänavavõrguga.
+
+Uus Godoti test `game/tests/path_grid_v23.gd` kontrollib 867 ruutu tihedas linnas vanade takistusreeglite suhtes, mitut A* läbimist, tänavate ühendamise ning kadumise tingimusi, 3D tänavalõikude olemasolu ja JSON-salvestusega ühilduvust. Mõlemad GitHub Actionsi testitöövood sisaldavad uut testi. Uus väljalaskemärgis on `v0.23.<run_number>`. Tegelik APK/EXE avaldamine sõltub kogu regressioonikomplekti edukast läbimisest.
