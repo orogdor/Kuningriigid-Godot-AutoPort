@@ -4,7 +4,7 @@ extends Control
 signal return_requested
 signal build_requested(kind: String)
 signal build_at_requested(kind: String, x: float, z: float, rotation: int)
-signal bridge_requested(x: float)
+signal bridge_requested(x: float, z: float)
 signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
@@ -20,6 +20,7 @@ const Planner = preload("res://scripts/city_planner_v24.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Continuous = preload("res://scripts/continuous_city_v27.gd")
 const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
+const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -75,7 +76,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.28 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.29 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -714,7 +715,7 @@ func _refresh_roads() -> void:
             continue
         var amount: float=float(tile["strength"])
         var shade:=Color("#927451") if amount<8.0 else Color("#ab9165")
-        _box(roads_root,Vector3(float(tile["x"]),Terrain.elevation(sim,float(tile["x"]),float(tile["z"]))+0.11,float(tile["z"])),
+        _box(roads_root,Vector3(float(tile["x"]),Nav.elevation(sim,float(tile["x"]),float(tile["z"]))+0.11,float(tile["z"])),
             Vector3(7.5+minf(1.0,amount*0.07),0.06,7.5+minf(1.0,amount*0.07)),
             shade,"Footpath")
     # Connect adjacent high-traffic tiles into continuous, narrower streets.
@@ -729,7 +730,7 @@ func _refresh_roads() -> void:
         var width: float=5.0+minf(1.3,amount*0.09)
         var road_color:=Color("#947b57") if amount<8.0 else Color("#bba077")
         var segment:=_box(roads_root,
-            Vector3(middle.x,Terrain.elevation(sim,middle.x,middle.y)+0.14,middle.y),
+            Vector3(middle.x,Nav.elevation(sim,middle.x,middle.y)+0.14,middle.y),
             Vector3(width,0.08,delta.length()+1.2),road_color,"TrafficStreetLink_"+str(street_number))
         segment.rotation.y=atan2(delta.x,delta.y)
         street_number+=1
@@ -754,9 +755,9 @@ func _refresh_roads() -> void:
         var mid: Vector2=centre+side*13.5
         var east_west: bool=absf(side.x)>0.5
         var segment_size:=Vector3(14.0,0.09,2.9) if east_west else Vector3(2.9,0.09,14.0)
-        _box(roads_root,Vector3(mid.x,Terrain.elevation(sim,mid.x,mid.y)+0.19,mid.y),
+        _box(roads_root,Vector3(mid.x,Nav.elevation(sim,mid.x,mid.y)+0.19,mid.y),
             segment_size,Color("#ae966e"),"DoorAccessPath_"+str(i))
-        _box(roads_root,Vector3(entry.x,Terrain.elevation(sim,entry.x,entry.y)+0.17,entry.y),
+        _box(roads_root,Vector3(entry.x,Nav.elevation(sim,entry.x,entry.y)+0.17,entry.y),
             Vector3(3.4,0.10,3.4),Color("#d6b77d"),"DoorAccessPoint_"+str(i))
 
     # Each adjoining owned world square has a local gate at ±70 m.
@@ -783,9 +784,31 @@ func _refresh_roads() -> void:
 func _refresh_bridges() -> void:
     if bridge_root==null:return
     for old in bridge_root.get_children():old.queue_free()
-    var sim: Dictionary=city_state.get("detail_sim",{})
+    var local: Dictionary=Transit._local_state(city_state,
+        Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
+    var sim: Dictionary=local.get("detail_sim",{})
+    if Nav.enabled(sim):
+        # The same crossing descriptors are used by A* to permit river edges.
+        for crossing in Nav.crossings(sim):
+            var bridge: bool=String(crossing["kind"])=="bridge"
+            var along_x: bool=String(crossing["axis"])=="x"
+            var x: float=float(crossing["x"])
+            var z: float=float(crossing["z"])
+            var shape:=Vector3(8.5,0.36,18.0) if along_x else Vector3(18.0,0.36,8.5)
+            var waterbed: float=Nav.ground(sim,x,z)
+            var y: float=maxf(0.58,waterbed+0.57) if bridge else waterbed+0.28
+            _box(bridge_root,Vector3(x,y,z),shape,
+                Color("#89643f") if bridge else Color("#aaa18a"),
+                ("TimberBridge_" if bridge else "StoneFord_")+str(bridge_root.get_child_count()))
+            if bridge:
+                for side in [-4.0,4.0]:
+                    var rail_x: float=x+side if along_x else x
+                    var rail_z: float=z if along_x else z+side
+                    var rail_size:=Vector3(0.45,0.6,18.0) if along_x else Vector3(18.0,0.6,0.45)
+                    _box(bridge_root,Vector3(rail_x,y+1.25,rail_z),rail_size,
+                        Color("#735238"),"BridgeRail")
+        return
     if not Terrain.river_at(sim,0.0,0.0):return
-    # Shallow stone fords are visible at the same places as A* crossings.
     for x_cell in Terrain.FORDS:
         var xf: float=float(x_cell)*Terrain.CELL
         _box(bridge_root,Vector3(xf,-0.06,25),Vector3(8.2,0.20,18),
@@ -933,12 +956,27 @@ func _ground_clicked(pos: Vector3) -> void:
         pos=Continuous.local_position(active_tile,selected,pos)
     if not can_build or pending_build=="":return
     if pending_build=="bridge":
-        var x_cell: int=int(roundf(pos.x/Terrain.CELL))
-        if not Terrain.can_place_bridge(city_state.get("detail_sim",{}),x_cell) or pos.z<Terrain.RIVER_NEAR or pos.z>Terrain.RIVER_FAR:
-            if info!=null:info.text="Sild tuleb ehitada jõe kohal: Z 18–32 m, X -30 või +30 m"
-            return
+        var local: Dictionary=Transit._local_state(city_state,
+            Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
+        var sim: Dictionary=local.get("detail_sim",{})
+        if Nav.enabled(sim):
+            var valid: bool=false
+            for axis in ["x","z"]:
+                var index: int=int(roundf((pos.x if axis=="x" else pos.z)/Terrain.CELL))
+                var crossing: Vector2=Nav.bridge_position(sim,axis,index)
+                if Nav.can_bridge(sim,axis,index) and crossing.distance_to(Vector2(pos.x,pos.z))<=10.0:
+                    valid=true
+                    break
+            if not valid:
+                if info!=null:info.text="Sild peab olema jõel asuvas läbitavas sillaehituskohas."
+                return
+        else:
+            var x_cell: int=int(roundf(pos.x/Terrain.CELL))
+            if not Terrain.can_place_bridge(sim,x_cell) or pos.z<Terrain.RIVER_NEAR or pos.z>Terrain.RIVER_FAR:
+                if info!=null:info.text="Sild tuleb ehitada jõe kohal: Z 18–32 m, X -30 või +30 m"
+                return
         pending_build=""
-        bridge_requested.emit(float(x_cell)*Terrain.CELL)
+        bridge_requested.emit(pos.x,pos.z)
         return
     var snapped: Vector2=Spatial.snap(Vector2(pos.x,pos.z))
     _set_placement_marker(snapped)
@@ -1055,12 +1093,15 @@ func _refresh_actions() -> void:
     turn.text="+10 käiku"
     turn.pressed.connect(func(): turns_requested.emit(10))
     actions.add_child(turn)
-    if Terrain.river_at(city_state.get("detail_sim",{}),0.0,0.0):
+    var bridge_state: Dictionary=Transit._local_state(city_state,
+        Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
+    var bridge_sim: Dictionary=bridge_state.get("detail_sim",{})
+    if (Nav.enabled(bridge_sim) and not bridge_sim.get("terrain_v29",{}).get("segments",[]).is_empty()) or (not Nav.enabled(bridge_sim) and Terrain.river_at(bridge_sim,0.0,0.0)):
         var bridge_button:=Button.new()
         bridge_button.text="Ehita sild (28 puitu, 18 kivi)"
         bridge_button.pressed.connect(func():
             pending_build="bridge"
-            info.text="SILD: klõpsa jõe kohal X = -30 m või +30 m")
+            info.text="SILD: vali vee kohal sobiv sillaehituskoht, ±30 m mööda jõelõiku.")
         actions.add_child(bridge_button)
     for kind in ["house","lumber","well","quarry","farm"]:
         var button:=Button.new()
@@ -1069,7 +1110,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.28: sujuvad maastikupiirid, ühendatud jõeosad ja kiirem suur 3D linn."
+    note.text="0.29: nähtav jõgi, sillad, koolmed ja 3D kõrgused vastavad tegelikule rajaleidmisele."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
