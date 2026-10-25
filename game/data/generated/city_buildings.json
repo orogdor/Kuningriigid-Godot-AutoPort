@@ -1,13 +1,13 @@
 {
   "format": 1,
-  "source_commit": "63a7d9ee9d2af75c24ce7b92fc85bb3cdd8c25ac",
+  "source_commit": "c1b231f669f920d542a6014c15d5e9054aeb3857",
   "upstream_files": {
     "economy.js": "1d67be6857d9dcc2cfdffbcaa3d0286ec36bfa9e1381af52a2b0cc317c53bccd",
     "labor.js": "7e5f623a5f691c3a4f0678f4577b0fa5311ffe2742dfeb41c9434eb52d0b0156",
     "city-needs-v87.js": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b",
     "city-growth-v137.js": "f3de877e35958e56007ffd75b1547172b559362c55169a49dfef248f9d53cdea",
     "bronze-city-balance-v160.js": "6969f00c9c3eaf49ef4ae92775fea3ed04fb12353e7981c36fa09b35631005f3",
-    "civilization-core.js": "f4f23394a5760ecd9b37b89bfe6f0ad021d73b5c3caaabff4ca8d7858f761bc6"
+    "civilization-core.js": "3a4d20e943445e95954a0771728adc42adaab002d684b853a6943df95a4f1a1a"
   },
   "start": {
     "wood": 68,
