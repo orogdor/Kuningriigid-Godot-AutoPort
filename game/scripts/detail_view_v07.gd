@@ -504,6 +504,7 @@ func refresh_buildings() -> void:
         _refresh_grid()
         _refresh_roads()
         _refresh_bridges()
+        _render_neighbors()
     else:
         # Changing from the capital to an unowned tile must not leave
         # the old town's 3D workers, paths or resources on screen.
@@ -845,6 +846,9 @@ func _set_placement_marker(cell: Vector2) -> void:
 
 func _hover_ground(pos: Vector3) -> void:
     if not can_build or pending_build=="" or pending_build=="bridge":return
+    if combined_city:
+        if Continuous.at_position(world,city_state,selected,pos)!=active_tile:return
+        pos=Continuous.local_position(active_tile,selected,pos)
     _set_placement_marker(Spatial.snap(Vector2(pos.x,pos.z)))
 
 func _rotate_placement(degrees: int) -> void:
@@ -866,6 +870,13 @@ func _cancel_placement() -> void:
     _refresh_actions()
 
 func _ground_clicked(pos: Vector3) -> void:
+    if combined_city:
+        var clicked: Vector2i=Continuous.at_position(world,city_state,selected,pos)
+        if clicked.x<0:return
+        if clicked!=active_tile:
+            _activate_district(clicked)
+            return
+        pos=Continuous.local_position(active_tile,selected,pos)
     if not can_build or pending_build=="":return
     if pending_build=="bridge":
         var x_cell: int=int(roundf(pos.x/Terrain.CELL))
@@ -920,7 +931,11 @@ func _recommend_placement() -> void:
 
 func _refresh_info() -> void:
     if info==null:return
-    var text_line: String="%s • Detailruut %d × %d • %s • 225 × 195 m" % [String(city_state.get("city_name","Pealinn")),selected.x,selected.y,selected_biome]
+    var shown: Vector2i=active_tile if combined_city else selected
+    var terrain_size: String="160 × 160 m / ruut" if combined_city else "225 × 195 m"
+    var text_line: String="%s • Detailruut %d × %d • %s • %s" % [
+        String(city_state.get("city_name","Pealinn")),shown.x,shown.y,selected_biome,terrain_size]
+    if combined_city:text_line+=" • Ühine 3D linn (%d linnaosa)" % shown_district_tiles.size()
     if district_id!="":text_line+=" • Linna laiendus (ühine ladu)"
     if can_build and city_state.has("realms"):
         var realm: Dictionary=city_state["realms"][0]
@@ -955,6 +970,15 @@ func _refresh_actions() -> void:
         child.queue_free()
     if not can_build:
         return
+    if combined_city:
+        var whole:=Button.new()
+        whole.text="Vaata kogu linna"
+        whole.pressed.connect(_overview_city)
+        actions.add_child(whole)
+        var next_district:=Button.new()
+        next_district.text="Järgmine linnaosa"
+        next_district.pressed.connect(_next_city_tile)
+        actions.add_child(next_district)
     if pending_build!="":
         if pending_build!="bridge":
             var planned:=Button.new()
@@ -991,7 +1015,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.26: füüsilised teekonnad naaberlinnaosade vahel, liikuvad töölised ja kaubavankrid."
+    note.text="0.27: kõik liidetud linnaosad ühes katkematus 3D vaates. Puuduta teist ruutu, et seal ehitada."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -1026,9 +1050,15 @@ func _can_build(kind: String) -> bool:
 func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool, district: String="") -> void:
     world=next_world
     selected=Vector2i(c,r)
+    active_tile=selected
     city_state=city
     can_build=capital
     district_id=district
+    combined_city=can_build and Continuous.active(world,city_state,selected)
+    shown_district_tiles=Continuous.visible(world,city_state,selected) if combined_city else []
+    combined_bounds=Continuous.bounds(shown_district_tiles,selected) if combined_city else {}
+    if controller!=null:
+        controller.set_city_bounds(combined_bounds)
     pending_build=""
     placement_rotation=0
     placement_cell=Vector2(INF,INF)
@@ -1046,9 +1076,10 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
             terrain_sim["terrain"]=String(current_tile.get("biome","plains"))
             terrain_sim["river"]=bool(current_tile.get("river",false))
     if scene_root==null:return
+    _position_local_groups()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         child.queue_free()
     var tile: Dictionary=World.cell(world,c,r)
