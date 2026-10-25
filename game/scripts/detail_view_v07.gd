@@ -13,6 +13,7 @@ const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v11.gd")
 const Materials = preload("res://scripts/construction_v12.gd")
 const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
+const Freight = preload("res://scripts/freight_v14.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -29,6 +30,7 @@ var scene_root: Node3D
 var construction_root: Node3D
 var resource_root: Node3D
 var worker_root: Node3D
+var freight_root: Node3D
 var plot_root: Node3D
 var roads_root: Node3D
 var bridge_root: Node3D
@@ -50,7 +52,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.13 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.14 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -103,6 +105,9 @@ func _ready() -> void:
     worker_root=Node3D.new()
     worker_root.name="MovingWorkers"
     scene_root.add_child(worker_root)
+    freight_root=Node3D.new()
+    freight_root.name="GoodsWagons"
+    scene_root.add_child(freight_root)
     plot_root=Node3D.new()
     plot_root.name="BuildGrid"
     scene_root.add_child(plot_root)
@@ -332,13 +337,14 @@ func refresh_buildings() -> void:
             rendered_buildings+=1
         _refresh_resource_meshes()
         _refresh_worker_meshes()
+        _refresh_freight_meshes()
         _refresh_grid()
         _refresh_roads()
         _refresh_bridges()
     else:
         # Changing from the capital to an unowned tile must not leave
         # the old town's 3D workers, paths or resources on screen.
-        for group in [resource_root,worker_root,plot_root,roads_root,bridge_root]:
+        for group in [resource_root,worker_root,freight_root,plot_root,roads_root,bridge_root]:
             if group!=null:
                 for child in group.get_children():
                     child.queue_free()
@@ -412,6 +418,36 @@ func _refresh_worker_meshes() -> void:
         if not previous_builder.is_equal_approx(position3):
             actor.create_tween().tween_property(actor,"position",position3,0.68).set_trans(Tween.TRANS_SINE)
         previous_worker_positions[builder_id]=position3
+
+func _refresh_freight_meshes() -> void:
+    if freight_root==null:return
+    for old in freight_root.get_children():old.queue_free()
+    var sim: Dictionary=city_state.get("detail_sim",{})
+    for hauler in sim.get("haulers",[]):
+        var id_key: String="hauler_"+str(hauler.get("id",0))
+        var position3:=Vector3(float(hauler.get("x",0)),0.0,float(hauler.get("z",0)))
+        var previous: Vector3=previous_worker_positions.get(id_key,position3)
+        var wagon:=Node3D.new()
+        wagon.name="GoodsWagon_"+str(hauler.get("id",0))
+        wagon.position=previous
+        freight_root.add_child(wagon)
+        _box(wagon,Vector3(0,1.1,0),Vector3(3.6,0.8,5.1),Color("#795332"),"WagonBody")
+        for side in [-1.9,1.9]:
+            for axle in [-1.5,1.5]:
+                var wheel:=CylinderMesh.new()
+                wheel.top_radius=0.9
+                wheel.bottom_radius=0.9
+                wheel.height=0.35
+                var m:=_mesh(wagon,wheel,Vector3(side,0.85,axle),
+                    Color("#39322b"),"WoodenWheel")
+                m.rotation_degrees=Vector3(0,0,90)
+        _cylinder(wagon,Vector3(0,2.3,-1.4),0.5,2.0,Color("#566f59"),"WagonDriver")
+        if float(hauler.get("load",0))>0.0:
+            _box(wagon,Vector3(0,2.0,0.65),Vector3(3.0,1.6,3.0),
+                Color("#b99865"),"VisibleGoodsCargo")
+        if not previous.is_equal_approx(position3):
+            wagon.create_tween().tween_property(wagon,"position",position3,0.68).set_trans(Tween.TRANS_SINE)
+        previous_worker_positions[id_key]=position3
 
 func _refresh_roads() -> void:
     if roads_root==null:return
@@ -505,6 +541,9 @@ func _refresh_info() -> void:
         var priority: Dictionary=Schedule.report(city_state)
         text_line+=" | Ehitajaid %d | Ehitusel %d | Vedamas %d | Kohaletoimetatud %.0f | Kõrge prioriteediga %d" % [
             int(work["builders"]),int(work["sites"]),int(work["in_transit"]),float(work["delivered"]),int(priority["high"])]
+        var transport: Dictionary=Freight.summary(city_state)
+        text_line+=" | Kaubavankreid %d | Ootel %.0f | Koormas %.0f | Kohaletoimetamisi %d" % [
+            int(transport["haulers"]),float(transport["waiting"]),float(transport["in_transit"]),int(transport["trips"])]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -533,7 +572,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.13: ehitused prioriteedi järgi, eri materjalide vedu ja tööjõu ümberjagamine."
+    note.text="0.14: valminud kaubad liiguvad tootmishoonest vankriga lattu; käigurajad teevad transpordi kiiremaks."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -574,6 +613,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     previous_worker_positions.clear()
     if can_build:
         Spatial.initialize(city_state)
+        Freight.initialize(city_state)
         var terrain_sim: Dictionary=city_state["detail_sim"]
         var current_tile: Dictionary=World.cell(world,c,r)
         terrain_sim["terrain"]=String(current_tile.get("biome","plains"))
@@ -581,7 +621,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     if scene_root==null:return
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==plot_root or child==roads_root or child==bridge_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         child.queue_free()
     var tile: Dictionary=World.cell(world,c,r)
