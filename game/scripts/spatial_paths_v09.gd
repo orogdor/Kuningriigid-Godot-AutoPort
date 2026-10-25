@@ -70,26 +70,84 @@ static func distance_cost(start: Vector2i, finish: Vector2i) -> float:
     var dy: int=absi(start.y-finish.y)
     return float(dx+dy)*10.0-6.0*minf(dx,dy)
 
+## 0.23: compute occupancy once per A* search instead of repeatedly
+## scanning every building for each neighbor on every step.
+static func occupancy(state: Dictionary, home_index: int) -> Dictionary:
+    var result: Dictionary={}
+    var buildings: Array=state.get("buildings",[])
+    for i in range(buildings.size()):
+        if i==home_index:continue
+        var building: Dictionary=buildings[i]
+        if float(building.get("hp",1.0))<=0.0:continue
+        var center:=Vector2(float(building.get("x",0.0)),float(building.get("z",0.0)))
+        var min_x: int=maxi(-EXTENT,int(ceil((center.x-11.5)/STEP)))
+        var max_x: int=mini(EXTENT,int(floor((center.x+11.5)/STEP)))
+        var min_z: int=maxi(-EXTENT,int(ceil((center.y-11.5)/STEP)))
+        var max_z: int=mini(EXTENT,int(floor((center.y+11.5)/STEP)))
+        for z in range(min_z,max_z+1):
+            for x in range(min_x,max_x+1):
+                var cell:=Vector2i(x,z)
+                if world(cell).distance_to(center)<11.5:
+                    result[cell_key(cell)]=true
+    return result
+
+static func _blocked_fast(sim: Dictionary, cell: Vector2i, occupied: Dictionary) -> bool:
+    if not bounded(cell):return true
+    if occupied.has(cell_key(cell)):return true
+    return Terrain.blocked_cell(sim,cell)
+
+static func _heap_less(a: Dictionary, b: Dictionary) -> bool:
+    var fa: float=float(a["score"])
+    var fb: float=float(b["score"])
+    return fa<fb if not is_equal_approx(fa,fb) else int(a["order"])<int(b["order"])
+
+static func _heap_push(heap: Array, node: Dictionary) -> void:
+    heap.append(node)
+    var child: int=heap.size()-1
+    while child>0:
+        var parent: int=(child-1)/2
+        if not _heap_less(heap[child],heap[parent]):break
+        var old: Variant=heap[parent]
+        heap[parent]=heap[child]
+        heap[child]=old
+        child=parent
+
+static func _heap_pop(heap: Array) -> Dictionary:
+    var best: Dictionary=heap[0]
+    var last: Dictionary=heap.pop_back()
+    if heap.is_empty():return best
+    heap[0]=last
+    var parent: int=0
+    while true:
+        var left: int=parent*2+1
+        if left>=heap.size():break
+        var right: int=left+1
+        var child: int=left
+        if right<heap.size() and _heap_less(heap[right],heap[left]):
+            child=right
+        if not _heap_less(heap[child],heap[parent]):break
+        var temp: Variant=heap[parent]
+        heap[parent]=heap[child]
+        heap[child]=temp
+        parent=child
+    return best
+
 static func find_path(state: Dictionary, start: Vector2, destination: Vector2, home_index: int) -> Array:
     var origin: Vector2i=grid(start)
     var goal: Vector2i=grid(destination)
-    if blocked(state,goal,home_index):return []
+    var sim: Dictionary=state.get("detail_sim",{})
+    var occupied: Dictionary=occupancy(state,home_index)
+    if _blocked_fast(sim,goal,occupied):return []
     if origin==goal:return [{"x":destination.x,"z":destination.y}]
-    var frontier: Array=[origin]
+    var frontier: Array=[]
+    var sequence: int=0
+    _heap_push(frontier,{"cell":origin,"score":distance_cost(origin,goal),"order":sequence})
     var costs: Dictionary={cell_key(origin):0.0}
     var parents: Dictionary={}
     var seen: Dictionary={}
     var expanded: int=0
     while not frontier.is_empty() and expanded<WIDTH*WIDTH:
-        var winner: int=0
-        var best: float=INF
-        for i in range(frontier.size()):
-            var candidate: Vector2i=frontier[i]
-            var score: float=float(costs[cell_key(candidate)])+distance_cost(candidate,goal)
-            if score<best:
-                best=score
-                winner=i
-        var node: Vector2i=frontier.pop_at(winner)
+        var node: Vector2i=_heap_pop(frontier)["cell"]
         var key: String=cell_key(node)
         if seen.has(key):continue
         seen[key]=true
@@ -97,24 +155,26 @@ static func find_path(state: Dictionary, start: Vector2, destination: Vector2, h
         if node==goal:break
         for direction in DIRS:
             var other: Vector2i=node+direction
-            if blocked(state,other,home_index):continue
-            var sim: Dictionary=state.get("detail_sim",{})
+            if _blocked_fast(sim,other,occupied):continue
             if Terrain.too_steep(sim,node,other):continue
             if direction.x!=0 and direction.y!=0:
-                if blocked(state,node+Vector2i(direction.x,0),home_index) or blocked(state,node+Vector2i(0,direction.y),home_index):
+                var corner_x:=node+Vector2i(direction.x,0)
+                var corner_y:=node+Vector2i(0,direction.y)
+                if _blocked_fast(sim,corner_x,occupied) or _blocked_fast(sim,corner_y,occupied):
                     continue
-                if Terrain.too_steep(sim,node,node+Vector2i(direction.x,0)) or Terrain.too_steep(sim,node,node+Vector2i(0,direction.y)):
+                if Terrain.too_steep(sim,node,corner_x) or Terrain.too_steep(sim,node,corner_y):
                     continue
             var next_key: String=cell_key(other)
             if seen.has(next_key):continue
             var factor: float=0.70 if traffic_strength(sim,next_key)>=ROAD_THRESHOLD else 1.0
             var rise: float=absf(Terrain.height_at(sim,other.x*STEP,other.y*STEP)-Terrain.height_at(sim,node.x*STEP,node.y*STEP))
-            var move: float=((14.0 if direction.x!=0 and direction.y!=0 else 10.0)+rise*3.0)*factor
-            var next_cost: float=float(costs[key])+move
+            var move_cost: float=((14.0 if direction.x!=0 and direction.y!=0 else 10.0)+rise*3.0)*factor
+            var next_cost: float=float(costs[key])+move_cost
             if not costs.has(next_key) or next_cost+0.0001<float(costs[next_key]):
                 costs[next_key]=next_cost
                 parents[next_key]=node
-                frontier.append(other)
+                sequence+=1
+                _heap_push(frontier,{"cell":other,"score":next_cost+distance_cost(other,goal),"order":sequence})
     if not seen.has(cell_key(goal)):return []
     var reverse: Array=[]
     var cursor: Vector2i=goal
@@ -132,6 +192,35 @@ static func find_path(state: Dictionary, start: Vector2, destination: Vector2, h
     if route.is_empty() or world(goal).distance_to(destination)>0.01:
         route.append({"x":destination.x,"z":destination.y})
     return route
+
+## Road meshes follow traffic: connect adjacent heavily travelled cells
+## without paving through blocked houses or cutting prohibited corners.
+static func road_links(state: Dictionary) -> Array:
+    var sim: Dictionary=state.get("detail_sim",{})
+    var traffic: Dictionary={}
+    for tile in road_tiles(sim):
+        var cell: Vector2i=grid(Vector2(float(tile["x"]),float(tile["z"])))
+        if not blocked(state,cell,-1):
+            traffic[cell_key(cell)]=int(tile["strength"])
+    var links: Array=[]
+    var occupied: Dictionary=occupancy(state,-1)
+    for key in traffic.keys():
+        var parts: PackedStringArray=String(key).split(":")
+        if parts.size()!=2:continue
+        var from:=Vector2i(int(parts[0]),int(parts[1]))
+        for delta in [Vector2i(1,0),Vector2i(0,1),Vector2i(1,1),Vector2i(1,-1)]:
+            var to: Vector2i=from+delta
+            if not traffic.has(cell_key(to)):continue
+            if Terrain.too_steep(sim,from,to):continue
+            if delta.x!=0 and delta.y!=0:
+                var corner_a:=from+Vector2i(delta.x,0)
+                var corner_b:=from+Vector2i(0,delta.y)
+                if _blocked_fast(sim,corner_a,occupied) or _blocked_fast(sim,corner_b,occupied):continue
+                if Terrain.too_steep(sim,from,corner_a) or Terrain.too_steep(sim,from,corner_b):continue
+            var a: Vector2=world(from)
+            var b: Vector2=world(to)
+            links.append({"a":a,"b":b,"strength":mini(int(traffic[key]),int(traffic[cell_key(to)]))})
+    return links
 
 static func move(worker: Dictionary, destination: Vector2, budget: float, state: Dictionary, home_index: int) -> bool:
     var current:=Vector2(float(worker["x"]),float(worker["z"]))
