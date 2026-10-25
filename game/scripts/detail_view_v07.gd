@@ -52,7 +52,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.14 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.15 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -542,8 +542,9 @@ func _refresh_info() -> void:
         text_line+=" | Ehitajaid %d | Ehitusel %d | Vedamas %d | Kohaletoimetatud %.0f | Kõrge prioriteediga %d" % [
             int(work["builders"]),int(work["sites"]),int(work["in_transit"]),float(work["delivered"]),int(priority["high"])]
         var transport: Dictionary=Freight.summary(city_state)
-        text_line+=" | Kaubavankreid %d | Ootel %.0f | Koormas %.0f | Kohaletoimetamisi %d" % [
-            int(transport["haulers"]),float(transport["waiting"]),float(transport["in_transit"]),int(transport["trips"])]
+        text_line+=" | Kaubavankreid %d | Veotöölisi %d | Ootel %.0f | Koormas %.0f | Kohaletoimetamisi %d" % [
+            int(transport["haulers"]),int(transport["workers"]),float(transport["waiting"]),
+            float(transport["in_transit"]),int(transport["trips"])]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -572,7 +573,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.14: valminud kaubad liiguvad tootmishoonest vankriga lattu; käigurajad teevad transpordi kiiremaks."
+    note.text="0.15: vankrid veavad tootmise sisendeid laost töökotta ning valmistooteid tagasi; veoüksused vajavad tööjõudu."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
