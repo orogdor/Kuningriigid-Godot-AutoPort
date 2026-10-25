@@ -97,7 +97,7 @@ func download(url,dest,sha string) error {
  return nil
 }
 func safePath(path string) bool {
- if path==""||strings.ContainsAny(path,":\")||strings.HasPrefix(path,"/"){return false}
+ if path==""||strings.ContainsAny(path,":\\")||strings.HasPrefix(path,"/"){return false}
  for _,segment:=range strings.Split(path,"/") {
   if segment==""||segment=="."||segment==".."||strings.HasSuffix(segment,".")||strings.HasSuffix(segment," "){return false}
  }
