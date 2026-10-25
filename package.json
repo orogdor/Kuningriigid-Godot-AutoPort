@@ -1,6 +1,6 @@
 {
   "name": "kuningriigid-godot-autoport",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "Read-only Three.js rules exporter and Godot parity checks",
@@ -8,7 +8,8 @@
     "test": "node --test tests/*.test.mjs",
     "port": "node tools/port.mjs",
     "parity": "node tools/verify-parity.mjs",
-    "logic:fixtures": "node tools/generate-logic-fixtures.mjs"
+    "logic:fixtures": "node tools/generate-logic-fixtures.mjs",
+    "city:fixtures": "node tools/generate-city-v05-fixtures.mjs"
   },
   "engines": {
     "node": ">=20"
