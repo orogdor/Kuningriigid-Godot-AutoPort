@@ -47,48 +47,46 @@ static func assign(state: Dictionary) -> void:
     var sim: Dictionary=state["detail_sim"]
     var workers: Array=sim["builders"]
     var buildings: Array=state["buildings"]
-    var capacity: int=maxi(0,int(state["realms"][0].get("pop",0)))
-    var quotas: Dictionary={}
+    var pop_limit: int=maxi(0,int(state["realms"][0].get("pop",0)))
     var ordered: Array=[]
     for i in range(1,buildings.size()):
-        var qty: int=_quota(buildings[i])
-        if qty>0:
-            quotas[i]=qty
-            ordered.append(i)
+        if _quota(buildings[i])>0:ordered.append(i)
     ordered.sort_custom(func(a,b):
         var ap: int=int(LEVELS[normalize(String(buildings[a].get("priority","normal")))])
         var bp: int=int(LEVELS[normalize(String(buildings[b].get("priority","normal")))])
         return ap>bp if ap!=bp else a<b
     )
-    var desired: Dictionary={}
-    for idx in ordered:
-        var slots: int=mini(int(quotas[idx]),capacity)
-        desired[idx]=slots
-        capacity-=slots
-    # Carrying materials remains reserved for the original construction even
-    # if priority changes mid-journey. Do not throw paid cargo away.
-    var pinned: Dictionary={}
+    var occupied: Dictionary={}
+    var pinned_count: int=0
     for agent in workers:
         var idx: int=int(agent.get("building",-1))
-        var quantity: float=float(agent.get("cargo_amount",0.0))
-        if idx>=1 and idx<buildings.size() and not bool(buildings[idx].get("ready",false)) and quantity>0.00001:
-            pinned[idx]=int(pinned.get(idx,0))+1
-    var pop_limit: int=maxi(0,int(state["realms"][0].get("pop",0)))
-    var counts: Dictionary={}
-    # Reuse existing assignments where possible; adjust quotas around pinned
-    # deliveries. A high-priority site gets its remaining available crew first.
+        if idx>=1 and idx<buildings.size() and not bool(buildings[idx].get("ready",false)) and float(agent.get("cargo_amount",0))>0.00001:
+            occupied[idx]=int(occupied.get(idx,0))+1
+            pinned_count+=1
+    # Remaining slots are assigned highest-priority projects first. Anyone
+    # already carrying prepaid stock stays assigned until that stock arrives.
+    var quotas: Dictionary=occupied.duplicate()
+    var open_slots: int=maxi(0,pop_limit-pinned_count)
+    for idx in ordered:
+        var vacant: int=maxi(0,_quota(buildings[idx])-int(quotas.get(idx,0)))
+        var taken: int=mini(vacant,open_slots)
+        quotas[idx]=int(quotas.get(idx,0))+taken
+        open_slots-=taken
+    var kept: Dictionary=occupied.duplicate()
     for agent in workers:
         var idx: int=int(agent.get("building",-1))
         if idx<1 or idx>=buildings.size() or bool(buildings[idx].get("ready",false)):
             _idle(agent)
             continue
-        if float(agent.get("cargo_amount",0.0))>0.00001:
-            counts[idx]=int(counts.get(idx,0))+1
+        if float(agent.get("cargo_amount",0))>0.00001:
+            continue
+        if int(kept.get(idx,0))<int(quotas.get(idx,0)):
+            kept[idx]=int(kept.get(idx,0))+1
             continue
         _idle(agent)
     var available: int=maxi(0,pop_limit-workers.filter(func(w):return int(w.get("building",-1))>=0).size())
     for idx in ordered:
-        var needed: int=maxi(0,int(desired.get(idx,0))-int(counts.get(idx,0)))
+        var needed: int=maxi(0,int(quotas.get(idx,0))-int(kept.get(idx,0)))
         while needed>0 and available>0:
             var agent: Variant=null
             for worker in workers:
@@ -106,7 +104,7 @@ static func assign(state: Dictionary) -> void:
             agent["route"]=[]
             agent["target_x"]=99999.0
             agent["target_z"]=99999.0
-            counts[idx]=int(counts.get(idx,0))+1
+            kept[idx]=int(kept.get(idx,0))+1
             available-=1
             needed-=1
     sim["builders"]=workers
