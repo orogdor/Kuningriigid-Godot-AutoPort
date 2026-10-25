@@ -5,6 +5,7 @@ extends SceneTree
 const City=preload("res://scripts/city_sim_v05.gd")
 const Spatial=preload("res://scripts/spatial_economy_v08.gd")
 const Paths=preload("res://scripts/spatial_paths_v09.gd")
+const Terrain=preload("res://scripts/detail_terrain_v10.gd")
 const Screen=preload("res://content.tscn")
 
 func fail(why: String) -> void:
@@ -108,8 +109,32 @@ func _test() -> void:
     var capital: Dictionary=screen.world_view.world["starts"][0]
     screen._show_detail(int(capital["c"]),int(capital["r"]))
     await process_frame
-    for p in [Vector2(-20,-20),Vector2(-10,-20),Vector2(0,-20)]:
-        for n in range(4):Paths.touch(screen.city["detail_sim"],Paths.grid(p))
+    # Actual capital biome/river is determined by the procedural world.
+    # Choose only three genuinely traversable consecutive cells for this
+    # render test rather than assuming one specific flat-world street.
+    var render_state: Dictionary=screen.city
+    var render_sim: Dictionary=render_state["detail_sim"]
+    var selected_cells: Array[Vector2i]=[]
+    for z in range(-6,7):
+        for x in range(-6,5):
+            var a:=Vector2i(x,z)
+            var b:=Vector2i(x+1,z)
+            var c:=Vector2i(x+2,z)
+            if Paths.blocked(render_state,a,-1) or Paths.blocked(render_state,b,-1) or Paths.blocked(render_state,c,-1):
+                continue
+            if Terrain.too_steep(render_sim,a,b) or Terrain.too_steep(render_sim,b,c):
+                continue
+            selected_cells=[a,b,c]
+            break
+        if not selected_cells.is_empty():break
+    if selected_cells.size()!=3:
+        fail("generated town had no three connected legal street cells")
+        return
+    for cell in selected_cells:
+        for n in range(4):Paths.touch(render_sim,cell)
+    if Paths.road_links(render_state).size()<2:
+        fail("traffic on three traversable town cells did not form A* safe links")
+        return
     screen.detail_view.refresh_buildings()
     await process_frame
     var street_parts: int=0
