@@ -119,6 +119,9 @@ func _test() -> void:
         if String(node.name).begins_with("ContinuousStreet_"):static_roads.append(node)
     detail.refresh_buildings()
     detail.refresh_buildings()
+    if detail.street_cache_signature!=Visuals.static_signature(live,world):
+        fail("3D road geometry cache did not adopt the unchanged city signature")
+        return
     if not is_instance_valid(hall) or detail.construction_root.get_node_or_null("hall_0")!=hall:
         fail("unchanged active building was rebuilt on every simulation tick")
         return
