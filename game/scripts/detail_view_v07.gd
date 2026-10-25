@@ -402,8 +402,8 @@ func _ground_clicked(pos: Vector3) -> void:
     if not can_build or pending_build=="":return
     if pending_build=="bridge":
         var x_cell: int=int(roundf(pos.x/Terrain.CELL))
-        if not Terrain.can_place_bridge(city_state.get("detail_sim",{}),x_cell):
-            if info!=null:info.text="Sild tuleb ehitada jõe lubatud kohta X = -30 või +30 m"
+        if not Terrain.can_place_bridge(city_state.get("detail_sim",{}),x_cell) or pos.z<Terrain.RIVER_NEAR or pos.z>Terrain.RIVER_FAR:
+            if info!=null:info.text="Sild tuleb ehitada jõe kohal: Z 18–32 m, X -30 või +30 m"
             return
         pending_build=""
         bridge_requested.emit(float(x_cell)*Terrain.CELL)
