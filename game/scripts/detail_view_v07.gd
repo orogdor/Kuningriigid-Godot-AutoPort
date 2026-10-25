@@ -9,6 +9,7 @@ signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
+const Construction = preload("res://scripts/construction_v11.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -46,7 +47,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.10 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.11 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -275,6 +276,27 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
             _box(parent,place+Vector3(0,2.5,0),Vector3(7,5,7),timber,"WorkshopWalls")
             _roof(parent,place+Vector3(0,6,0),Vector3(9,4,9),thatch)
 
+func _construction_site(parent: Node3D, kind: String, place: Vector3, building: Dictionary) -> void:
+    var spec: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{}).get(kind,{})
+    var current_stage: int=Construction.stage(building,spec)
+    # Foundations -> raised framing -> roof scaffold -> completed building.
+    _box(parent,place+Vector3(0,0.22,0),Vector3(13,0.45,12),
+        Color("#a09278"),"Stage0Foundation")
+    if current_stage>=1:
+        for x in [-5.3,5.3]:
+            for z in [-4.8,4.8]:
+                _cylinder(parent,place+Vector3(x,2.9,z),0.35,5.6,
+                    Color("#90643e"),"Stage1TimberFrame")
+    if current_stage>=2:
+        _box(parent,place+Vector3(0,3,0),Vector3(10,4.5,9),
+            Color("#967b5e"),"Stage2Walls")
+        for x in [-6.0,6.0]:
+            _box(parent,place+Vector3(x,6.5,0),Vector3(0.7,0.6,12.0),
+                Color("#785539"),"Stage2RoofBeam")
+    # Material piles indicate that the building is still under construction.
+    _box(parent,place+Vector3(8,0.65,5),Vector3(3.0,1.3,2.8),
+        Color("#8b6540"),"BuildingMaterialPile")
+
 func _clear_buildings() -> void:
     for child in construction_root.get_children():
         child.queue_free()
@@ -292,7 +314,10 @@ func refresh_buildings() -> void:
             var holder:=Node3D.new()
             holder.name=String(building.get("type","building"))+"_"+str(i)
             construction_root.add_child(holder)
-            _building(holder,String(building.get("type","house")),pos,bool(building.get("ready",false)))
+            if bool(building.get("ready",false)):
+                _building(holder,String(building.get("type","house")),pos,true)
+            else:
+                _construction_site(holder,String(building.get("type","house")),pos,building)
             rendered_buildings+=1
         _refresh_resource_meshes()
         _refresh_worker_meshes()
@@ -350,6 +375,28 @@ func _refresh_worker_meshes() -> void:
         if not previous.is_equal_approx(p):
             body.create_tween().tween_property(body,"position",p,0.68).set_trans(Tween.TRANS_SINE)
         previous_worker_positions[i]=p
+    # Independent builders stand by real construction sites, not at the town hall.
+    for builder in sim.get("builders",[]):
+        var builder_id: String="builder_"+str(builder.get("id",0))
+        var position3:=Vector3(float(builder.get("x",0)),0.0,float(builder.get("z",0)))
+        var previous_builder: Vector3=previous_worker_positions.get(builder_id,position3)
+        var actor:=Node3D.new()
+        actor.name="Builder_"+str(builder.get("id",0))
+        actor.position=previous_builder
+        worker_root.add_child(actor)
+        _cylinder(actor,Vector3(0,1.28,0),0.55,2.1,Color("#536d96"),"BuilderBody")
+        var head:=SphereMesh.new()
+        head.radius=0.55
+        head.height=1.1
+        _mesh(actor,head,Vector3(0,2.8,0),Color("#d6b08b"),"BuilderHead")
+        _box(actor,Vector3(0,3.52,0),Vector3(1.6,0.45,1.5),
+            Color("#987443"),"BuildersHat")
+        if String(builder.get("phase",""))=="building":
+            _box(actor,Vector3(1.1,1.8,0),Vector3(0.45,0.25,1.2),
+                Color("#99918b"),"BuilderHammer")
+        if not previous_builder.is_equal_approx(position3):
+            actor.create_tween().tween_property(actor,"position",position3,0.68).set_trans(Tween.TRANS_SINE)
+        previous_worker_positions[builder_id]=position3
 
 func _refresh_roads() -> void:
     if roads_root==null:return
@@ -439,6 +486,8 @@ func _refresh_info() -> void:
             text_line+=" | Sildu %d" % sim.get("bridges",[]).size()
         var streets: Dictionary=Paths.roads_summary(sim)
         text_line+=" | Sissekäidud teeruutusid %d" % int(streets["tiles"])
+        var work: Dictionary=Construction.progress_report(city_state,CityRecipes.read_table("city_buildings").get("buildings",{}))
+        text_line+=" | Ehitajad %d | Ehitusel %d" % [int(work["builders"]),int(work["under_construction"])]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -467,7 +516,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="Töölised leiavad tee ümber hoonete; kasutatud käiguradadest tekivad ja hääbuvad teed."
+    note.text="0.11: ehitajad kõnnivad ehitusplatsile; vundament, seinad ja karkass kerkivad töö käigus."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
 
