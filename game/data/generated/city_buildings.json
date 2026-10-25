@@ -1,0 +1,355 @@
+{
+  "format": 1,
+  "source_commit": "63a7d9ee9d2af75c24ce7b92fc85bb3cdd8c25ac",
+  "upstream_files": {
+    "economy.js": "1d67be6857d9dcc2cfdffbcaa3d0286ec36bfa9e1381af52a2b0cc317c53bccd",
+    "labor.js": "7e5f623a5f691c3a4f0678f4577b0fa5311ffe2742dfeb41c9434eb52d0b0156",
+    "city-needs-v87.js": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b",
+    "city-growth-v137.js": "f3de877e35958e56007ffd75b1547172b559362c55169a49dfef248f9d53cdea",
+    "bronze-city-balance-v160.js": "6969f00c9c3eaf49ef4ae92775fea3ed04fb12353e7981c36fa09b35631005f3",
+    "civilization-core.js": "f4f23394a5760ecd9b37b89bfe6f0ad021d73b5c3caaabff4ca8d7858f761bc6"
+  },
+  "start": {
+    "wood": 68,
+    "plank": 10,
+    "stone": 18,
+    "grain": 0,
+    "flour": 0,
+    "water": 28,
+    "bread": 26,
+    "ore": 0,
+    "coal": 0,
+    "iron": 0,
+    "weapons": 0,
+    "paper": 0,
+    "saltpeter": 0,
+    "gunpowder": 0,
+    "steel": 0,
+    "machines": 0,
+    "oil": 0,
+    "fuel": 0,
+    "power": 0,
+    "vehicles": 0,
+    "gold": 90,
+    "clay": 0,
+    "pottery": 0,
+    "cutstone": 0,
+    "copper": 0,
+    "tin": 0,
+    "bronze": 0,
+    "carts": 0,
+    "meat": 0,
+    "fish": 0,
+    "berries": 0,
+    "vegetables": 0,
+    "fruit": 0,
+    "cheese": 0,
+    "spices": 0,
+    "coffee": 0,
+    "flax": 0,
+    "gems": 0,
+    "silk": 0,
+    "dyes": 0,
+    "cocoa": 0,
+    "rubber": 0,
+    "cloth": 0,
+    "jewelry": 0,
+    "silkcloth": 0,
+    "perfume": 0,
+    "chocolate": 0,
+    "electronics": 0
+  },
+  "goods": {
+    "meat": {
+      "name": "Liha",
+      "age": 0,
+      "food": true
+    },
+    "fish": {
+      "name": "Kala",
+      "age": 0,
+      "food": true
+    },
+    "berries": {
+      "name": "Marjad",
+      "age": 0,
+      "food": true
+    },
+    "vegetables": {
+      "name": "Köögiviljad",
+      "age": 1,
+      "food": true
+    },
+    "fruit": {
+      "name": "Puuviljad",
+      "age": 2,
+      "food": true
+    },
+    "cheese": {
+      "name": "Juust",
+      "age": 3,
+      "food": true
+    },
+    "spices": {
+      "name": "Vürtsid",
+      "age": 4,
+      "food": true
+    },
+    "coffee": {
+      "name": "Kohv",
+      "age": 5,
+      "food": true
+    },
+    "flax": {
+      "name": "Lina",
+      "age": 1
+    },
+    "gems": {
+      "name": "Vääriskivid",
+      "age": 2
+    },
+    "silk": {
+      "name": "Siid",
+      "age": 3
+    },
+    "dyes": {
+      "name": "Värvitaimed",
+      "age": 4
+    },
+    "cocoa": {
+      "name": "Kakao",
+      "age": 5
+    },
+    "rubber": {
+      "name": "Kautšuk",
+      "age": 6
+    },
+    "cloth": {
+      "name": "Linane kangas",
+      "age": 1,
+      "luxury": true
+    },
+    "jewelry": {
+      "name": "Ehted",
+      "age": 2,
+      "luxury": true
+    },
+    "silkcloth": {
+      "name": "Siidkangas",
+      "age": 3,
+      "luxury": true
+    },
+    "perfume": {
+      "name": "Parfüüm",
+      "age": 4,
+      "luxury": true
+    },
+    "chocolate": {
+      "name": "Šokolaad",
+      "age": 5,
+      "luxury": true
+    },
+    "electronics": {
+      "name": "Elektroonika",
+      "age": 6,
+      "luxury": true
+    }
+  },
+  "buildings": {
+    "hall": {
+      "name": "Pealinn",
+      "workers": 0,
+      "cost": {},
+      "requires": [],
+      "age": 0,
+      "time": 0
+    },
+    "lumber": {
+      "name": "Metsamaja",
+      "workers": 2,
+      "cost": {
+        "wood": 20
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 0,
+      "time": 12,
+      "out": "wood",
+      "rate": 18,
+      "cycle": 6
+    },
+    "saw": {
+      "name": "Saeveski",
+      "workers": 2,
+      "cost": {
+        "wood": 25,
+        "stone": 8
+      },
+      "requires": [
+        "lumber"
+      ],
+      "age": 0,
+      "time": 16,
+      "out": "plank",
+      "input": {
+        "wood": 4
+      },
+      "rate": 6,
+      "cycle": 9
+    },
+    "quarry": {
+      "name": "Kivimurd",
+      "workers": 2,
+      "cost": {
+        "wood": 20
+      },
+      "requires": [
+        "lumber"
+      ],
+      "age": 0,
+      "time": 16,
+      "out": "stone",
+      "rate": 9,
+      "cycle": 6
+    },
+    "house": {
+      "name": "Elamu",
+      "workers": 0,
+      "cost": {
+        "wood": 15
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 0,
+      "time": 13
+    },
+    "well": {
+      "name": "Kaev",
+      "workers": 1,
+      "cost": {
+        "wood": 18
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 0,
+      "time": 12,
+      "out": "water",
+      "rate": 8,
+      "cycle": 8
+    },
+    "farm": {
+      "name": "Talu",
+      "workers": 3,
+      "cost": {
+        "wood": 25,
+        "stone": 12
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 0,
+      "time": 20,
+      "out": "grain",
+      "rate": 14,
+      "cycle": 10
+    },
+    "mill": {
+      "name": "Veski",
+      "workers": 2,
+      "cost": {
+        "plank": 20,
+        "stone": 12
+      },
+      "requires": [
+        "farm"
+      ],
+      "age": 0,
+      "time": 20,
+      "out": "flour",
+      "input": {
+        "grain": 10
+      },
+      "rate": 10,
+      "cycle": 9
+    },
+    "bakery": {
+      "name": "Pagariäri",
+      "workers": 2,
+      "cost": {
+        "plank": 20,
+        "stone": 15
+      },
+      "requires": [
+        "mill",
+        "well"
+      ],
+      "age": 0,
+      "time": 20,
+      "out": "bread",
+      "input": {
+        "flour": 12,
+        "water": 2
+      },
+      "rate": 12,
+      "cycle": 10
+    },
+    "market": {
+      "name": "Turg",
+      "workers": 2,
+      "cost": {
+        "wood": 25,
+        "stone": 15
+      },
+      "requires": [
+        "house"
+      ],
+      "age": 0,
+      "time": 49
+    },
+    "warehouse": {
+      "name": "Materjaliladu",
+      "workers": 1,
+      "cost": {
+        "wood": 35,
+        "stone": 12
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 0,
+      "time": 42
+    },
+    "cellar": {
+      "name": "Toidukelder",
+      "workers": 0,
+      "cost": {
+        "wood": 45,
+        "stone": 25
+      },
+      "requires": [
+        "house"
+      ],
+      "age": 0,
+      "time": 58
+    },
+    "vegetable_garden": {
+      "name": "Köögiviljaaed",
+      "workers": 1,
+      "cost": {
+        "wood": 24,
+        "stone": 11
+      },
+      "requires": [
+        "hall"
+      ],
+      "age": 1,
+      "time": 21,
+      "out": "vegetables",
+      "rate": 6,
+      "cycle": 10
+    }
+  }
+}
