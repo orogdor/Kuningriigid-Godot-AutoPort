@@ -2,6 +2,7 @@ extends Control
 ## AutoPort 0.5: playable single-city economy sandbox.
 ## Live source-derived production definitions; one button press = one game minute.
 const City = preload("res://scripts/city_sim_v05.gd")
+const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const WorldMap = preload("res://scripts/world_map_v06.gd")
 const DetailView = preload("res://scripts/detail_view_v07.gd")
@@ -57,6 +58,7 @@ func _ready() -> void:
     detail_view.return_requested.connect(_show_world)
     detail_view.build_requested.connect(_build)
     detail_view.build_at_requested.connect(_build_at)
+    detail_view.bridge_requested.connect(_build_bridge)
     detail_view.turns_requested.connect(_advance)
     detail_view.hide()
     city_scroll.hide()
@@ -130,7 +132,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.9",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.10",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -175,7 +177,7 @@ func _setup_ui() -> void:
     body.add_child(construction_rows)
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.9: 3D teed tekivad tööliste liikumisest, rajaleidmine väldib maju ja mahajäetud rajad hääbuvad. AI, teed ja sõjad tulevad hiljem."
+    note.text="0.10: mäenõlvadega arvestavad töölised, jõgede ületuskohad, sillad ja täpsemad detailkaardi teed. AI, teed ja sõjad tulevad hiljem."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -223,6 +225,14 @@ func _build_at(kind: String, x: float, z: float) -> void:
     _build(kind)
     city.erase("pending_site")
     _save()
+
+func _build_bridge(x: float) -> void:
+    var outcome: String=Spatial.build_bridge(city,x)
+    event_message="Sild valmis X %.0f meetri kohal" % x if outcome=="" else outcome
+    _save()
+    _refresh()
+    if detail_view!=null and detail_view.visible:
+        detail_view.refresh_buildings()
 
 func _affordable(kind: String) -> bool:
     var d: Dictionary = recipes[kind]
