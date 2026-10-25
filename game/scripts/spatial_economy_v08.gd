@@ -26,7 +26,7 @@ static func initialize(state: Dictionary) -> void:
         if not old.has("bridges"):old["bridges"]=[]
         if not old.has("terrain"):old["terrain"]="plains"
         if not old.has("river"):old["river"]=false
-        old["version"]=3
+        old["version"]=maxi(3,int(old.get("version",0)))
         for agent in old.get("workers",[]):
             if not agent.has("route"):agent["route"]=[]
         return
