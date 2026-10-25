@@ -22,7 +22,7 @@ func _ready() -> void:
     bar.add_theme_constant_override("separation",10)
     top.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.17"
+    title.text="KUNINGRIIGID • GODOT 0.18"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
@@ -53,7 +53,7 @@ func _ready() -> void:
     map_canvas.cell_selected.connect(_on_selected)
     top.add_child(map_canvas)
     var legend:=Label.new()
-    legend.text="Meri • mets • tasandikud • mäed • jõed | Hiireratas: suum | Lohistamine: liigu | Klõps: vali ruut"
+    legend.text="Meri • mets • tasandikud • mäed • jõed | Hiireratas või kahe sõrme näpistus: suum | Lohista: liigu | Puuduta: vali ruut"
     legend.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(legend)
     info_label=Label.new()
