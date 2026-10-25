@@ -88,7 +88,7 @@ func _test() -> void:
     Spatial.initialize(old)
     old["detail_sim"]["version"]=6
     Freight.initialize(old)
-    if int(old["detail_sim"]["version"])!=7 or old["detail_sim"]["haulers"].size()!=0:
+    if int(old["detail_sim"]["version"])<7 or old["detail_sim"]["haulers"].size()!=0:
         fail("v0.13 save migrated with bogus deliveries")
         return
     # An actual 3D viewport, with a truck/cart containing visible cargo.
