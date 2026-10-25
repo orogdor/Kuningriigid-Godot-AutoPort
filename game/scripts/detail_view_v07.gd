@@ -381,14 +381,14 @@ func _activate_district(tile: Vector2i) -> void:
 
 func _overview_city() -> void:
     if not combined_city:return
-    controller.overview(combined_bounds)
+    controller.call("overview",combined_bounds)
 
 func _next_city_tile() -> void:
     if not combined_city or shown_district_tiles.is_empty():return
     var idx: int=shown_district_tiles.find(active_tile)
     var next: Vector2i=shown_district_tiles[(idx+1)%shown_district_tiles.size()]
     _activate_district(next)
-    controller.focus(Continuous.offset(next,selected))
+    controller.call("focus",Continuous.offset(next,selected))
 
 func _is_coastal(cell: Dictionary) -> bool:
     var c: int=int(cell.get("c",-1))
@@ -1058,7 +1058,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     shown_district_tiles=Continuous.visible(world,city_state,selected) if combined_city else []
     combined_bounds=Continuous.bounds(shown_district_tiles,selected) if combined_city else {}
     if controller!=null:
-        controller.set_city_bounds(combined_bounds)
+        controller.call("set_city_bounds",combined_bounds)
     pending_build=""
     placement_rotation=0
     placement_cell=Vector2(INF,INF)
