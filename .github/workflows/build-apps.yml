@@ -149,6 +149,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_parity.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_ui.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v07_ui.gd
 
       - name: Import resources and inspect editor errors
         shell: bash
@@ -201,11 +202,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.6.${{ github.run_number }}"
+          VERSION="v0.7.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.6 adds a selectable 220x165 world map with deterministic JS-parity continent/island polygons, coastal starts, terrain, rivers and city/map navigation. The 0.5 city economy remains. The map is an early 2D prototype; AI and battles are not ported." \
+            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.7 adds a navigable 3D detail view of selected 0.6 world tiles with distinct procedural stone-age buildings and city construction linked to 0.5 economy. Full terrain and units are not yet ported." \
             --latest
