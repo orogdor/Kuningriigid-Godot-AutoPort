@@ -18,6 +18,7 @@ const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Access = preload("res://scripts/building_access_v22.gd")
 const Planner = preload("res://scripts/city_planner_v24.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
+const Continuous = preload("res://scripts/continuous_city_v27.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
@@ -27,6 +28,11 @@ const SURFACE_DEPTH: float = 195.0
 
 var world: Dictionary = {}
 var selected: Vector2i = Vector2i(-1,-1)
+var active_tile: Vector2i=Vector2i(-1,-1)
+var combined_city: bool=false
+var combined_root: Node3D
+var combined_bounds: Dictionary={}
+var shown_district_tiles: Array[Vector2i]=[]
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -66,7 +72,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.26 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.27 • ÜHINE 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -136,6 +142,9 @@ func _ready() -> void:
     bridge_root=Node3D.new()
     bridge_root.name="RiverBridges"
     scene_root.add_child(bridge_root)
+    combined_root=Node3D.new()
+    combined_root.name="ContinuousCity"
+    scene_root.add_child(combined_root)
     actions=HFlowContainer.new()
     actions.add_theme_constant_override("h_separation",6)
     actions.add_theme_constant_override("v_separation",6)
@@ -210,6 +219,8 @@ func _surface(cell: Dictionary) -> void:
     var sea: bool=selected_biome=="sea"
     var heights: float=clampf(float(cell.get("h",0))*0.02,-1.0,1.7)
     var smooth_centre: bool=can_build
+    var width: float=Continuous.TILE_SPAN if combined_city else SURFACE_WIDTH
+    var depth: float=Continuous.TILE_SPAN if combined_city else SURFACE_DEPTH
     var material:=StandardMaterial3D.new()
     material.vertex_color_use_as_albedo=true
     material.roughness=0.98
@@ -219,14 +230,14 @@ func _surface(cell: Dictionary) -> void:
     var tiles_z: int=26
     for r in range(tiles_z):
         for c in range(tiles_x):
-            var x0: float=(-0.5+float(c)/tiles_x)*SURFACE_WIDTH
-            var x1: float=(-0.5+float(c+1)/tiles_x)*SURFACE_WIDTH
-            var z0: float=(-0.5+float(r)/tiles_z)*SURFACE_DEPTH
-            var z1: float=(-0.5+float(r+1)/tiles_z)*SURFACE_DEPTH
-            var a:=Vector3(x0,_elevation(x0,z0,heights,smooth_centre),z0)
-            var b:=Vector3(x1,_elevation(x1,z0,heights,smooth_centre),z0)
-            var d:=Vector3(x0,_elevation(x0,z1,heights,smooth_centre),z1)
-            var e:=Vector3(x1,_elevation(x1,z1,heights,smooth_centre),z1)
+            var x0: float=(-0.5+float(c)/tiles_x)*width
+            var x1: float=(-0.5+float(c+1)/tiles_x)*width
+            var z0: float=(-0.5+float(r)/tiles_z)*depth
+            var z1: float=(-0.5+float(r+1)/tiles_z)*depth
+            var a:=Vector3(x0,(0.0 if combined_city else _elevation(x0,z0,heights,smooth_centre)),z0)
+            var b:=Vector3(x1,(0.0 if combined_city else _elevation(x1,z0,heights,smooth_centre)),z0)
+            var d:=Vector3(x0,(0.0 if combined_city else _elevation(x0,z1,heights,smooth_centre)),z1)
+            var e:=Vector3(x1,(0.0 if combined_city else _elevation(x1,z1,heights,smooth_centre)),z1)
             var col:=Color("#b8ac80") if sea else Color("#86a769")
             if selected_biome=="forest":col=Color("#547b4e")
             elif selected_biome=="hills":col=Color("#999b91")
@@ -241,7 +252,7 @@ func _surface(cell: Dictionary) -> void:
     ground.material_override=material
     scene_root.add_child(ground)
     if sea or _is_coastal(cell):
-        _box(scene_root,Vector3(0,-1.2,0),Vector3(SURFACE_WIDTH,0.25,SURFACE_DEPTH),
+        _box(scene_root,Vector3(0,-1.2,0),Vector3(width,0.25,depth),
             Color("#3b86a8"),"SeaLevel")
     var rng:=RandomNumberGenerator.new()
     rng.seed=int(world.get("seed",82026))+selected.x*10007+selected.y*19937
@@ -259,10 +270,10 @@ func _surface(cell: Dictionary) -> void:
             if can_build:continue
             _rock(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.8,1.6))
     if bool(cell.get("river",false)):
-        _box(scene_root,Vector3(0,-0.26,25),Vector3(SURFACE_WIDTH,0.13,14),
+        _box(scene_root,Vector3(0,-0.26,25),Vector3(width,0.13,14),
             Color("#419abb"),"RiverWater")
         for bank_z in [17.0,33.0]:
-            _box(scene_root,Vector3(0,0.06,bank_z),Vector3(SURFACE_WIDTH,0.25,1.7),
+            _box(scene_root,Vector3(0,0.06,bank_z),Vector3(width,0.25,1.7),
                 Color("#978766"),"RiverBank")
 
 func _is_coastal(cell: Dictionary) -> bool:
