@@ -159,3 +159,16 @@ AutoPort 0.8 laiendab 0.7 3D detailkaarti, säilitades 0.5 majanduse ja 0.6 maai
 - `game/tests/detail_v08_ui.gd` kontrollib hoone paigutust klõpsuga, varude kulumist, tööliste liikumist ja toodangu laekumist, hoone kattumise keeldu, kivimurru töötajat, salvestamist ja maailmakaardile naasmist.
 
 **Ulatuspiirang:** tegemist on algelise sõlmede vahel liikuva kogumissüsteemiga, mitte veel originaalse veebimängu 1:1 tööliste rajaleidmise, lõpliku metsade taassünni, 3D inimese animatsioonide või töökohtade täieliku tööjõuloogikaga. 0.8 aktiveerub pealinna detailkaardi avamisel ning tööliste tootmine jätkub pärast seda ka linnamajanduse ekraanil käike vahetades. Liikumine on hetkel käigupõhine, mitte sujuvalt animeeritud.
+
+
+## AutoPort 0.9 — 3D tööliste rajaleidmine ja loomulikult tekkivad teed
+
+0.9 jätkab 0.8 pealinna detailkaardi füüsilise tootmise süsteemi:
+
+- `game/scripts/spatial_paths_v09.gd`: 10-meetrise sammuga A*-teekonnaotsing 17 × 17 ruudustikul, hoonete ümbruse läbimatuse kontroll, diagonaalsest nurkast läbilõikamise keelamine ja vajaduse korral uue marsruudi arvutamine pärast ehitamist. Jõesängi lihtsustatud reservatsioon jätab etteantud madalad ületuskohad (0.9 ei ole veel täielik ülemaailmne teede/vee/maastiku 1:1 port).
+- `game/scripts/spatial_economy_v08.gd`: metsamaja ja kivimurru töölised valivad ligipääsetava ressursisõlme, liiguvad sinna ja tagasi rajaleidmisega, krediidivad materjali laovarus alles tagasijõudmisel. Igast läbitud ruudust jääb liiklussageduse jälg.
+- `game/scripts/detail_view_v07.gd`: läbikäidud radade kuvamine pruuni 3D maapinnaribana; liikuvad töölised interpoleeritakse tween-animatsiooniga järgmisse käigupõhisesse asukohta.
+- **Teede dünaamika:** rada kuvatakse alates kolmest läbimisest; liiklussagedus koguneb kuni kindla maksimumini ning väheneb 35 mängukäigu pikkuste kasutuspauside järel. Korduvalt kasutatud teel on marsruudivalikul väike kulueelis. See ei ole veel veebimängu täpne teevõrk, kuid tekib mängureeglitest, mitte suvalisest visuaalist.
+- `game/tests/spatial_paths_v09.gd`: kontrollib teekonda ümber hoone, diagonaalsete nurkade vältimist, liiklusega teede teket, tee hääbumist, JSON-salvestust ning 0.8 salvestuse migratsiooni. Samuti jooksevad jätkuvalt 0.5 majanduse ja 0.6 maailma pariteeditestid.
+
+**Ulatuspiirang:** töötajad liiguvad praegu arvutatud rajal diskreetsete strateegiakäikudega, kuid kuvatavad mudelid liiguvad käikude vahel sujuva animatsiooniga. Täielikke sujuvaid pärisaja üksusi, 3D füüsikaga rajaleidmist, sildu, teede maailmakaardi/detailkaardi sünkrooni ja sõjalist AI-d pole veel üle kantud.
