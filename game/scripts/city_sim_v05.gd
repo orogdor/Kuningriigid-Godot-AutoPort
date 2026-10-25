@@ -159,7 +159,10 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
     var total_demand: float = 0.0
     for b in buildings:
         total_demand += _demand(b, recipes.get(b.get("type",""),{}))
-    var ratio: float = minf(1.0,pop/total_demand) if total_demand > 0.0 else 0.0
+    var freight_workers: int=Freight.staffed_count(state)
+    # Haulers now occupy real workforce slots in spatial cities only.
+    var available: float=maxf(0.0,pop-float(freight_workers))
+    var ratio: float = minf(1.0,available/total_demand) if total_demand > 0.0 else 0.0
     var employed: float = 0.0
     var cargo: Array = []
     # Mirror tickEconomy: run every workplace before unloading any cargo.
@@ -190,15 +193,29 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
         if state.has("detail_sim") and String(b.get("type","")) in ["lumber","quarry"]:
             continue
         var input: Dictionary = d.get("input",{})
-        if not input.is_empty() and not can_afford(stock,input):
+        var spatial_inputs: bool=state.has("detail_sim") and not input.is_empty()
+        if not spatial_inputs and not input.is_empty() and not can_afford(stock,input):
+            continue
+        if spatial_inputs and b.has("input_shipment"):
+            if not Freight.inputs_delivered(b):
+                continue
+            b.erase("input_shipment")
+            b["timer"]=maxf(0.0,float(b.get("timer",0))-float(d.get("cycle",1)))
+            cargo.append({"key":String(d["out"]),"amount":float(d.get("rate",0)),"origin":buildings.find(b)})
             continue
         b["timer"] = float(b.get("timer",0)) + work_dt * RESOURCE_MULTIPLIER
         if float(b["timer"]) + 0.00000001 >= float(d.get("cycle",1)):
+            if spatial_inputs:
+                # Reserve/consume inputs once in warehouse, then await actual
+                # hall-to-factory carts before production can happen.
+                Freight.request_inputs(state,buildings.find(b),input)
+                continue
             b["timer"] = maxf(0.0,float(b["timer"]) - float(d.get("cycle",1)))
             if not input.is_empty():
                 spend(stock,input)
             cargo.append({"key":String(d["out"]),"amount":float(d.get("rate",0)), "origin":buildings.find(b)})
-    realm["employed"] = employed
+    realm["employed"] = employed + float(freight_workers)
+    realm["freightEmployed"]=freight_workers
     # All producers use the local delivery shortcut in the 0.5 single-city model.
     # The upstream reference has all buildings placed at the hall to force immediate delivery.
     for c in cargo:
