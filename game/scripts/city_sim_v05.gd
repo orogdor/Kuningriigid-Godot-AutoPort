@@ -272,6 +272,12 @@ static func tick(state: Dictionary, defs: Dictionary = {}) -> void:
             realm["pop"] = maxi(3,int(minf(cap,pop-1.0)))
         realm["shortageTurns"] = shortage
     realm["growthProgress"] = progress
+    if Trade.has_outpost(state) and not bool(state.get("satellite_town",false)):
+        # An independently developing satellite uses the same source-derived
+        # buildings/population/economy logic, but owns its own stock and workers.
+        # The satellite has no trade_v15 field, so this recursion ends here.
+        var satellite: Dictionary=Trade.ensure_city(state)
+        tick(satellite,defs)
     Trade.tick(state)
 
 static func snapshot(state: Dictionary) -> Dictionary:
