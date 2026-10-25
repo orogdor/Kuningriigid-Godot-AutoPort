@@ -172,3 +172,16 @@ AutoPort 0.8 laiendab 0.7 3D detailkaarti, säilitades 0.5 majanduse ja 0.6 maai
 - `game/tests/spatial_paths_v09.gd`: kontrollib teekonda ümber hoone, diagonaalsete nurkade vältimist, liiklusega teede teket, tee hääbumist, JSON-salvestust ning 0.8 salvestuse migratsiooni. Samuti jooksevad jätkuvalt 0.5 majanduse ja 0.6 maailma pariteeditestid.
 
 **Ulatuspiirang:** töötajad liiguvad praegu arvutatud rajal diskreetsete strateegiakäikudega, kuid kuvatavad mudelid liiguvad käikude vahel sujuva animatsiooniga. Täielikke sujuvaid pärisaja üksusi, 3D füüsikaga rajaleidmist, sildu, teede maailmakaardi/detailkaardi sünkrooni ja sõjalist AI-d pole veel üle kantud.
+
+
+## AutoPort 0.11 — päris ehitustöölised ja ehituse etapid
+
+0.11 jätkab Godoti 0.10 ruumilist majandusprototüüpi. `game/scripts/construction_v11.gd` loob iga poolelioleva hoone juurde tegeliku ehitustöölise, kes alustab peahoone juurest, leiab A*-teekonna vabasse ehitusplatsi kõrvalasukohta ning ehitab ainult kohal olles ja majandussüsteemis määratud tööjõu korral. Töötajad jagatakse pärast ehituse valmimist järgmisele tööle; nende asukoht, ülesanne ja käimisrada salvestatakse olemasoleva `detail_sim` alla (skeem 4).
+
+Hooned arenevad vähemalt kolme aktiivse ehituskäigu vältel. Visuaal muutub vundamendist karkassiks ja seinteks ning alles valmis hoone kasutab lõplikku 3D mudelit. `game/scripts/detail_view_v07.gd` joonistab ehitajad sinise riietuse ja lihtsustatud töövarustusega ning liikumine on sujuvamaks tween'itud.
+
+Majanduses lisatud ehitustöölised kasutavad olemasolevat töötajate jaotusvalemit, nii et tööjõupuudus aeglustab ehitamist. 0.11 sekkub ainult avatud 3D detailkaardiga pealinna majandusolekusse. Originaalse veebimängu 0.5 pariteetmudel ja 1200 järjestikust JavaScripti referentskäiku jäävad muutmata.
+
+**Testid:** `game/tests/construction_v11.gd` kontrollib ehitaja päris liikumist, tööetappe, töötaja taaskasutust, salvestust, 3D vundamendi ja töötajamudeli olemasolu ning hoone lõpuleviimist. GitHubi automaattestid kontrollivad ka 0.5–0.10 funktsioone, APK/EXE ehitamist ja Windowsi käivitajat.
+
+**Piirangud:** konstruktsioonielemendid ja töötajad on esialgsed primitiivmudelid, mitte ajalooliselt viimistletud 3D varad. Ehituse füüsiline materjalivedu, mitme ehitustöölise koostöö sama hoone juures ning kõigi linnade samaaegne AI-ehitus on järgmised portimisetapid. Üks käik jääb üheks mänguminutiks.
