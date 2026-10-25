@@ -24,7 +24,10 @@ func _test() -> void:
     if not detail.can_build or detail.plot_root==null:
         fail("capital build view missing")
         return
-    if detail.placement_label==null or detail.plot_root.get_node_or_null("BuildGridLine")==null:
+    var grid_lines: int=0
+    for segment in detail.plot_root.get_children():
+        if String(segment.name).begins_with("BuildGridLine"):grid_lines+=1
+    if detail.placement_label==null or grid_lines<30:
         fail("neutral construction grid not visible")
         return
     var initial_count: int=ui.city["buildings"].size()
@@ -34,8 +37,8 @@ func _test() -> void:
     var free: int=0
     var blocked: int=0
     for tile in detail.plot_root.get_children():
-        if tile.name=="BuildPlotOpen":free+=1
-        if tile.name=="BuildPlotBlocked":blocked+=1
+        if String(tile.name).begins_with("BuildPlotOpen"):free+=1
+        if String(tile.name).begins_with("BuildPlotBlocked"):blocked+=1
     if free<5 or blocked<1 or detail.placement_marker==null:
         fail("legal green or forbidden red plots are not shown")
         return
