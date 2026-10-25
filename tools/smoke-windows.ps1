@@ -83,17 +83,17 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit 
 $p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
-# The active file-by-file release must contain 0.10 bridges and terrain-aware routing.
+# The active file-by-file release must contain 0.11 bridges and terrain-aware routing.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
 if ($contentScript -notmatch 'GODOT 0\.10' -or $contentScript -notmatch 'Linnamajandus') {
-    throw "Installed project is not the AutoPort 0.10 city, river bridges and terrain prototype"
+    throw "Installed project is not the AutoPort 0.11 city, river bridges and terrain prototype"
 }
-foreach ($part in @("scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
+foreach ($part in @("scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
     if (-not (Test-Path (Join-Path $game $part))) {
-        throw "Missing 0.10 deployed game source: $part"
+        throw "Missing 0.11 deployed game source: $part"
     }
 }
-Write-Host "GODOT 0.10 CONTENT VERIFIED: city economy, river crossings, 3D bridges and terrain-aware routing"
+Write-Host "GODOT 0.11 CONTENT VERIFIED: city economy, visible construction workers and staged 3D buildings"
 
 $count = (Get-ChildItem -Path $game -Recurse -File | Measure-Object).Count
 if ($count -lt 20) { throw "Expected game directory with many distinct files; found $count" }
