@@ -73,7 +73,7 @@ func _initialize() -> void:
         fail("saved routes and road traffic JSON invalid")
         return
     Spatial.initialize(recovered)
-    if not recovered["detail_sim"].has("roads") or int(recovered["detail_sim"]["version"])!=2:
+    if not recovered["detail_sim"].has("roads") or int(recovered["detail_sim"]["version"])<2:
         fail("route state could not be restored")
         return
     # Existing 0.8 save without roads must migrate without losing resources.
@@ -83,7 +83,7 @@ func _initialize() -> void:
     legacy["detail_sim"]["version"]=1
     legacy["detail_sim"]["sites"][0]["remaining"]=9.0
     Spatial.initialize(legacy)
-    if int(legacy["detail_sim"]["version"])!=2 or not legacy["detail_sim"].has("roads"):
+    if int(legacy["detail_sim"]["version"])<2 or not legacy["detail_sim"].has("roads"):
         fail("v0.8 save migration did not initialize roads")
         return
     if float(legacy["detail_sim"]["sites"][0]["remaining"])!=9.0:
