@@ -85,7 +85,7 @@ static func nearest_site(sim: Dictionary, kind: String, from: Vector2) -> int:
             dist=d
     return index
 
-static func move_toward(worker: Dictionary, target: Vector2, speed: float) -> bool:
+static func walk_agent(worker: Dictionary, target: Vector2, speed: float) -> bool:
     var pos:=Vector2(float(worker["x"]),float(worker["z"]))
     var delta:=target-pos
     var length: float=delta.length()
@@ -127,7 +127,7 @@ static func tick(state: Dictionary) -> void:
         var home:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
         var speed: float=WALK_PER_TURN*clampf(float(b.get("efficiency",1.0)),0.2,1.0)
         if String(agent["phase"])=="return":
-            if move_toward(agent,home,speed):
+            if walk_agent(agent,home,speed):
                 var cargo: float=float(agent.get("carry",0))
                 if cargo>0:
                     var resource: String=String(agent["kind"])
@@ -146,7 +146,7 @@ static func tick(state: Dictionary) -> void:
         if chosen<0:continue
         var node: Dictionary=nodes[chosen]
         var place:=Vector2(float(node["x"]),float(node["z"]))
-        if move_toward(agent,place,speed):
+        if walk_agent(agent,place,speed):
             var gathered: float=minf(GATHER_AMOUNT*clampf(float(b.get("efficiency",1)),0,1),
                 float(node["remaining"]))
             node["remaining"]=maxf(0.0,float(node["remaining"])-gathered)
