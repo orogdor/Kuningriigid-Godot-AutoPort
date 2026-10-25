@@ -66,6 +66,25 @@ jobs:
         with:
           ref: main
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve pinned Three.js rules revision
+        id: source
+        shell: bash
+        run: |
+          test -s game/data/generated/manifest.json
+          test -s game/data/generated/city_buildings.json
+          echo "sha=$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: orogdor/Kuningriigid
+          ref: ${{ steps.source.outputs.sha }}
+          path: upstream
+          persist-credentials: false
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
@@ -113,6 +132,18 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/autoport-debug.keystore" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Compare 200 JavaScript city turns per scenario against native Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp game/data/generated/city_buildings.json /tmp/checked-city-definitions.json
+          node tools/generate-city-v05-fixtures.mjs --source upstream \
+            --definitions game/data/generated/city_buildings.json \
+            --fixtures game/tests/city_v05_fixtures.json --commit "${{ steps.source.outputs.sha }}"
+          cmp /tmp/checked-city-definitions.json game/data/generated/city_buildings.json
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
 
       - name: Import resources and inspect editor errors
         shell: bash
@@ -165,11 +196,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.4.${{ github.run_number }}"
+          VERSION="v0.5.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. This is still a Godot port preview." \
+            --notes "Source commit: $SOURCE_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.5 adds one-city production, food, water, housing, 1-minute turns, build controls, and 6 x 200-turn JS parity tests. World map and AI are not yet ported." \
             --latest
