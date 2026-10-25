@@ -58,6 +58,9 @@ func _test() -> void:
         return
     var home_id: String=Transit.home_key(city)
     var next_id: String=Districts.key(destination)
+    if not city["transport_v26"]["surfaces"].has(next_id):
+        fail("adjacent square lacks a separate 3D terrain/resource record")
+        return
     var route: Array[String]=Transit.route(city,home_id,next_id)
     if route.size()!=2 or route[0]!=home_id or route[1]!=next_id:
         fail("two adjacent districts did not form a shared road network")
