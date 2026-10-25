@@ -52,11 +52,13 @@ static func initialize(state: Dictionary) -> void:
 static func snap(point: Vector2) -> Vector2:
     return Vector2(roundf(point.x/STEP)*STEP,roundf(point.y/STEP)*STEP)
 
-static func can_place(state: Dictionary, point: Vector2) -> bool:
+static func can_place(state: Dictionary, point: Vector2, district: String="") -> bool:
     var p: Vector2=snap(point)
     if absf(p.x)>HALF_SIZE or absf(p.y)>HALF_SIZE:
         return false
     for b in state.get("buildings",[]):
+        # Annexed world cells have independent local 3D building coordinates.
+        if String(b.get("district",""))!=district:continue
         var pos:=Vector2(float(b.get("x",0)),float(b.get("z",0)))
         if pos.distance_to(p)<15.5:return false
     if Terrain.river_lane(state.get("detail_sim",{}),p.x,p.y):return false
