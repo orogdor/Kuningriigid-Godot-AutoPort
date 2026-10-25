@@ -5,12 +5,14 @@ signal return_requested
 signal build_requested(kind: String)
 signal build_at_requested(kind: String, x: float, z: float)
 signal bridge_requested(x: float)
+signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
 const Construction = preload("res://scripts/construction_v11.gd")
 const Materials = preload("res://scripts/construction_v12.gd")
+const Schedule = preload("res://scripts/construction_scheduler_v13.gd")
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -48,7 +50,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.12 • 3D DETAILKAART"
+    heading.text="KUNINGRIIGID • GODOT 0.13 • 3D DETAILKAART"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -500,8 +502,9 @@ func _refresh_info() -> void:
         var streets: Dictionary=Paths.roads_summary(sim)
         text_line+=" | Sissekäidud teeruutusid %d" % int(streets["tiles"])
         var work: Dictionary=Materials.report(city_state)
-        text_line+=" | Ehitajaid %d | Ehitusel %d | Vedamas %d | Kohaletoimetatud %.0f" % [
-            int(work["builders"]),int(work["sites"]),int(work["in_transit"]),float(work["delivered"])]
+        var priority: Dictionary=Schedule.report(city_state)
+        text_line+=" | Ehitajaid %d | Ehitusel %d | Vedamas %d | Kohaletoimetatud %.0f | Kõrge prioriteediga %d" % [
+            int(work["builders"]),int(work["sites"]),int(work["in_transit"]),float(work["delivered"]),int(priority["high"])]
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
@@ -530,9 +533,22 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.12: kuni kaks ehitajat toovad materjali peahoonest platsile ja ehitavad koos. Materjalid tasutakse tellimisel."
+    note.text="0.13: ehitused prioriteedi järgi, eri materjalide vedu ja tööjõu ümberjagamine."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
+    for i in range(1,city_state.get("buildings",[]).size()):
+        var b: Dictionary=city_state["buildings"][i]
+        if bool(b.get("ready",false)):continue
+        var current: String=Schedule.normalize(String(b.get("priority","normal")))
+        var choices: Array[String]=["low","normal","high"]
+        var next_priority: String=choices[(choices.find(current)+1)%choices.size()]
+        var btn:=Button.new()
+        btn.text="%s #%d: %s (muuda)" % [String(b.get("type","hoone")),i,current]
+        btn.pressed.connect(_priority_click.bind(i,next_priority))
+        actions.add_child(btn)
+
+func _priority_click(index: int, level: String) -> void:
+    priority_requested.emit(index,level)
 
 func _can_build(kind: String) -> bool:
     if not city_state.has("realms"):return false
