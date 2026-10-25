@@ -6,6 +6,7 @@ const World=preload("res://scripts/world_gen_v06.gd")
 const Paths=preload("res://scripts/spatial_paths_v09.gd")
 const Access=preload("res://scripts/building_access_v22.gd")
 const Terrain=preload("res://scripts/detail_terrain_v10.gd")
+const Nav=preload("res://scripts/terrain_navigation_v29.gd")
 const Spatial=preload("res://scripts/spatial_economy_v08.gd")
 const OldConstruction=preload("res://scripts/construction_v11.gd")
 const METERS_PER_TURN: float=24.0
@@ -67,6 +68,14 @@ static func configure(state: Dictionary,world: Dictionary) -> void:
             "roads":{},"bridges":[],"turns":0}
     network["surfaces"]=surfaces
     state["transport_v26"]=network
+    # Compact world/tile hydrology lives on the original per-district sim.
+    # No world grid is embedded in saved city JSON.
+    if state.has("detail_sim"):
+        Nav.configure(state["detail_sim"],world,Vector2i(int(home["c"]),int(home["r"])))
+    for entry in network["tiles"]:
+        var id: String=key(int(entry["c"]),int(entry["r"]))
+        if surfaces.has(id):
+            Nav.configure(surfaces[id],world,Vector2i(int(entry["c"]),int(entry["r"])))
 
 static func route(state: Dictionary,source: String,target: String) -> Array[String]:
     var keys: Array[String]=all_keys(state)
