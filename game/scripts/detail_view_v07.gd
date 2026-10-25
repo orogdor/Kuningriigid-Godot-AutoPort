@@ -286,7 +286,9 @@ func _position_local_groups() -> void:
 
 func _render_neighbors() -> void:
     if combined_root==null:return
-    for old in combined_root.get_children():old.queue_free()
+    # Free immediately: queued nodes keep their names until frame end and
+    # would silently rename DistrictTile_Capital when focus changes.
+    for old in combined_root.get_children():old.free()
     if not combined_city:return
     var buildings: Array=city_state.get("buildings",[])
     for tile in shown_district_tiles:
