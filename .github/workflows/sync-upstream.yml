@@ -78,13 +78,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add game/data/generated/
-          if git diff --cached --quiet; then
-            echo 'No new rules to sync.'
-          else
+          UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
+          # Several quick edits can land while CI is running; never force-push.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            node tools/port.mjs --source ../upstream --out game/data/generated --commit "$UPSTREAM_SHA"
+            git add game/data/generated/
+            if git diff --cached --quiet; then
+              echo 'Rules already synced.'
+              exit 0
+            fi
             git commit -m "Sync Kuningriigid rules from Three.js main"
-            git push origin HEAD:main
-          fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Concurrent change detected; retrying cleanly ($attempt/3)"
+          done
+          echo 'Could not save synced rules after 3 attempts'
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: kuningriigid-godot-rules
