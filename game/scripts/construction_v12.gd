@@ -24,6 +24,8 @@ static func initialize(state: Dictionary) -> void:
         if not worker.has("cargo_kind"):worker["cargo_kind"]=""
         if not worker.has("cargo_amount"):worker["cargo_amount"]=0.0
         if not worker.has("route"):worker["route"]=[]
+        if String(worker.get("phase","")) in ["walking","building","waiting_for_workers","no_route"]:
+            worker["phase"]="to_site"
     sim["version"]=5
 
 static func reserved(building: Dictionary) -> Dictionary:
@@ -79,7 +81,7 @@ static func _assign(state: Dictionary) -> void:
         if idx<0 or idx>=work_sites.size() or bool(work_sites[idx].get("ready",false)):
             _idle(worker)
             continue
-        var allocated: int=mini(MAX_CREW_PER_SITE,int(ceil(float(work_sites[idx].get("assigned",0.0))-0.00001)))
+        var allocated: int=mini(MAX_CREW_PER_SITE,maxi(1,int(floor(float(work_sites[idx].get("assigned",0.0))+0.00001))))
         if int(counts.get(idx,0))>=allocated or capacity<=0:
             # Preserve already loaded supplies by returning them to the
             # blueprint reservation rather than destroying paid materials.
@@ -90,7 +92,7 @@ static func _assign(state: Dictionary) -> void:
     for idx in range(work_sites.size()):
         var site: Dictionary=work_sites[idx]
         if bool(site.get("ready",false)) or float(site.get("hp",0))<=0.0:continue
-        var ideal: int=mini(MAX_CREW_PER_SITE,int(ceil(float(site.get("assigned",0.0))-0.00001)))
+        var ideal: int=mini(MAX_CREW_PER_SITE,maxi(1,int(floor(float(site.get("assigned",0.0))+0.00001))))
         while int(counts.get(idx,0))<ideal and capacity>0:
             var agent: Variant=null
             for worker in workers:
