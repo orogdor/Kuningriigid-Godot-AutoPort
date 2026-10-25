@@ -158,6 +158,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/path_grid_v23.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_growth_v24.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_districts_v25.gd
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/district_transit_v26.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v08_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/spatial_paths_v09.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_terrain_v10.gd
@@ -220,12 +221,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.25.${{ github.run_number }}"
+          VERSION="v0.26.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
           gh release create "$VERSION" \
             dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.25 lets the player annex passable neighboring world-map tiles, build separate local 3D house districts using pooled city resources, save ownership and render connected district roads on the world map. Retains legacy capital saves, town economy and 0.24 performance improvements. Cross-tile worker simulation remains a future milestone. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
+            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.26 introduces physical cross-district travel: walkers and wagons follow 10m local A-star paths plus 20m timed border crossings, with finite resource gathering, annex builder materials, conserved freight, route visibility and save/reload regression. Legacy one-tile capitals retain their previous economy. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
             --latest
