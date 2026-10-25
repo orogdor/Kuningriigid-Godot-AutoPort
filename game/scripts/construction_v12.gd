@@ -5,6 +5,7 @@ extends RefCounted
 ## already-reserved resources from town hall to a construction site.
 const Paths = preload("res://scripts/spatial_paths_v09.gd")
 const Old = preload("res://scripts/construction_v11.gd")
+const Scheduler = preload("res://scripts/construction_scheduler_v13.gd")
 const MAX_CREW_PER_SITE: int=2
 const LOAD_LIMIT: float=10.0
 const WALK_SPEED: float=24.0
@@ -26,13 +27,16 @@ static func initialize(state: Dictionary) -> void:
         if not worker.has("route"):worker["route"]=[]
         if String(worker.get("phase","")) in ["walking","building","waiting_for_workers","no_route"]:
             worker["phase"]="to_site"
-    sim["version"]=5
+    sim["version"]=maxi(5,int(sim.get("version",0)))
 
 static func reserved(building: Dictionary) -> Dictionary:
     var result: Dictionary={}
-    for key in ["wood","stone","plank"]:
-        var qty: float=float(building.get("supply_total",{}).get(key,0.0))
-        if qty>0:result[key]=qty
+    # Unlike v0.12, every prepaid non-food construction good can now be
+    # delivered. Food costs are consumed when the order is placed.
+    var all_materials: Dictionary=building.get("supply_total",{})
+    for key in all_materials.keys():
+        if float(all_materials[key])>0.0:
+            result[key]=float(all_materials[key])
     return result
 
 static func delivered(building: Dictionary, key: String) -> float:
@@ -70,47 +74,7 @@ static func _idle(worker: Dictionary) -> void:
     worker["cargo_amount"]=0.0
 
 static func _assign(state: Dictionary) -> void:
-    var sim: Dictionary=state["detail_sim"]
-    var workers: Array=sim["builders"]
-    var work_sites: Array=state["buildings"]
-    var counts: Dictionary={}
-    var capacity: int=maxi(0,int(state["realms"][0].get("pop",3)))
-    # Never assign more builder bodies than the capital's total inhabitants.
-    for worker in workers:
-        var idx: int=int(worker.get("building",-1))
-        if idx<0 or idx>=work_sites.size() or bool(work_sites[idx].get("ready",false)):
-            _idle(worker)
-            continue
-        var allocated: int=mini(MAX_CREW_PER_SITE,maxi(1,int(floor(float(work_sites[idx].get("assigned",0.0))+0.00001))))
-        if int(counts.get(idx,0))>=allocated or capacity<=0:
-            # Preserve already loaded supplies by returning them to the
-            # blueprint reservation rather than destroying paid materials.
-            _idle(worker)
-            continue
-        counts[idx]=int(counts.get(idx,0))+1
-        capacity-=1
-    for idx in range(work_sites.size()):
-        var site: Dictionary=work_sites[idx]
-        if bool(site.get("ready",false)) or float(site.get("hp",0))<=0.0:continue
-        var ideal: int=mini(MAX_CREW_PER_SITE,maxi(1,int(floor(float(site.get("assigned",0.0))+0.00001))))
-        while int(counts.get(idx,0))<ideal and capacity>0:
-            var agent: Variant=null
-            for worker in workers:
-                if int(worker.get("building",-1))<0:
-                    agent=worker
-                    break
-            if agent==null:
-                sim["builder_ids"]=int(sim.get("builder_ids",0))+1
-                agent={"id":int(sim["builder_ids"]),"x":0.0,"z":0.0,"building":-1,"phase":"idle",
-                    "route":[],"cargo_kind":"","cargo_amount":0.0}
-                workers.append(agent)
-            agent["building"]=idx
-            agent["phase"]="to_hall"
-            agent["route"]=[]
-            agent["target_x"]=99999.0
-            agent["target_z"]=99999.0
-            counts[idx]=int(counts.get(idx,0))+1
-            capacity-=1
+    Scheduler.assign(state)
 
 static func _approach(state: Dictionary, worker: Dictionary, building: Dictionary) -> Vector2:
     var center:=Vector2(float(building.get("x",0)),float(building.get("z",0)))
