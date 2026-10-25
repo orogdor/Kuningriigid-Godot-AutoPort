@@ -1069,7 +1069,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.27: kõik liidetud linnaosad ühes katkematus 3D vaates. Puuduta teist ruutu, et seal ehitada."
+    note.text="0.28: sujuvad maastikupiirid, ühendatud jõeosad ja kiirem suur 3D linn."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
