@@ -33,11 +33,39 @@ export async function generate({source,definitions,fixtures,commit='unknown'}){
   import(pathToFileURL(join(input,'city-growth-v137.js')).href),
   import(pathToFileURL(join(input,'bronze-city-balance-v160.js')).href)
  ]);
+ // The live game mutates base economy.BUILDINGS in civilization-core.js.
+ // Port only the exact small-town overrides; fail visibly if upstream edits them.
+ const core=await readFile(join(input,'civilization-core.js'),'utf8');
+ const expected=[
+  "Object.assign(BUILDINGS.house,{cost:{wood:15},requires:['hall']});",
+  "Object.assign(BUILDINGS.quarry,{cost:{wood:20},requires:['lumber']});",
+  "Object.assign(BUILDINGS.well,{requires:['hall'],cost:{wood:18}});",
+  "Object.assign(BUILDINGS.farm,{cost:{wood:25,stone:12},requires:['hall']});",
+  "BUILDINGS.warehouse={name:'Materjaliladu'",
+  "BUILDINGS.cellar={name:'Toidukelder'",
+  "BUILDINGS.market={name:'Turg'",
+  "BUILDINGS.house.time=Math.ceil(BUILDINGS.house.time*.85)",
+  "BUILDINGS.lumber.rate=Math.ceil(BUILDINGS.lumber.rate*1.5)",
+  "BUILDINGS.market.cost.wood=Math.ceil(BUILDINGS.market.cost.wood*.5)",
+  "BUILDINGS.market.cost.stone=Math.ceil(BUILDINGS.market.cost.stone*.6)",
+  "BUILDINGS.market.time=Math.ceil(BUILDINGS.market.time*.75)",
+ ];
+ for(const statement of expected)if(!core.includes(statement))throw Error('Unknown current civilization override: '+statement);
+ const patchBuilding=(key,definition)=>Object.assign(economy.BUILDINGS[key],definition);
+ patchBuilding('house',{cost:{wood:15},requires:['hall']});
+ patchBuilding('quarry',{cost:{wood:20},requires:['lumber']});
+ patchBuilding('well',{cost:{wood:18},requires:['hall']});
+ patchBuilding('farm',{cost:{wood:25,stone:12},requires:['hall']});
+ economy.BUILDINGS.house.time=Math.ceil(economy.BUILDINGS.house.time*.85);
+ economy.BUILDINGS.lumber.rate=Math.ceil(economy.BUILDINGS.lumber.rate*1.5);
+ economy.BUILDINGS.warehouse={name:'Materjaliladu',cost:{wood:35,stone:12},requires:['hall'],workers:1,time:42};
+ economy.BUILDINGS.cellar={name:'Toidukelder',cost:{wood:45,stone:25},requires:['house'],workers:0,time:58};
+ economy.BUILDINGS.market={name:'Turg',cost:{wood:25,stone:15},requires:['house'],workers:2,time:49};
  for(const key of TYPES)if(!economy.BUILDINGS[key])throw Error('Upstream building missing: '+key);
  for(const fn of [economy.tickEconomy,market.marketFoodGrowth,bronze.prosperousTownGrowth])if(typeof fn!=='function')throw Error('Upstream economy export missing');
  const exported={
   format:1, source_commit:commit,
-  upstream_files: Object.fromEntries(await Promise.all(['economy.js','labor.js','city-needs-v87.js','city-growth-v137.js','bronze-city-balance-v160.js'].map(async path=>[path,hash(await readFile(join(input,path)))]))),
+  upstream_files: Object.fromEntries(await Promise.all(['economy.js','labor.js','city-needs-v87.js','city-growth-v137.js','bronze-city-balance-v160.js','civilization-core.js'].map(async path=>[path,hash(await readFile(join(input,path)))]))),
   start:economy.START,
   goods:(await import(pathToFileURL(join(input,'city-needs-v87.js')).href)).GOODS,
   buildings:Object.fromEntries(TYPES.map(k=>[k,{
