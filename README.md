@@ -185,3 +185,14 @@ Majanduses lisatud ehitustöölised kasutavad olemasolevat töötajate jaotusval
 **Testid:** `game/tests/construction_v11.gd` kontrollib ehitaja päris liikumist, tööetappe, töötaja taaskasutust, salvestust, 3D vundamendi ja töötajamudeli olemasolu ning hoone lõpuleviimist. GitHubi automaattestid kontrollivad ka 0.5–0.10 funktsioone, APK/EXE ehitamist ja Windowsi käivitajat.
 
 **Piirangud:** konstruktsioonielemendid ja töötajad on esialgsed primitiivmudelid, mitte ajalooliselt viimistletud 3D varad. Ehituse füüsiline materjalivedu, mitme ehitustöölise koostöö sama hoone juures ning kõigi linnade samaaegne AI-ehitus on järgmised portimisetapid. Üks käik jääb üheks mänguminutiks.
+
+
+## AutoPort 0.13 — ehitusjärjekorra prioriteedid ja laiem logistika
+
+Versioon 0.13 lisab pealinna Godoti 3D detailvaates ehitusobjektidele **low / normal / high** prioriteedi. Poolelioleva hoone järel olev nupp vahetab tasemeid, see salvestatakse linna JSON-seisu. `game/scripts/construction_scheduler_v13.gd` jagab piiratud hulga ehitustöölisi kõigepealt kõrge, seejärel tavalise ja lõpuks madala prioriteediga ehitusprojektidele. Ühe hoone juurde lubatakse endiselt kuni kaks ehitajat, kuid mitmel objektil võivad töötajad tegutseda paralleelselt. Töölisi ei teki rohkem kui linnas on elanikke.
+
+Juba materjalikoormaga teel olev ehitaja lõpetab vana objekti veo ka siis, kui objekti prioriteet muutub. Uuesti jagatakse ainult koormata tööjõudu; seega ei kao või dubleeru tellimisel juba tasutud materjal. `game/scripts/construction_v12.gd` võtab nüüd füüsilise ehituskaubana arvesse kõiki positiivse kogusega *mitte-toidu* materjale, mitte ainult puitu, kivi ja laudu. Leiva/toidu kulu jääb tellimisel tarbimiseks. Puuduolevaid kaupu ei tellita automaatselt ning füüsiline veosimulaator arvestab juba tellitud kaubaga.
+
+Vanad 0.12 salvestused saavad puuduvaks prioriteediks `normal`, varu, ehitusprogress ja senised marsruudid säilivad. 0.13 kontrollid on `game/tests/construction_v13.gd`: tööjõu prioriteetne jaotus, kahjuta veovahetus, kahe samaaegse ehituse valmimine, eri materjalide transport, varasema skeemi migratsioon ja 3D prioriteedinupu püsimine pärast salvestamist. Kõik 0.5–0.12 olemasolevad testid jäävad väljalaske eeldusteks.
+
+**Piirang:** praegu on see ühe mängija pealinna tööjõu/kaubaveo prototüüp. Täielik kaupade logistika eri linnade ja maakondade vahel, loomad/veokärud, töötajate animatsioonide viimistlus ja AI ehitusprioriteetide juhtimine on veel portimata.
