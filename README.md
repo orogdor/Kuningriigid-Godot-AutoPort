@@ -249,3 +249,12 @@ Godot 4 3D detailkaardi juhtimine on nüüd puuteekraanil eristatud: **üks sõr
 Kahe sõrme vabastamine, sõrmede järjekorra muutumine ega orb-mouse-up sündmus ei käivita ehitise paigutamist. Uus `game/tests/detail_camera_v19.gd` katsetab reaalsesse 3D detailvaatesse ühendatud Godoti kaamera sünteetilisi Androidi puutesündmusi: kahe sõrme sisse-välja suum, suumifookuse säilimine, 3D panoraam, puudutuse ohutu lõppemine, ühe sõrme ehituskoha valimine ja kaamera pööramine. Kontroll lisatakse nii `sync-upstream.yml` kui ka `build-apps.yml` töövoogudesse.
 
 **Väljalase:** 0.19 GitHub Actions'i väljalaskemärgis on `v0.19.<run_number>` ja kasutajaliidese kuvatav versioon on 0.19. Varasem 0.18 maailmakaardi kahe sõrme juhtimine ning 0.17 kaubakaravanid, AI ja salvestusvorming säilivad. Uued Godoti puutetestid vajavad veel CI läbimist ja füüsilisel Androidi seadmel kontrollimist. Godoti versioon ei ole endiselt kogu Three.js strateegiamängu täielik port.
+
+
+## AutoPort 0.20 — nähtav ehitusruudustik ja täpne paigutamine
+
+3D detailkaardil on nüüd 10-meetrise sammuga neutraalne ruudustik. Ehitise valimisel kuvatakse vabade kruntide kohal läbikumavad **rohelised** ja hõivatud või keelatud kruntide kohal **punased** märgid. Hiirekursori all olev 3D maapinnapunkt ümardatakse täpselt sama `Spatial.snap()` reegliga, mida kasutab ehitamise loogika. Eelvaate ruut on lubatud kohal kollane ja keelatud kohal punane. Nupp **Tühista ehitise paigutamine** katkestab valiku ilma materjale kulutamata.
+
+Olemasolevad majandus-, tööjõu-, salvestus- ja teeotsimise reeglid jäid muutmata. `game/tests/detail_placement_v20.gd` kontrollib ruudustiku nähtavust, lubatud ja keelatud ruute, 10 m asukohta ümardamist, keelatud ehituse kuluta tagasilükkamist, valiku tühistamist, korrektset hoone ehitamist ja võõral kaardiruudul ehitamise tõkestamist. Test on lisatud nii GitHub Actionsi sünkroonimis- kui ka APK/EXE ehitusprotsessi. Kaamera ühe sõrme pööramine on veidi aeglasem ja kahe sõrme näpistuse tundlikkus pehmem. Väljalaskemärgis on `v0.20.<run_number>`.
+
+**Kontrollistaatus:** lähtekood ja testid on üles laaditud, kuid automaattestide tulemused ning uue Androidi APK ja Windowsi EXE valmimine vajavad GitHub Actionsi kinnitust. Detailkaardi visuaal on endiselt Godoti prototüüp, mitte täielik Three.js mängu port.
