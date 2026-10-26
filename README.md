@@ -394,3 +394,10 @@ Uus test `game/tests/city_building_lod_v32.gd` kontrollib 72 hoone päris MultiM
 Keskmisel kaugusel lülitatakse üksikasjalikud majaobjektid välja, aga säilitatakse 3D mälus; nende asemele ilmuvad 0.32 GPU MultiMesh-rühmad. Kaamera tagasiliikumisel taaskasutatakse sama detailse hoone 3D objekti, ilma uut mudelit loomata. Väga kaugel vabastatakse detailne maja mälu, jättes alles ühe lihtsustatud GPU-instantseeritud kujutise, mis uuel lähenemisel taas detailseks muutub. Linnaosa nähtavuse muutmisel säilib ehitusinfo ja elanike arv salvestuses.
 
 Regressioonitest `game/tests/city_lod_stability_v33.gd` kontrollib LOD vahetuse stabiilsust piiride ümbruses, suuremaid kaamerahüppeid, kaugemal detailsete 3D objektide vabastamist, keskmisel kaugusel sama mudeli taaskasutust, tagasitulekul õiget renderdust ning salvestuse muutumatust. Test käivitatakse mõlemas GitHub Actionsi töövoos koos 0.32 ja varasemate regressioonidega. Väljalase: `v0.33.<run_number>`.
+
+
+## AutoPort 0.34 — nähtav maapind ja kompaktne detailkaardi UI
+
+Mobiili horisontaalvaates jäetakse 3D detailvaatele piisavalt ruumi. Ülemine majandusinfo on üks lühendatud rida, kõik ehitusnupud on ühel horisontaalselt keritaval 46-pikslisel ribal ja FPS näidiku saab avada päisenupust. Mitmekümne ehituse prioriteedinupu lisamine ei suurenda enam tööriistariba kõrgust. Kahepoolne ja valgustusest sõltumatu maastikumaterjal tagab, et nii 225×195 m üksikdetaili kui ka 160×160 m ühendatud linnaosa pind on nähtav. Eelmise detailkaardi pind eemaldatakse enne uue loomist, vältides kattuvaid/valesti nime saanud sõlmi.
+
+Windowsi käivitusprogrammi järeltesti aegunud 0.17-versiooni kontroll on asendatud käivitatud sisu ja projekti versioonide kooskõla kontrolliga. `game/tests/detail_screen_v34.gd` avab 720×420 ekraanil detailvaate ja kontrollib 3D vaate kõrgust, nupuriba kõrgust ka 70 lisanduva ehitusnupuga, korrektset kaamera suunda, maapinna kahepoolset pinnameshi ja kahe linnaosa maastiku olemasolu. Vanade salvestuste ja majanduse reegleid ei muudeta. Versioon `v0.34.<run_number>`.
