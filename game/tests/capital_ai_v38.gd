@@ -77,8 +77,9 @@ func _test() -> void:
     if not saved is Dictionary or not AI.enabled(saved):
         fail("save lost AI preference")
         return
-    if saved["detail_sim"]["roads"].get("2:0",{})!=prior:
-        fail("save lost roads")
+    var saved_road: Dictionary=saved["detail_sim"]["roads"].get("2:0",{})
+    if saved_road.is_empty() or int(saved_road.get("count",-1))!=int(prior["count"]) or int(saved_road.get("last",-1))!=int(prior["last"]):
+        fail("save lost original traffic count or last-used turn")
         return
     AI.set_enabled(city,false)
     var stopped: int=city["buildings"].size()
