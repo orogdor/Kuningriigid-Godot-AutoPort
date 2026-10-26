@@ -193,6 +193,22 @@ func _toggle_performance() -> void:
 
 func _process(delta: float) -> void:
     if not visible or view_port==null:return
+    if combined_city and controller!=null and not shown_district_tiles.is_empty():
+        visual_visibility_poll+=delta
+        if visual_visibility_poll>=0.30:
+            visual_visibility_poll=0.0
+            var state_parts: Array[String]=[]
+            for tile in shown_district_tiles:
+                var pos: Vector3=Continuous.offset(tile,selected)
+                var distance_to_focus: float=Vector2(
+                    controller.look_at.x-pos.x,controller.look_at.z-pos.z).length()
+                var displayed: bool=LOD32.visible_at(distance_to_focus,controller.distance,tile==active_tile)
+                var detail_level: int=LOD32.level_for_distance(distance_to_focus,controller.distance)
+                state_parts.append(str(tile)+":"+str(displayed)+":"+str(detail_level))
+            var signature: String="|".join(state_parts)
+            if signature!=visual_visibility_signature:
+                visual_visibility_signature=signature
+                _render_neighbors()
     performance_timer+=delta
     if performance_timer<1.0:return
     var interval: float=performance_timer
@@ -362,6 +378,7 @@ func _render_neighbors() -> void:
     var buildings: Array=city_state.get("buildings",[])
     var agents: Array=city_state.get("transport_v26",{}).get("agents",[])
     var local_home: String=Transit.home_key(city_state)
+    culled_district_count=0
     # Retain each permanent terrain tile across ticks. A turn only adjusts
     # changed houses, living resource props and moving transport actors.
     for tile in shown_district_tiles:
@@ -1207,7 +1224,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.31: GPU MultiMesh-ressursid, FPS/Draw loendur ja mobiilis automaatne renderduse eraldusvõime."
+    note.text="0.32: kaugemate majade MultiMesh mudelid, kaamera vaateulatuse järgi peitmine ja sujuv suum."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -1281,6 +1298,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     active_building_mesh_builds=0
     street_cache_signature=""
     visual_visibility_signature=""
+    visual_visibility_poll=0.0
     culled_district_count=0
     proxy_building_batches=0
     plot_root.set_meta("idle_grid",false)
