@@ -196,13 +196,20 @@ func _ready() -> void:
     scene_root.add_child(combined_root)
     # Fixed-height, horizontally scrollable toolbar. Priority buttons no
     # longer wrap to 10+ rows or cover the 3D view as the town grows.
+    # The enclosing plain Control holds an exact one-row height. The
+    # ScrollContainer's minimum would otherwise grow with button content.
+    var toolbar_frame:=Control.new()
+    toolbar_frame.name="DetailToolbarFrame"
+    toolbar_frame.custom_minimum_size=Vector2(0,46)
+    toolbar_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    column.add_child(toolbar_frame)
     var action_scroll:=ScrollContainer.new()
     action_scroll.name="DetailActionsScroll"
-    action_scroll.custom_minimum_size=Vector2(0,46)
-    action_scroll.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    toolbar_frame.add_child(action_scroll)
+    action_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    action_scroll.clip_contents=true
     action_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
     action_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
-    column.add_child(action_scroll)
     actions=HBoxContainer.new()
     actions.name="DetailActionButtons"
     actions.add_theme_constant_override("separation",5)
