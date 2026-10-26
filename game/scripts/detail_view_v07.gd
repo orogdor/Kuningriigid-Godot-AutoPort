@@ -548,7 +548,7 @@ func _next_city_tile() -> void:
     var idx: int=shown_district_tiles.find(active_tile)
     var next: Vector2i=shown_district_tiles[(idx+1)%shown_district_tiles.size()]
     _activate_district(next)
-    controller.call("focus",Continuous.offset(next,selected))
+    controller.call("focus_smooth",Continuous.offset(next,selected))
 
 func _is_coastal(cell: Dictionary) -> bool:
     var c: int=int(cell.get("c",-1))
