@@ -41,6 +41,7 @@ const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
 const SecondCity47 = preload("res://scripts/second_city_detail_v47.gd")
+const NeighborActivity48 = preload("res://scripts/detail_neighbor_activity_v48.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -115,7 +116,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.47 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.48 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -672,6 +673,9 @@ func _refresh_seam_neighbor_buildings() -> void:
         var town: Dictionary=ownership["town"]
         var district: String=String(ownership["district"])
         var eligible: Array=LOD32.eligible(town.get("buildings",[]),district)
+        # Preview activity independently of buildings: workers move while
+        # houses stay unchanged, and traffic is saved by actual walking.
+        _refresh_neighbor_activity_v48(part,town,district,tile)
         var previous: Node3D=part.get_node_or_null("ActualNeighborBuildings") as Node3D
         if eligible.is_empty():
             if previous!=null:previous.free()
@@ -721,6 +725,20 @@ func _refresh_seam_neighbor_buildings() -> void:
                 _construction_site(holder,kind,Vector3.ZERO,b)
         if not background.is_empty():
             LOD32.populate(container,background,district,1)
+
+func _refresh_neighbor_activity_v48(part: Node3D,town: Dictionary,
+        district: String,tile: Vector2i) -> void:
+    var data: Dictionary=NeighborActivity48.snapshot(town,district)
+    var key: String=NeighborActivity48.signature(data)
+    var previous: Node3D=part.get_node_or_null("ActualNeighborActivity") as Node3D
+    if previous!=null and String(previous.get_meta("render_key",""))==key:return
+    if previous!=null:previous.free()
+    if data.get("roads",[]).is_empty() and data.get("workers",[]).is_empty():return
+    var group:=Node3D.new()
+    group.name="ActualNeighborActivity"
+    group.set_meta("render_key",key)
+    part.add_child(group)
+    NeighborActivity48.populate(group,data,world,tile,town)
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return

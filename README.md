@@ -501,3 +501,11 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 ## AutoPort 0.47 — teise linna päris 3D detailkaart
 
 Teine linn avaneb maailmakaardilt ja linnapaneelist sama toimiva kaardivahetuse kaudu. Kaardi kõrvalruutudel kuvatakse päriselt ehitatud teise linna hooned ja ehitusplatsid, lähivaatel 3D mudelid ning kaugemal jõudluse säästvad LOD kujud. Teise linna detailvaate AI nupp lülitab ainult kohaliku ehitamise AI-d, mitte pealinna AI-d ega kogu riigi teadust. Kaubavahetus toimub endiselt tegelike karavanide ja iseseisva lao põhjal. Test `second_city_detail_v47.gd` kontrollib omandit, teise linna ehitamist, puidu vedu, kaartide vahel kaamera säilimist ja salvestuse ühilduvust. APK/EXE ehitus jääb käsitsi käivitatavaks.
+
+
+## AutoPort 0.48 — isetekkivad teed ja liikuvad töötajad naaberdetailkaartidel
+
+- Pealinna ja teise linna 3D eelvaated kuvavad nüüd ka tegeliku liikluse teel tekkinud jalgrajad ning linna salvestatud töötajad (metsatöölised, kiviraiujad ja ehitajad). 3D teed on `spatial_paths_v09.gd` `road_tiles()` samad liikluslahtrid — rajad tekivad vaid liikumisega ja kaovad, kui tee jääb piisavalt kauaks kasutamata.
+- Teise linna töötajate ja teede vahemälu sõltub linna tõelisest `detail_sim` olekust. Eelvaates kasutatakse kahte väikest MultiMesh tõmmet ja telefoni jõudluse kaitseks maksimaalselt 120 teelahtrit ning 24 töötajat; 3D allikat ei tohi genereerimise ajal muuta.
+- Oma linna hoonete, maakonna ja teise linna ehitusõigused ei muutu. Metsikus naaberruudus ei saa ehitada. Test `second_city_traffic_v48.gd` kontrollib puidu tegelikku korjamist ja toomist, loomulikku liiklusjälge, vanade teede hääbumist, naaberruudu 3D näitamist, materjalide iseseisvust ja salvestust.
+- APK ning Windows EXE tehakse ainult käsitsi `workflow_dispatch` korral, mitte iga koodimuudatusega.
