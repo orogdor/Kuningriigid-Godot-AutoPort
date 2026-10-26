@@ -15,12 +15,14 @@ static func detail(distance: float,zoom: float,previous: int=-1) -> int:
     # A wide overview never generates full nearby building geometry.
     if zoom>=420.0:return mini(level,1)
     if level==2:
-        if distance>NEAR+BAND or zoom>=400.0:level=1
+        if distance>FAR+BAND or zoom>=720.0:level=0
+        elif distance>NEAR+BAND or zoom>=400.0:level=1
     elif level==1:
         if distance<NEAR-BAND and zoom<380.0:level=2
         elif distance>FAR+BAND or zoom>=720.0:level=0
     else:
-        if distance<FAR-BAND and zoom<680.0:level=1
+        if distance<NEAR-BAND and zoom<380.0:level=2
+        elif distance<FAR-BAND and zoom<680.0:level=1
     return level
 
 static func displayed(distance: float,zoom: float,active: bool,previous: Variant=null) -> bool:
