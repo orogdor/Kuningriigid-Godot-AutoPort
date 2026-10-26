@@ -24,6 +24,7 @@ const Visuals30 = preload("res://scripts/district_visuals_v30.gd")
 const Batches31 = preload("res://scripts/city_render_batch_v31.gd")
 const Perf31 = preload("res://scripts/city_performance_v31.gd")
 const LOD32 = preload("res://scripts/city_building_lod_v32.gd")
+const Stable33 = preload("res://scripts/city_lod_stability_v33.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -56,6 +57,7 @@ var visual_update_count: int=0
 var visual_visibility_poll: float=0.0
 var visual_visibility_signature: String=""
 var proxy_building_batches: int=0
+var passive_building_mesh_builds: int=0
 var culled_district_count: int=0
 var can_build: bool = false
 var district_id: String=""
@@ -96,7 +98,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.32 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.33 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -197,15 +199,18 @@ func _process(delta: float) -> void:
         visual_visibility_poll+=delta
         if visual_visibility_poll>=0.30:
             visual_visibility_poll=0.0
-            var state_parts: Array[String]=[]
+            var states: Array[Dictionary]=[]
             for tile in shown_district_tiles:
                 var pos: Vector3=Continuous.offset(tile,selected)
                 var distance_to_focus: float=Vector2(
                     controller.look_at.x-pos.x,controller.look_at.z-pos.z).length()
-                var displayed: bool=LOD32.visible_at(distance_to_focus,controller.distance,tile==active_tile)
-                var detail_level: int=LOD32.level_for_distance(distance_to_focus,controller.distance)
-                state_parts.append(str(tile)+":"+str(displayed)+":"+str(detail_level))
-            var signature: String="|".join(state_parts)
+                var label: String="DistrictTile_Capital" if tile==selected else "DistrictTile_"+Continuous.district_key(tile,world).replace(":","_")
+                var node: Node3D=combined_root.get_node_or_null(label) as Node3D
+                var previous_level: int=int(node.get_meta("lod_level",-1)) if node!=null else -1
+                var previous_visible: Variant=node.get_meta("lod_visible",null) if node!=null else null
+                states.append(Stable33.state(distance_to_focus,controller.distance,
+                    tile==active_tile,previous_level,previous_visible))
+            var signature: String=Stable33.view_signature(shown_district_tiles,states)
             if signature!=visual_visibility_signature:
                 visual_visibility_signature=signature
                 _render_neighbors()
@@ -406,12 +411,18 @@ func _render_neighbors() -> void:
         var distance_from_focus: float=Vector2(
             controller.look_at.x-district_offset.x,
             controller.look_at.z-district_offset.z).length()
-        var draw_tile: bool=LOD32.visible_at(distance_from_focus,camera_distance,tile==active_tile)
+        var previous_level: int=int(part.get_meta("lod_level",-1))
+        var previous_visible: Variant=part.get_meta("lod_visible",null)
+        var decision: Dictionary=Stable33.state(distance_from_focus,camera_distance,
+            tile==active_tile,previous_level,previous_visible)
+        var draw_tile: bool=bool(decision["visible"])
+        var building_lod: int=int(decision["level"])
+        part.set_meta("lod_visible",draw_tile)
+        part.set_meta("lod_level",building_lod)
         part.visible=draw_tile
         if not draw_tile:
             culled_district_count+=1
             continue
-        var building_lod: int=LOD32.level_for_distance(distance_from_focus,camera_distance)
         var props: Node3D=part.get_node("DistrictResources") as Node3D
         props.visible=tile!=active_tile
         if tile!=active_tile:
@@ -465,6 +476,7 @@ func _render_neighbors() -> void:
                     holder.set_meta("visual_sig",sig)
                     holder.set_meta("is_building",true)
                     part.add_child(holder)
+                    passive_building_mesh_builds+=1
                     _box(holder,Vector3(0.0,0.15,8.0),Vector3(3.0,0.27,4.3),
                         Color("#b7a381"),"FrontDoorStep")
                     if ready:
@@ -474,7 +486,17 @@ func _render_neighbors() -> void:
                 holder.position=Vector3(float(building.get("x",0)),0.0,float(building.get("z",0)))
                 holder.rotation_degrees.y=float(building.get("rotation",0))
         for child in part.get_children():
-            if bool(child.get_meta("is_building",false)) and not current_buildings.has(child.name):
+            if not bool(child.get_meta("is_building",false)):continue
+            if use_proxies:
+                if Stable33.low_detail_policy(building_lod)=="release":
+                    child.free()
+                else:
+                    # Reuse full meshes if camera crosses the 195m threshold
+                    # repeatedly. The next full pass validates their stage.
+                    child.visible=false
+            elif current_buildings.has(child.name):
+                child.visible=true
+            else:
                 child.free()
         var live_agents: Dictionary={}
         if tile!=active_tile and building_lod>=1:
@@ -1299,6 +1321,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     batched_resource_nodes=0
     resource_root.set_meta("resource_key","")
     active_building_mesh_builds=0
+    passive_building_mesh_builds=0
     street_cache_signature=""
     visual_visibility_signature=""
     visual_visibility_poll=0.0
