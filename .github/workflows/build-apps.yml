@@ -1,18 +1,11 @@
 name: Build Android APK, Windows EXE and auto-update content
 
+# Binary releases are intentionally manual. Normal source pushes and upstream syncs
+# still run their own validation workflows, but do not rebuild APK/EXE/PCK.
+# Run this workflow from Actions > Build Android APK, Windows EXE... > Run workflow
+# when you want to publish a new downloadable version.
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Sync Three.js rules to Godot"]
-    types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - 'game/**'
-      - 'launcher/**'
-      - 'tools/build-windows-manifest.py'
-      - '.github/workflows/build-apps.yml'
-      - '.github/workflows/sync-upstream.yml'
 
 permissions:
   contents: write
