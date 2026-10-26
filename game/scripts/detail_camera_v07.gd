@@ -21,10 +21,33 @@ var move_distance: float=0.0
 var active_fingers: Dictionary={}
 var multitouch_active: bool=false
 var filtered_touch_motion: Vector2=Vector2.ZERO
+var wheel_target: float=76.0
+var focus_target: Vector3=Vector3.ZERO
+var focus_easing: bool=false
 
 func _ready() -> void:
     stretch=true
     mouse_filter=Control.MOUSE_FILTER_STOP
+    wheel_target=distance
+
+func _process(delta: float) -> void:
+    if orbit_camera==null:return
+    var changed: bool=false
+    if absf(distance-wheel_target)>0.035:
+        distance=lerpf(distance,wheel_target,1.0-exp(-maxf(0.0,delta)*13.0))
+        changed=true
+    elif not is_equal_approx(distance,wheel_target):
+        distance=wheel_target
+        changed=true
+    if focus_easing:
+        var old: Vector3=look_at
+        look_at=look_at.lerp(focus_target,1.0-exp(-maxf(0.0,delta)*7.0))
+        changed=true
+        if look_at.distance_to(focus_target)<0.13:
+            look_at=focus_target
+            focus_easing=false
+        elif look_at==old:focus_easing=false
+    if changed:update_camera()
 
 func set_city_bounds(bounds: Dictionary) -> void:
     min_x=float(bounds.get("xmin",-112.5))
@@ -35,18 +58,28 @@ func set_city_bounds(bounds: Dictionary) -> void:
     look_at.x=clampf(look_at.x,min_x,max_x)
     look_at.z=clampf(look_at.z,min_z,max_z)
     distance=clampf(distance,MIN_DISTANCE,max_distance)
+    wheel_target=distance
+    focus_easing=false
     update_camera()
 
 func overview(bounds: Dictionary) -> void:
     set_city_bounds(bounds)
     look_at=bounds.get("midpoint",Vector3.ZERO)
     distance=clampf(float(bounds.get("span",160.0))*1.20,76.0,max_distance)
+    wheel_target=distance
+    focus_easing=false
     update_camera()
 
 func focus(point: Vector3) -> void:
     look_at.x=clampf(point.x,min_x,max_x)
     look_at.z=clampf(point.z,min_z,max_z)
+    focus_easing=false
     update_camera()
+
+func focus_smooth(point: Vector3) -> void:
+    focus_target=Vector3(clampf(point.x,min_x,max_x),look_at.y,
+        clampf(point.z,min_z,max_z))
+    focus_easing=true
 
 func attach_camera(camera: Camera3D) -> void:
     orbit_camera=camera
@@ -92,6 +125,7 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     # Moving fingers apart brings the camera closer; never invert at zero span.
     if old_span>8.0 and next_span>8.0:
         distance=clampf(distance*pow(old_span/next_span,0.85),MIN_DISTANCE,max_distance)
+        wheel_target=distance
     update_camera()
     # Keep the ground point previously beneath the midpoint beneath the
     # NEW midpoint. This simultaneously pans and provides anchored zoom.
@@ -106,11 +140,13 @@ func _gui_input(event: InputEvent) -> void:
     if event is InputEventMouseButton:
         var mouse_button: InputEventMouseButton=event
         if mouse_button.button_index==MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
-            distance=clampf(distance*0.88,MIN_DISTANCE,max_distance)
+            wheel_target=clampf(wheel_target*0.88,MIN_DISTANCE,max_distance)
+            distance=lerpf(distance,wheel_target,0.32)
             update_camera()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
-            distance=clampf(distance*1.12,MIN_DISTANCE,max_distance)
+            wheel_target=clampf(wheel_target*1.12,MIN_DISTANCE,max_distance)
+            distance=lerpf(distance,wheel_target,0.32)
             update_camera()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_RIGHT:
