@@ -224,15 +224,17 @@ func _process(delta: float) -> void:
         RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
     var nodes: int=Batches31.node_count(scene_root)
     performance_last={"fps":fps,"draw_calls":calls,"visible_meshes":geometry,
-        "scene_nodes":nodes,"quality":int(quality_state["level"]),"sample_interval":interval}
+        "scene_nodes":nodes,"quality":int(quality_state["level"]),"sample_interval":interval,
+        "lod_batches":proxy_building_batches,"culled_districts":culled_district_count}
     if OS.has_feature("mobile"):
         var next: Dictionary=Perf31.next_quality(fps,quality_state)
         if int(next["level"])!=int(quality_state["level"]):
             view_port.size=Perf31.viewport_size(int(next["level"]))
         quality_state=next
     if performance_label!=null and performance_enabled:
-        performance_label.text="FPS %.0f | Draw %d | Mesh %d | Sõlmi %d | %s" % [
-            fps,calls,geometry,nodes,Perf31.level_name(int(quality_state["level"]))]
+        performance_label.text="FPS %.0f | Draw %d | Mesh %d | Sõlmi %d | LOD %d | Peidus %d | %s" % [
+            fps,calls,geometry,nodes,proxy_building_batches,culled_district_count,
+            Perf31.level_name(int(quality_state["level"]))]
 
 func _material(color: Color, roughness: float=0.95) -> StandardMaterial3D:
     var key: String=color.to_html(true)+"_"+str(snappedf(roughness,0.01))
@@ -379,6 +381,7 @@ func _render_neighbors() -> void:
     var agents: Array=city_state.get("transport_v26",{}).get("agents",[])
     var local_home: String=Transit.home_key(city_state)
     culled_district_count=0
+    proxy_building_batches=0
     # Retain each permanent terrain tile across ticks. A turn only adjusts
     # changed houses, living resource props and moving transport actors.
     for tile in shown_district_tiles:
@@ -439,7 +442,7 @@ func _render_neighbors() -> void:
                 for old in proxies.get_children():old.free()
                 LOD32.populate(proxies,buildings,district,building_lod)
                 proxies.set_meta("signature",proxy_sig)
-                proxy_building_batches+=proxies.get_child_count()
+            proxy_building_batches+=proxies.get_child_count()
         var current_buildings: Dictionary={}
         if tile!=active_tile and not use_proxies:
             for i in range(buildings.size()):
