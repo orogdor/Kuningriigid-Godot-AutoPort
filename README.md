@@ -452,3 +452,8 @@ See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- 
 - Detailkaardi 3D vaates **Kaart ↑ ↓ ← →** nupud läbivad päriselt maailma koordinaadid. Iga naaberruut on avatav vaateks sõltumata sellest, kas kuulub mängijale; ehitamine jääb lubatud ainult oma territooriumil. Mereruutu saab vaadata, seal ei saa veel ehitada ega laevaga sõita.
 - Mobiili maailmakaardi nupuriba on ühe rea kõrgune ja keritav, vältides kaardi katmist. Maailmakaardi 2D ja 3D valik sünkroniseeruvad detailkaartidega.
 - Test `map_nav_v40.gd` kontrollib 3D maastiku reaalset kõrgust, kaartide vahetust, 2D varurežiimi, suunanuppe, mereruutude vaateid, piire ja 720×420 telefoni UI-d.
+
+
+## AutoPort 0.41 — veebimängu detailkaartide juhtimine
+
+Veebimängu V123 eeskujul ei vahetata kaarte enam ainult nuppudega. Detailkaart on 225 × 195 m. Ühe sõrme või hiire vasaku nupu lohistamine liigutab kaamera fookust; üle detailruudu ääre liikudes avatakse vastav naaberruut, säilitades kaamera asukoha ja suumi. Ka diagonaalne suund toimib. Hiire parema nupuga saab endiselt kaamerat pöörata. Detailvaates lõpuni välja suumides naaseb mäng 3D maailmakaardile just selle ruudu kohale. Maailmakaardi topeltpuudutus avab endiselt detailvaate. Vana nelja noolega juhtimine jääb abivõimaluseks. Eraldi test detail_web_v41.gd kontrollib veebiversiooni piiriületuse koordinaate, sujuvust ja tagasipöördumist.

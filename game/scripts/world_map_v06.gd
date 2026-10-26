@@ -38,7 +38,7 @@ func _ready() -> void:
     bar.add_theme_constant_override("separation",10)
     bar_scroll.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.40"
+    title.text="KUNINGRIIGID • GODOT 0.41"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
@@ -110,6 +110,13 @@ func _apply_map_mode() -> void:
 func _switch_mode() -> void:
     map_3d_enabled=not map_3d_enabled
     _apply_map_mode()
+
+func focus_world_tile(c: int,r: int) -> void:
+    if terrain_3d==null or World.cell(world,c,r).is_empty():return
+    terrain_3d.camera_target=Vector2(float(c)+0.5,float(r)+0.5)
+    # Web returns to the same tile at world zoom, not continent overview.
+    terrain_3d.zoom=65.0
+    terrain_3d._update_camera()
 
 func select_world_cell(c: int,r: int) -> void:
     if World.cell(world,c,r).is_empty():return

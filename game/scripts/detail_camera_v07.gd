@@ -2,6 +2,9 @@ extends SubViewportContainer
 ## 0.19: mouse orbit and scroll; single finger orbit/tap, two fingers pinch/pan.
 signal ground_clicked(position: Vector3)
 signal ground_hovered(position: Vector3)
+signal detail_edge_crossed(delta: Vector2i,local_focus: Vector3)
+signal zoom_exit_requested
+const Seam=preload("res://scripts/detail_web_navigation_v41.gd")
 const MIN_DISTANCE: float=15.0
 var max_distance: float=180.0
 var min_x: float=-112.5
@@ -24,6 +27,9 @@ var filtered_touch_motion: Vector2=Vector2.ZERO
 var wheel_target: float=76.0
 var focus_target: Vector3=Vector3.ZERO
 var focus_easing: bool=false
+var seam_enabled: bool=false
+var seam_half: Vector2=Vector2(112.5,97.5)
+var transition_pending: bool=false
 
 func _ready() -> void:
     stretch=true
@@ -60,6 +66,51 @@ func set_city_bounds(bounds: Dictionary) -> void:
     distance=clampf(distance,MIN_DISTANCE,max_distance)
     wheel_target=distance
     focus_easing=false
+    update_camera()
+
+func enable_web_navigation(half_size: Vector2=Vector2(112.5,97.5)) -> void:
+    seam_enabled=true
+    seam_half=half_size
+    max_distance=Seam.WORLD_ZOOM
+    transition_pending=false
+
+func restore_detail_focus(point: Vector3,previous_zoom: float) -> void:
+    seam_enabled=true
+    transition_pending=false
+    look_at=Seam.bounded(point,seam_half)
+    focus_easing=false
+    distance=clampf(previous_zoom,MIN_DISTANCE,max_distance)
+    wheel_target=distance
+    update_camera()
+
+func check_detail_boundary() -> void:
+    if not seam_enabled or transition_pending:return
+    var crossed: Dictionary=Seam.crossing(look_at,seam_half)
+    if crossed.is_empty():return
+    transition_pending=true
+    detail_edge_crossed.emit(crossed["delta"],crossed["focus"])
+
+func pan_pointer(previous: Vector2,current: Vector2) -> void:
+    # Match web's one-finger drag: move map, not orbit camera.
+    var before: Variant=_plane_hit(previous)
+    var after: Variant=_plane_hit(current)
+    if not (before is Vector3 and after is Vector3):return
+    look_at+=before-after
+    var bx: float=seam_half.x+32.0 if seam_enabled else maxf(absf(min_x),absf(max_x))
+    var bz: float=seam_half.y+32.0 if seam_enabled else maxf(absf(min_z),absf(max_z))
+    look_at.x=clampf(look_at.x,-bx,bx)
+    look_at.z=clampf(look_at.z,-bz,bz)
+    focus_easing=false
+    update_camera()
+    check_detail_boundary()
+
+func zoom_out_step() -> void:
+    if seam_enabled and wheel_target*1.12>=Seam.WORLD_ZOOM:
+        transition_pending=true
+        zoom_exit_requested.emit()
+        return
+    wheel_target=clampf(wheel_target*1.12,MIN_DISTANCE,max_distance)
+    distance=lerpf(distance,wheel_target,0.32)
     update_camera()
 
 func overview(bounds: Dictionary) -> void:
@@ -124,7 +175,12 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     var next_span: float=next_a.distance_to(next_b)
     # Moving fingers apart brings the camera closer; never invert at zero span.
     if old_span>8.0 and next_span>8.0:
-        distance=clampf(distance*pow(old_span/next_span,0.85),MIN_DISTANCE,max_distance)
+        var target_distance: float=distance*pow(old_span/next_span,0.85)
+        if seam_enabled and target_distance>=Seam.WORLD_ZOOM:
+            transition_pending=true
+            zoom_exit_requested.emit()
+            return
+        distance=clampf(target_distance,MIN_DISTANCE,max_distance)
         wheel_target=distance
     update_camera()
     # Keep the ground point previously beneath the midpoint beneath the
@@ -132,9 +188,12 @@ func _pinch_drag(finger: InputEventScreenDrag) -> void:
     var after: Variant=_plane_hit(next_middle)
     if before is Vector3 and after is Vector3:
         look_at+=before-after
-        look_at.x=clampf(look_at.x,min_x,max_x)
-        look_at.z=clampf(look_at.z,min_z,max_z)
+        var bx: float=seam_half.x+32.0 if seam_enabled else maxf(absf(min_x),absf(max_x))
+        var bz: float=seam_half.y+32.0 if seam_enabled else maxf(absf(min_z),absf(max_z))
+        look_at.x=clampf(look_at.x,-bx,bx)
+        look_at.z=clampf(look_at.z,-bz,bz)
         update_camera()
+        check_detail_boundary()
 
 func _gui_input(event: InputEvent) -> void:
     if event is InputEventMouseButton:
@@ -145,9 +204,7 @@ func _gui_input(event: InputEvent) -> void:
             update_camera()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
-            wheel_target=clampf(wheel_target*1.12,MIN_DISTANCE,max_distance)
-            distance=lerpf(distance,wheel_target,0.32)
-            update_camera()
+            zoom_out_step()
             accept_event()
         elif mouse_button.button_index==MOUSE_BUTTON_RIGHT:
             dragging=mouse_button.pressed
@@ -172,7 +229,9 @@ func _gui_input(event: InputEvent) -> void:
     elif event is InputEventMouseMotion and mouse_left_held:
         var motion: InputEventMouseMotion=event
         move_distance+=motion.position.distance_to(click_origin)
+        if move_distance>=7.0:pan_pointer(click_origin,motion.position)
         click_origin=motion.position
+        accept_event()
     elif event is InputEventMouseMotion and not dragging and not mouse_left_held and active_fingers.is_empty():
         var hovered: Variant=_plane_hit(event.position)
         if hovered is Vector3:ground_hovered.emit(hovered)
@@ -210,14 +269,8 @@ func _gui_input(event: InputEvent) -> void:
             active_fingers[finger.index]=finger.position
             var delta: Vector2=finger.position-old_position
             move_distance+=delta.length()
-            # Blend jittery touch deltas but retain exact tap cancellation.
-            # Clamp OS gesture bursts, not the accumulated camera movement.
-            delta.x=clampf(delta.x,-72.0,72.0)
-            delta.y=clampf(delta.y,-72.0,72.0)
-            filtered_touch_motion=filtered_touch_motion.lerp(delta,0.6)
-            yaw-=filtered_touch_motion.x*0.006
-            pitch=clampf(pitch+filtered_touch_motion.y*0.004,-1.42,-0.15)
-            update_camera()
+            # Single-finger drag pans; right mouse button still orbits.
+            if move_distance>=7.0:pan_pointer(old_position,finger.position)
         elif active_fingers.size()==2:
             move_distance=999.0
             multitouch_active=true

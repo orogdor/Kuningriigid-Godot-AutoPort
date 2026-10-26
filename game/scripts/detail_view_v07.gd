@@ -11,6 +11,8 @@ signal research_requested
 signal research_ai_requested
 signal capital_ai_requested
 signal neighbor_requested(c: int, r: int)
+signal seamless_neighbor_requested(c: int,r: int,local_focus: Vector3,zoom: float)
+signal return_by_zoom_requested
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
@@ -103,7 +105,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.40 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.41 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -175,6 +177,8 @@ func _ready() -> void:
     controller.call("attach_camera",camera)
     controller.connect("ground_clicked",_ground_clicked)
     controller.connect("ground_hovered",_hover_ground)
+    controller.detail_edge_crossed.connect(_on_web_edge)
+    controller.zoom_exit_requested.connect(func(): return_by_zoom_requested.emit())
     construction_root=Node3D.new()
     construction_root.name="PlacedBuildings"
     scene_root.add_child(construction_root)
@@ -1280,6 +1284,16 @@ func _refresh_info() -> void:
     info.text=text_line
     info.tooltip_text=text_line
 
+func _on_web_edge(delta: Vector2i,local_focus: Vector3) -> void:
+    var next: Vector2i=selected+delta
+    if World.cell(world,next.x,next.y).is_empty():
+        controller.restore_detail_focus(
+            Vector3(clampf(controller.look_at.x,-controller.seam_half.x+0.6,controller.seam_half.x-0.6),
+                controller.look_at.y,clampf(controller.look_at.z,-controller.seam_half.y+0.6,controller.seam_half.y-0.6)),
+            controller.distance)
+        return
+    seamless_neighbor_requested.emit(next.x,next.y,local_focus,controller.distance)
+
 func _navigate_neighbor(delta: Vector2i) -> void:
     # All four directions work in any detail view, not only owned districts.
     var next: Vector2i=selected+delta
@@ -1414,6 +1428,10 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     combined_bounds=Continuous.bounds(shown_district_tiles,selected) if combined_city else {}
     if controller!=null:
         controller.call("set_city_bounds",combined_bounds)
+        # Same detail boundary crossing as Three.js V123 (225 x 195).
+        # Merged 160m cities retain their existing local tile spacing.
+        controller.enable_web_navigation(Vector2(Continuous.HALF_TILE,Continuous.HALF_TILE)
+            if combined_city else Vector2(SURFACE_WIDTH*0.5,SURFACE_DEPTH*0.5))
     pending_build=""
     placement_rotation=0
     placement_cell=Vector2(INF,INF)

@@ -83,6 +83,8 @@ func _ready() -> void:
     detail_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     detail_view.return_requested.connect(_show_world)
     detail_view.neighbor_requested.connect(_show_detail)
+    detail_view.seamless_neighbor_requested.connect(_switch_detail_seamlessly)
+    detail_view.return_by_zoom_requested.connect(_show_world_from_zoom)
     detail_view.build_requested.connect(_build)
     detail_view.build_at_requested.connect(_build_at)
     detail_view.bridge_requested.connect(_build_bridge)
@@ -153,6 +155,19 @@ func _show_city() -> void:
     if detail_view != null:detail_view.hide()
     if city_scroll != null:city_scroll.show()
     _refresh()
+
+func _show_world_from_zoom() -> void:
+    # Preserve the geographic location on zoom-out, just like web openWorld().
+    if detail_view!=null and world_view!=null:
+        var current: Vector2i=detail_view.selected
+        world_view.select_world_cell(current.x,current.y)
+        world_view.focus_world_tile(current.x,current.y)
+    _show_world()
+
+func _switch_detail_seamlessly(c: int,r: int,local_focus: Vector3,zoom: float) -> void:
+    _show_detail(c,r)
+    if detail_view!=null and detail_view.controller!=null:
+        detail_view.controller.restore_detail_focus(local_focus,zoom)
 
 func _show_world() -> void:
     _sync_trade_map()
@@ -230,7 +245,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.40",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.41",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -310,7 +325,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.40: 3D maailmakaart, kõrvalruutude navigeerimine ja 2D varuvaade."
+    note.text="0.41: veebiversiooni moodi detailkaartide vahel lohistamine ja tagasi suumimine."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
