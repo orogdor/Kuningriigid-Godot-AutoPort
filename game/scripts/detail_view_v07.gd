@@ -339,8 +339,10 @@ func _rock(parent: Node3D, pos: Vector3, factor: float) -> void:
 
 func _elevation(x: float, z: float, base: float, plain: bool) -> float:
     if plain and city_state.has("detail_sim"):
-        return Terrain.elevation(city_state["detail_sim"],x,z)
-    if plain:return 0.0
+        # Preserve original roads/buildings/river physics in the town core.
+        # Match the surrounding world terrain exactly on every outer border.
+        return SeamTerrain42.city_height_at(world,selected,city_state["detail_sim"],x,z)
+    if plain:return SeamTerrain42.height_at(world,selected,x,z)
     # Same world-coordinate relief as surrounding tiles: no step at borders.
     return SeamTerrain42.height_at(world,selected,x,z)
 

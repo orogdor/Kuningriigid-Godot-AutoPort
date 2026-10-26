@@ -3,6 +3,7 @@ extends RefCounted
 ## coordinates instead of independent flat proxy boxes. Lightweight 3D
 ## mesh and instanced environmental props keep 720x420 Android viable.
 const World=preload("res://scripts/world_gen_v06.gd")
+const Terrain=preload("res://scripts/detail_terrain_v10.gd")
 const WIDTH: float=225.0
 const DEPTH: float=195.0
 const NX: int=12
@@ -32,6 +33,26 @@ static func height_at(world: Dictionary,tile: Vector2i,x: float,z: float) -> flo
     var shared: float=lerpf(h0,h1,fz)
     var ripple: float=sin(wx*10.35+float(world.get("seed",0))*0.0001)*cos(wz*12.48)*1.1
     return shared+ripple
+
+# Keep the real simulated (buildable) city floor and its bridges/river fords
+# untouched in the central area. Outside that, blend to the world-coordinate
+# relief at the shared 225 x 195 m borders. The city can now visibly connect
+# to all eight preview squares without a cliff at the map seam.
+const CITY_EDGE_BLEND: float=30.0
+
+static func city_edge_weight(x: float,z: float,
+        width: float=WIDTH,depth: float=DEPTH) -> float:
+    var margin_x: float=width*0.5-absf(x)
+    var margin_z: float=depth*0.5-absf(z)
+    var margin: float=minf(margin_x,margin_z)
+    return 1.0-smoothstep(0.0,CITY_EDGE_BLEND,maxf(0.0,margin))
+
+static func city_height_at(world: Dictionary,tile: Vector2i,
+        sim: Dictionary,x: float,z: float) -> float:
+    var local_height: float=Terrain.elevation(sim,x,z)
+    var blend: float=city_edge_weight(x,z)
+    if blend<=0.0:return local_height
+    return lerpf(local_height,height_at(world,tile,x,z),blend)
 
 static func color_for(cell: Dictionary) -> Color:
     var biome: String=String(cell.get("biome","sea"))

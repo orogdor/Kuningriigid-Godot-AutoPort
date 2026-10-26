@@ -467,3 +467,11 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 - Lähedased metsad ja mäed on ka naaberruutudes näha juba enne kaamera piirist üle lohistamist: piiratud arv instantsitud puid, võrad ja kaljud ei koorma mobiili kümnete eraldi objektidega. Meri ja jõed on samuti naaberruutudel nähtavad.
 - Varem lisatud 0.41 kaamera pööramise ja suumi säilitamine ning maailmakaardile suumimine jääb alles, samuti mängija ehitusõiguse piirangud, läbitud radadest kasvavad teed ning 0.27 ühendatud linnaosa olemasolev 160m geomeetria.
 - Uus `seam_terrain_v42.gd` test kontrollib igas suunas täpseid maastikupiire, 3×3 naabervõrku, mitme järjestikuse detailkaardi läbimist, kaamera suuna/suumi säilimist ja maailmapiiride käsitlemist.
+
+
+## AutoPort 0.43 — ehitatava linna ja detailnaabrite ühine 3D serv
+
+- Üksiku pealinna ja teise linna keskuse kohalik maapind kasutab jätkuvalt päris `detail_sim` maastiku, fordide, sildade ning rajaleidmise kõrgusi. Linna keskosas ei muutu ükski ehituskoht ega teekalle.
+- Detailruudu viimase 30 meetri jooksul sulandub maastik järk-järgult samasse maailmakoordinaatidel arvutatud pinnasse, mida kasutatakse ümbritseval 3×3 naaberruutude võrgul. 225×195 m servas kattuvad kõrgused täpselt, ka diagonaalsete nurkade juures. Varem nähtav linna ja järgmise ruudu kõrgusaste kaob.
+- Täiendav test `city_seam_v43.gd` kontrollib 4 piiri, nurki, tõelisi linna jõeületusi, ehitatava linna sisekõrgust ning 720×420 mobiilivaate säilimist.
+- Tavaline koodimuudatus käivitab GitHubis ainult reeglite sünkroonimise ja regressioonitestid. Android APK ja Windows EXE ehitatakse kulude vähendamiseks eraldi käsitsi GitHub Actions `Build Android APK, Windows EXE and auto-update content` kaudu.
