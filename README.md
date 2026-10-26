@@ -490,3 +490,9 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 - Uued ehitusplatsid ja valmis majad on ruutude vahel järjepidevad: lähivaade näitab tegelikku ehitusjärku ja kasutab salvestatud hoone koordinaate/pööret. Kaugemal on jälle kerge LOD; üle 18 hoonega kõrvalküla kasutab telefoni jõudluse hoidmiseks alati instantsitud kuju.
 - `detail_buildings_v45.gd` kontrollib kaamerale reageerivat lähedast ja kauget taset, ehtsat peamajamudelit, ehitusplatsi uuendust, renderduse vahemälu, ressursi puutumatust ning kaamera suuna/suumi säilimist.
 - Release workflow jääb teadlikult `workflow_dispatch` režiimi; APK/EXE avaldatakse eraldi, mitte iga commit'iga.
+
+
+## AutoPort 0.46 — hybrid buildings in large 3D cities
+
+- Show up to 8 real full 3D structures on Android (12 desktop) at the near edge of dense neighboring cities. Prioritize the genuine saved town hall and the visible edge. All other stored buildings remain in efficient MultiMesh LOD batches, without duplicate geometry.
+- Unfinished building stages, visual cache reuse, camera transitions, resource conservation and small-screen UI are regression tested by detail_hybrid_v46.gd. Normal changes do not automatically rebuild APK or EXE.

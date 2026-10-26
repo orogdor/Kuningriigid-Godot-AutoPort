@@ -39,6 +39,7 @@ const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
+const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -110,7 +111,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.45 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.46 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -668,8 +669,11 @@ func _refresh_seam_neighbor_buildings() -> void:
             controller.look_at.z-part.position.z).length()
         var full: bool=NeighborBuildings45.detailed(
             distance_to_center,controller.distance,eligible.size())
+        var hybrid: bool=Hybrid46.active(
+            distance_to_center,controller.distance,eligible.size())
+        var mode: String="full" if full else ("hybrid" if hybrid else "lod")
         var signature: String=NeighborBuildings45.signature(
-            eligible,district,full,definitions)
+            eligible,district,full or hybrid,definitions)+":"+mode
         if previous!=null and String(previous.get_meta("render_key",""))==signature:
             continue
         if previous!=null:previous.free()
@@ -677,23 +681,34 @@ func _refresh_seam_neighbor_buildings() -> void:
         container.name="ActualNeighborBuildings"
         container.set_meta("render_key",signature)
         container.set_meta("full_3d",full)
+        container.set_meta("mode",mode)
         part.add_child(container)
+        var detailed: Array=[]
+        var background: Array=eligible
         if full:
             for index in range(eligible.size()):
-                var b: Dictionary=eligible[index]
-                var kind: String=String(b.get("type","house"))
-                var holder:=Node3D.new()
-                holder.name=kind+"_"+str(index)
-                holder.position=Vector3(float(b.get("x",0.0)),0.0,
-                    float(b.get("z",0.0)))
-                holder.rotation_degrees.y=float(b.get("rotation",0))
-                container.add_child(holder)
-                if bool(b.get("ready",false)):
-                    _building(holder,kind,Vector3.ZERO,true)
-                else:
-                    _construction_site(holder,kind,Vector3.ZERO,b)
-        else:
-            LOD32.populate(container,eligible,district,1)
+                detailed.append({"index":index,"data":eligible[index]})
+            background=[]
+        elif hybrid:
+            var planned: Dictionary=Hybrid46.split(
+                eligible,selected-tile,Hybrid46.model_budget(OS.has_feature("mobile")))
+            detailed=planned["models"]
+            background=planned["lod"]
+        for entry in detailed:
+            var b: Dictionary=entry["data"]
+            var kind: String=String(b.get("type","house"))
+            var holder:=Node3D.new()
+            holder.name=kind+"_"+str(int(entry["index"]))
+            holder.position=Vector3(float(b.get("x",0.0)),0.0,
+                float(b.get("z",0.0)))
+            holder.rotation_degrees.y=float(b.get("rotation",0))
+            container.add_child(holder)
+            if bool(b.get("ready",false)):
+                _building(holder,kind,Vector3.ZERO,true)
+            else:
+                _construction_site(holder,kind,Vector3.ZERO,b)
+        if not background.is_empty():
+            LOD32.populate(container,background,district,1)
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
