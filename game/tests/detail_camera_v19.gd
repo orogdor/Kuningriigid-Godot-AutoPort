@@ -1,6 +1,6 @@
 extends SceneTree
 ## 0.19 integration: real 3D Godot viewport, simulated Android multitouch,
-## tap-to-build signal safety, one-finger orbit and mouse-wheel compatibility.
+## tap-to-build signal safety, one-finger map panning and wheel compatibility.
 const Scene=preload("res://content.tscn")
 
 func _touch(index: int, position: Vector2, pressed: bool) -> InputEventScreenTouch:
@@ -96,19 +96,23 @@ func _run() -> void:
     if clicks.size()!=1:
         _fail("single-finger ground selection failed after pinch")
         return
+    var before_pan: Vector3=orbit.look_at
     orbit.call("_gui_input",_touch(0,center,true))
     orbit.call("_gui_input",_drag(0,center+Vector2(42,17)))
     orbit.call("_gui_input",_touch(0,center+Vector2(42,17),false))
-    if clicks.size()!=1 or absf(float(orbit.get("yaw"))-old_yaw)<0.04:
-        _fail("single-finger orbit failed or accidentally built")
+    if clicks.size()!=1 or orbit.look_at.distance_to(before_pan)<0.5:
+        _fail("single-finger map panning failed or accidentally built")
+        return
+    if absf(float(orbit.get("yaw"))-old_yaw)>0.001:
+        _fail("one-finger map pan accidentally rotated camera")
         return
     # Camera zoom limits stay intact for mouse users too.
     var scroll:=InputEventMouseButton.new()
     scroll.button_index=MOUSE_BUTTON_WHEEL_DOWN
     scroll.pressed=true
     orbit.call("_gui_input",scroll)
-    if float(orbit.get("distance"))>180.0:
-        _fail("mouse wheel exceeded maximum camera distance")
+    if float(orbit.get("distance"))>450.0:
+        _fail("mouse wheel exceeded web detail zoom boundary")
         return
-    print("DETAIL_CAMERA_V19 SUCCESS: anchored pinch, pan, orbit, single tap, and release safety")
+    print("DETAIL_CAMERA_V19 SUCCESS: anchored pinch, web-style single-finger map pan, single tap, and release safety")
     quit(0)
