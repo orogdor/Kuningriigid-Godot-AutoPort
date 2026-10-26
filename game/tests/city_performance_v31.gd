@@ -85,6 +85,10 @@ func _test() -> void:
     if Perf.viewport_size(0)!=Vector2i(600,375) or Perf.viewport_size(1)!=Vector2i(720,450) or Perf.viewport_size(2)!=Vector2i(960,600):
         fail("quality tiers do not map to expected stable viewport resolutions")
         return
+    var stale: Dictionary=Perf.next_quality(0.0,{"level":1,"low":2,"high":0})
+    if int(stale["level"])!=1 or int(stale["low"])!=0:
+        fail("headless zero FPS incorrectly reduced mobile image quality")
+        return
     var ui: Control=Screen.instantiate()
     root.add_child(ui)
     await process_frame
