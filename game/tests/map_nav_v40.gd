@@ -51,6 +51,8 @@ func _test() -> void:
         fail("the 3D world was not restored")
         return
     ui._show_detail(home.x,home.y)
+    # Old action buttons are queue_free()'d and remain until the next frame.
+    await process_frame
     if ui.detail_view.selected!=home:
         fail("capital detail could not be opened")
         return
