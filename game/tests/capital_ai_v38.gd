@@ -24,7 +24,9 @@ func _test() -> void:
     var stock: Dictionary=city["realms"][0]["resources"]
     for key in ["wood","stone","plank","bread","water"]:
         stock[key]=1000.0
-    city["realms"][0]["pop"]=7
+    # Three residents leave enough free housing after the first new home.
+    # Higher populations correctly prioritize extra houses before industry.
+    city["realms"][0]["pop"]=3
     var discoveries: Dictionary=Research.ensure(city)
     for id in ["bronze","stone_tools","water","agriculture","woodworking",
             "storage","commerce","cellaring","milling"]:
