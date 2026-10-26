@@ -9,6 +9,7 @@ on:
       - 'package.json'
       - 'tests/**'
       - 'game/scripts/**'
+      - 'game/tests/**' # Regression fixture edits must run checks, without APK/EXE.
       - 'game/project.godot'
       - 'game/main.tscn'
       - '.github/workflows/sync-upstream.yml'
