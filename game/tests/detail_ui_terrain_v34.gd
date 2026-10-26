@@ -71,7 +71,7 @@ func _test() -> void:
     if toolbar.size.y>70.0:
         fail("many priority buttons made mobile bottom action bar taller")
         return
-    if get_viewport().size.y>450 and detail.controller.size.y<float(get_viewport().size.y)*0.45:
+    if root.size.y>450 and detail.controller.size.y<float(root.size.y)*0.45:
         fail("3D detail viewport does not retain enough of landscape screen")
         return
     # Reopening an existing detail tile must never leave old queued terrain
