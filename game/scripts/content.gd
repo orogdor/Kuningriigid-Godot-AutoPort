@@ -17,6 +17,7 @@ const Research = preload("res://scripts/research_v35.gd")
 const Unlock = preload("res://scripts/building_unlocks_v36.gd")
 const CapitalAI = preload("res://scripts/capital_auto_v38.gd")
 const ResearchAI = preload("res://scripts/research_auto_v39.gd")
+const SecondCity47 = preload("res://scripts/second_city_detail_v47.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -141,13 +142,8 @@ func _open_satellite() -> void:
         event_message="Teisele linnale ei leitud sobivat maismaaruutu"
         _refresh()
         return
-    detail_town="outpost"
-    var satellite: Dictionary=Trade.ensure_city(city)
-    detail_view.open_tile(world_view.world,int(location["c"]),int(location["r"]),satellite,true)
-    _save()
-    city_scroll.hide()
-    world_view.hide()
-    detail_view.show()
+    # Use the same navigation path as 3D globe and seamless tile traversal.
+    _show_detail(int(location["c"]),int(location["r"]))
 
 func _show_city() -> void:
     detail_town="capital"
@@ -183,16 +179,23 @@ func _show_detail(c: int, r: int) -> void:
         var home: Dictionary=world_view.world["starts"][0]
         capital=(int(home["c"])==c and int(home["r"])==r)
     var satellite: bool=false
+    var second_town: Dictionary={}
+    var second_tile: Vector2i=Vector2i(-1,-1)
     if Trade.has_outpost(city):
         var loc: Dictionary=_satellite_tile()
-        satellite=not loc.is_empty() and int(loc["c"])==c and int(loc["r"])==r
+        second_tile=SecondCity47.satellite_position(loc,world_view.world)
+        if second_tile.x>=0:
+            second_town=Trade.ensure_city(city)
+            second_town["auto_build_v47"]=bool(city["trade_v15"].get("ai_enabled",false))
+            satellite=second_tile==Vector2i(c,r)
     detail_town="outpost" if satellite else "capital"
-    var active: Dictionary=Trade.ensure_city(city) if satellite else city
+    var active: Dictionary=second_town if satellite else city
     if not satellite:Transit.configure(city,world_view.world)
     var owned: bool=Districts.owns(city,world_view.world,c,r)
     var district_key: String=""
     if owned and not capital and not satellite:
         district_key=Districts.key(Vector2i(c,r))
+    detail_view.configure_town_sources_v47(city,second_town,second_tile)
     detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
     world_view.select_world_cell(c,r)
     if capital or satellite:_save()
@@ -245,7 +248,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.46",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.47",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -325,7 +328,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.45: naaberlinnade ehtsad hoonemudelid ilmuvad kaameraga lähenedes."
+    note.text="0.47: teise linna 3D hooned, ehitus ja detailkaartide vaheline liikumine."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -369,9 +372,13 @@ func _toggle_satellite_ai() -> void:
     else:
         var trade: Dictionary=city["trade_v15"]
         trade["ai_enabled"]=not bool(trade.get("ai_enabled",false))
+        var second_state: Dictionary=Trade.ensure_city(city)
+        second_state["auto_build_v47"]=bool(trade["ai_enabled"])
         event_message="Teise linna ehitus-AI: sees" if bool(trade["ai_enabled"]) else "Teise linna ehitus-AI: väljas"
     _save()
     _refresh()
+    if detail_view!=null and detail_view.visible and detail_town=="outpost":
+        detail_view._refresh_actions()
 
 func _found_trade_city() -> void:
     event_message=Trade.found(city)
@@ -380,6 +387,7 @@ func _found_trade_city() -> void:
         Research.ensure(city)
         var founded: Dictionary=Trade.ensure_city(city)
         founded["age"]=int(city.get("age",0))
+        founded["auto_build_v47"]=true
         event_message="Teine linn asutati. Ehitus-AI on sees."
     _sync_trade_map()
     _save()
@@ -401,6 +409,9 @@ func _toggle_research_ai() -> void:
         detail_view._refresh_actions()
 
 func _toggle_capital_ai() -> void:
+    if detail_town=="outpost" and detail_view!=null and detail_view.visible:
+        _toggle_satellite_ai()
+        return
     var turn_on: bool=not CapitalAI.enabled(city)
     CapitalAI.set_enabled(city,turn_on)
     # One-click AI builds and researches, while science can be changed alone.

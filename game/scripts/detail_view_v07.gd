@@ -40,6 +40,7 @@ const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
+const SecondCity47 = preload("res://scripts/second_city_detail_v47.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -50,6 +51,9 @@ var active_tile: Vector2i=Vector2i(-1,-1)
 var combined_city: bool=false
 var combined_root: Node3D
 var seam_preview_root: Node3D
+var capital_preview_state_v47: Dictionary={}
+var satellite_preview_state_v47: Dictionary={}
+var satellite_preview_tile_v47: Vector2i=Vector2i(-1,-1)
 var seam_preview_refresh_clock: float=0.0
 var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
@@ -111,7 +115,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.46 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.47 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -646,20 +650,28 @@ func _render_seam_previews() -> void:
 
     _refresh_seam_neighbor_buildings()
 
+func configure_town_sources_v47(capital: Dictionary,satellite: Dictionary,
+        satellite_tile: Vector2i) -> void:
+    capital_preview_state_v47=capital
+    satellite_preview_state_v47=satellite
+    satellite_preview_tile_v47=satellite_tile
+
 func _refresh_seam_neighbor_buildings() -> void:
-    # 0.45 is visual-only: no new settlements or source-state mutations.
+    # Draw real owners of nearby tiles, never dummy cities or free stock.
     # The full geometry is reused from the *same* _building() /
     # _construction_site() functions as the active 3D city.
     if seam_preview_root==null or combined_city or controller==null:return
-    if bool(city_state.get("satellite_town",false)):return
-    var buildings: Array=city_state.get("buildings",[])
     var definitions: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{})
+    var capital: Dictionary=capital_preview_state_v47 if not capital_preview_state_v47.is_empty() else city_state
     for part in seam_preview_root.get_children():
         if not part is Node3D or not part.has_meta("world_tile"):continue
         var tile: Vector2i=part.get_meta("world_tile")
-        if not Districts44.owns(city_state,world,tile.x,tile.y):continue
-        var district: String="" if tile==Districts44.origin(world) else Districts44.key(tile)
-        var eligible: Array=LOD32.eligible(buildings,district)
+        var ownership: Dictionary=SecondCity47.source(world,tile,capital,
+            satellite_preview_state_v47,satellite_preview_tile_v47)
+        if ownership.is_empty():continue
+        var town: Dictionary=ownership["town"]
+        var district: String=String(ownership["district"])
+        var eligible: Array=LOD32.eligible(town.get("buildings",[]),district)
         var previous: Node3D=part.get_node_or_null("ActualNeighborBuildings") as Node3D
         if eligible.is_empty():
             if previous!=null:previous.free()
@@ -1482,8 +1494,13 @@ func _refresh_actions() -> void:
     science_auto.pressed.connect(func(): research_ai_requested.emit())
     actions.add_child(science_auto)
     var capital_auto:=Button.new()
-    capital_auto.text="Linna AI: "+("sees" if bool(city_state.get("capital_ai_v38",{}).get("enabled",false)) else "väljas")
-    capital_auto.tooltip_text="Lülita pealinna ehitus-AI sisse või välja"
+    var is_second: bool=bool(city_state.get("satellite_town",false))
+    var ai_on: bool=bool(city_state.get("auto_build_v47",false)) if is_second else \
+        bool(city_state.get("capital_ai_v38",{}).get("enabled",false))
+    capital_auto.text=("Teise linna AI: " if is_second else "Linna AI: ")+\
+        ("sees" if ai_on else "väljas")
+    capital_auto.tooltip_text="Lülita teise linna ehitus-AI sisse või välja" if is_second else \
+        "Lülita pealinna ehitus-AI sisse või välja"
     capital_auto.pressed.connect(func(): capital_ai_requested.emit())
     actions.add_child(capital_auto)
     var bridge_state: Dictionary=Transit._local_state(city_state,

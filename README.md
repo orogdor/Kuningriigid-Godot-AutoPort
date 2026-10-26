@@ -496,3 +496,8 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 
 - Show up to 8 real full 3D structures on Android (12 desktop) at the near edge of dense neighboring cities. Prioritize the genuine saved town hall and the visible edge. All other stored buildings remain in efficient MultiMesh LOD batches, without duplicate geometry.
 - Unfinished building stages, visual cache reuse, camera transitions, resource conservation and small-screen UI are regression tested by detail_hybrid_v46.gd. Normal changes do not automatically rebuild APK or EXE.
+
+
+## AutoPort 0.47 — teise linna päris 3D detailkaart
+
+Teine linn avaneb maailmakaardilt ja linnapaneelist sama toimiva kaardivahetuse kaudu. Kaardi kõrvalruutudel kuvatakse päriselt ehitatud teise linna hooned ja ehitusplatsid, lähivaatel 3D mudelid ning kaugemal jõudluse säästvad LOD kujud. Teise linna detailvaate AI nupp lülitab ainult kohaliku ehitamise AI-d, mitte pealinna AI-d ega kogu riigi teadust. Kaubavahetus toimub endiselt tegelike karavanide ja iseseisva lao põhjal. Test `second_city_detail_v47.gd` kontrollib omandit, teise linna ehitamist, puidu vedu, kaartide vahel kaamera säilimist ja salvestuse ühilduvust. APK/EXE ehitus jääb käsitsi käivitatavaks.
