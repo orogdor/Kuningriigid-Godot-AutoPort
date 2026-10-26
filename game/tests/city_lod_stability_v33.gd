@@ -50,6 +50,15 @@ func _test() -> void:
     if level!=1:
         fail("far-detail mesh did not recover when approaching")
         return
+    if Stable.detail(450.0,76,2)!=0 or Stable.detail(160.0,76,0)!=2:
+        fail("large pan/overview jumps failed to choose the direct correct LOD")
+        return
+    var sample_signature: String=Stable.view_signature([Vector2i(1,1)],
+        [{"visible":true,"level":2}])
+    if sample_signature!=Stable.view_signature([Vector2i(1,1)],
+        [{"visible":true,"level":2}]):
+        fail("LOD view signature changed without a camera or district change")
+        return
     var shown: bool=Stable.displayed(500.0,76,false)
     if not shown:
         fail("baseline tile unexpectedly culled")
