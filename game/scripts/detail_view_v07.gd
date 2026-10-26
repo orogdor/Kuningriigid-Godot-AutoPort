@@ -10,6 +10,7 @@ signal turns_requested(count: int)
 signal research_requested
 signal research_ai_requested
 signal capital_ai_requested
+signal neighbor_requested(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
@@ -102,7 +103,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.36 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.40 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -1279,10 +1280,28 @@ func _refresh_info() -> void:
     info.text=text_line
     info.tooltip_text=text_line
 
+func _navigate_neighbor(delta: Vector2i) -> void:
+    # All four directions work in any detail view, not only owned districts.
+    var next: Vector2i=selected+delta
+    if World.cell(world,next.x,next.y).is_empty():return
+    neighbor_requested.emit(next.x,next.y)
+
 func _refresh_actions() -> void:
     if actions==null:return
     for child in actions.get_children():
         child.queue_free()
+    # Navigation must be available even on unowned tiles and on water.
+    for direction in [
+            {"title":"Kaart ↑","move":Vector2i(0,-1)},
+            {"title":"Kaart ↓","move":Vector2i(0,1)},
+            {"title":"Kaart ←","move":Vector2i(-1,0)},
+            {"title":"Kaart →","move":Vector2i(1,0)}]:
+        var next: Vector2i=selected+direction["move"]
+        var arrow:=Button.new()
+        arrow.text=String(direction["title"])
+        arrow.disabled=World.cell(world,next.x,next.y).is_empty()
+        arrow.pressed.connect(_navigate_neighbor.bind(direction["move"]))
+        actions.add_child(arrow)
     if not can_build:
         return
     if combined_city:

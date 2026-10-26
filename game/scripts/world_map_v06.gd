@@ -5,11 +5,15 @@ signal open_detail_requested(c: int, r: int)
 signal expand_requested(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
+const Terrain3D = preload("res://scripts/world_terrain_v40.gd")
 const Districts = preload("res://scripts/world_districts_v25.gd")
 const SAVE_PATH: String = "user://autoport_world_v06.json"
 var world: Dictionary = {}
 var district_city: Dictionary={}
 var map_canvas: Control
+var terrain_3d: SubViewportContainer
+var map_mode_button: Button
+var map_3d_enabled: bool=true
 var status_label: Label
 var info_label: Label
 var seed: int = 82026
@@ -21,11 +25,20 @@ func _ready() -> void:
     var top:=VBoxContainer.new()
     top.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(top)
+    var bar_frame:=Control.new()
+    bar_frame.custom_minimum_size=Vector2(0,48)
+    top.add_child(bar_frame)
+    var bar_scroll:=ScrollContainer.new()
+    bar_scroll.name="WorldActionsScroll"
+    bar_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    bar_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
+    bar_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+    bar_frame.add_child(bar_scroll)
     var bar:=HBoxContainer.new()
     bar.add_theme_constant_override("separation",10)
-    top.add_child(bar)
+    bar_scroll.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.34"
+    title.text="KUNINGRIIGID • GODOT 0.40"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
@@ -42,34 +55,70 @@ func _ready() -> void:
     annex.pressed.connect(func():
         if selected_cell.x>=0:expand_requested.emit(selected_cell.x,selected_cell.y))
     bar.add_child(annex)
+    map_mode_button=Button.new()
+    map_mode_button.text="2D vaade"
+    map_mode_button.pressed.connect(_switch_mode)
+    bar.add_child(map_mode_button)
     var new_world:=Button.new()
     new_world.text="Uus maailm"
     new_world.pressed.connect(regenerate)
     bar.add_child(new_world)
     var focus:=Button.new()
     focus.text="Näita kogu kaarti"
-    focus.pressed.connect(func(): map_canvas.fit_to_view())
+    focus.pressed.connect(func():
+        map_canvas.fit_to_view()
+        terrain_3d.fit_to_view())
     bar.add_child(focus)
     status_label=Label.new()
     status_label.text="Kaardi genereerimine..."
     status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(status_label)
+    var map_frame:=Control.new()
+    map_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    map_frame.size_flags_vertical=Control.SIZE_EXPAND_FILL
+    map_frame.custom_minimum_size=Vector2(200,155)
+    top.add_child(map_frame)
     map_canvas=Canvas.new()
-    map_canvas.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-    map_canvas.size_flags_vertical=Control.SIZE_EXPAND_FILL
-    map_canvas.custom_minimum_size=Vector2(240,160)
+    map_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     map_canvas.cell_selected.connect(_on_selected)
-    top.add_child(map_canvas)
+    map_frame.add_child(map_canvas)
+    terrain_3d=Terrain3D.new()
+    terrain_3d.name="WorldTerrain3D"
+    terrain_3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    terrain_3d.cell_selected.connect(_on_selected)
+    terrain_3d.cell_activated.connect(func(c:int,r:int): open_detail_requested.emit(c,r))
+    map_frame.add_child(terrain_3d)
+    _apply_map_mode()
     var legend:=Label.new()
-    legend.text="Meri • mets • tasandikud • mäed • jõed | Hiireratas või kahe sõrme näpistus: suum | Lohista: liigu | Puuduta: vali ruut"
+    legend.text="3D maailm: puuduta ruutu, topeltpuudutus avab detailkaardi. Lohista / suumi kahe sõrmega. 2D kaart on nupu alt."
     legend.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(legend)
     info_label=Label.new()
     info_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-    info_label.custom_minimum_size=Vector2(0,47)
+    info_label.custom_minimum_size=Vector2(0,23)
+    info_label.clip_text=true
     top.add_child(info_label)
     _load_settings()
     call_deferred("_generate")
+
+func _apply_map_mode() -> void:
+    if map_canvas!=null:map_canvas.visible=not map_3d_enabled
+    if terrain_3d!=null:terrain_3d.visible=map_3d_enabled
+    if map_mode_button!=null:
+        map_mode_button.text="2D vaade" if map_3d_enabled else "3D vaade"
+
+func _switch_mode() -> void:
+    map_3d_enabled=not map_3d_enabled
+    _apply_map_mode()
+
+func select_world_cell(c: int,r: int) -> void:
+    if World.cell(world,c,r).is_empty():return
+    selected_cell=Vector2i(c,r)
+    if map_canvas!=null and map_canvas.chosen!=selected_cell:
+        map_canvas.select_cell(c,r)
+    if terrain_3d!=null and terrain_3d.selected!=selected_cell:
+        terrain_3d.select_cell(c,r,false)
+    _on_selected(c,r)
 
 func _load_settings() -> void:
     if not FileAccess.file_exists(SAVE_PATH):return
@@ -86,11 +135,11 @@ func _save_settings() -> void:
 func _generate() -> void:
     world=World.generate(seed,true)
     map_canvas.set_world(world)
+    terrain_3d.set_world(world)
     _repaint_districts()
     if world["starts"].size()>0:
         var first: Dictionary=world["starts"][0]
-        selected_cell=Vector2i(int(first["c"]),int(first["r"]))
-        map_canvas.select_cell(selected_cell.x,selected_cell.y)
+        select_world_cell(int(first["c"]),int(first["r"]))
     status_label.text="Seeme %d • %d mandrit • %d saart • maismaad %d ruutu • mäestikku %d ruutu • jõelõike %d" % [
         seed,int(world["layout"]["count"]),world["layout"]["islands"].size(),
         int(world["land_count"]),int(world["mountain_count"]),int(world.get("river_count",0))]
@@ -115,6 +164,10 @@ func _repaint_districts() -> void:
 
 func _on_selected(c: int,r: int) -> void:
     selected_cell=Vector2i(c,r)
+    if map_canvas!=null and map_canvas.chosen!=selected_cell:
+        map_canvas.select_cell(c,r)
+    if terrain_3d!=null and terrain_3d.selected!=selected_cell:
+        terrain_3d.select_cell(c,r,false)
     var cell: Dictionary=World.cell(world,c,r)
     if cell.is_empty():return
     var biome: String=String(cell.get("biome","sea"))
@@ -130,7 +183,7 @@ func _on_selected(c: int,r: int) -> void:
         var s: Dictionary=world["starts"][i]
         if int(s["c"])==c and int(s["r"])==r:
             home=" • Riigi %d algus" % (i+1)
-    info_label.text="Ruut %d × %d • %s • kõrgus %.1f%s%s\nVali ruut ja vajuta Ava 3D detailkaart. Linnamajandus on samuti saadaval." % [
+    info_label.text="Ruut %d × %d • %s • kõrgus %.1f%s%s\nTopeltpuuduta 3D kaardil või vajuta Ava 3D detailkaart." % [
         c,r,name,float(cell.get("h",0)),note,home]
     _save_settings()
 

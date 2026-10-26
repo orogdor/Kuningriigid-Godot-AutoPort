@@ -444,3 +444,11 @@ See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- 
 - Valik ei tühista käsitsi käivitatud uurimist. Teaduspunktid arvestatakse endiselt elanike arvu ja olemasolevate minutipõhiste reeglite järgi; pronksiaeg nõuab endiselt **35 puitu, 25 kivi ja 15 toitu**. Puuduse korral valmis uuring ootab, kuni materjalid on olemas.
 - AI seaded ja viimased 30 valikut salvestatakse. Vana 0.38 salvestatud pealinna-AI saab esmakordsel laadimisel automaatse teaduse partneri. Olemasoleva majandusvõrdluse, linnaehituse, maastiku ja kasutusest tekkivate teede loogikat ei muudeta.
 - Regressioonitest `research_ai_v39.gd` katab sõltuvusahela, 450-minutilise ülesandepiiriga pronksiajani arengu, käsitsi uurimise eelisõiguse, salvestuse, materjalide ootejärjekorra ja mobiili UI.
+
+
+## AutoPort 0.40 — 3D maailmakaart ja naaberruutude detailnavigeerimine
+
+- 220×165 ruudustiku **päris 3D kõrgusvõrgu** kujul maailmakaart, samad kontinendid, mäed, metsad ja mereruudud. Kaart kasutab värvitud 3D kolmnurki, mitte 2D tekstuuri. Vajuta ruutu valimiseks, topeltpuuduta detailkaardi avamiseks; lohista ja suumi kahe sõrmega. Lihtne 2D kaart jääb käsitsi lülitatavaks varuvalikuks.
+- Detailkaardi 3D vaates **Kaart ↑ ↓ ← →** nupud läbivad päriselt maailma koordinaadid. Iga naaberruut on avatav vaateks sõltumata sellest, kas kuulub mängijale; ehitamine jääb lubatud ainult oma territooriumil. Mereruutu saab vaadata, seal ei saa veel ehitada ega laevaga sõita.
+- Mobiili maailmakaardi nupuriba on ühe rea kõrgune ja keritav, vältides kaardi katmist. Maailmakaardi 2D ja 3D valik sünkroniseeruvad detailkaartidega.
+- Test `map_nav_v40.gd` kontrollib 3D maastiku reaalset kõrgust, kaartide vahetust, 2D varurežiimi, suunanuppe, mereruutude vaateid, piire ja 720×420 telefoni UI-d.

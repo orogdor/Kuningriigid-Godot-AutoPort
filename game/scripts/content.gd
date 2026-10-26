@@ -82,6 +82,7 @@ func _ready() -> void:
     add_child(detail_view)
     detail_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     detail_view.return_requested.connect(_show_world)
+    detail_view.neighbor_requested.connect(_show_detail)
     detail_view.build_requested.connect(_build)
     detail_view.build_at_requested.connect(_build_at)
     detail_view.bridge_requested.connect(_build_bridge)
@@ -178,6 +179,7 @@ func _show_detail(c: int, r: int) -> void:
     if owned and not capital and not satellite:
         district_key=Districts.key(Vector2i(c,r))
     detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
+    world_view.select_world_cell(c,r)
     if capital or satellite:_save()
     if city_scroll != null:city_scroll.hide()
     if world_view != null:world_view.hide()
