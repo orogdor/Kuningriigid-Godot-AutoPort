@@ -227,7 +227,7 @@ func _process(delta: float) -> void:
                 var label: String="DistrictTile_Capital" if tile==selected else "DistrictTile_"+Continuous.district_key(tile,world).replace(":","_")
                 var node: Node3D=combined_root.get_node_or_null(label) as Node3D
                 var previous_level: int=int(node.get_meta("lod_level",-1)) if node!=null else -1
-                var previous_visible: Variant=node.get_meta("lod_visible",null) if node!=null else null
+                var previous_visible: Variant=node.get_meta("lod_visible") if node!=null and node.has_meta("lod_visible") else null
                 states.append(Stable33.state(distance_to_focus,controller.distance,
                     tile==active_tile,previous_level,previous_visible))
             var signature: String=Stable33.view_signature(shown_district_tiles,states)
@@ -434,7 +434,7 @@ func _render_neighbors() -> void:
             controller.look_at.x-district_offset.x,
             controller.look_at.z-district_offset.z).length()
         var previous_level: int=int(part.get_meta("lod_level",-1))
-        var previous_visible: Variant=part.get_meta("lod_visible",null)
+        var previous_visible: Variant=part.get_meta("lod_visible") if part.has_meta("lod_visible") else null
         var decision: Dictionary=Stable33.state(distance_from_focus,camera_distance,
             tile==active_tile,previous_level,previous_visible)
         var draw_tile: bool=bool(decision["visible"])
@@ -1271,10 +1271,8 @@ func _refresh_actions() -> void:
         button.disabled=not _can_build(kind)
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
-    var note:=Label.new()
-    note.text="Linna jõudlus- ja ehitusvalikud"
-    note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-    actions.add_child(note)
+    # No wrapping informational label in the one-row toolbar: on phones
+    # it grows to multiple lines and can hide the 3D terrain.
     for i in range(1,city_state.get("buildings",[]).size()):
         var b: Dictionary=city_state["buildings"][i]
         if bool(b.get("ready",false)):continue
