@@ -50,6 +50,8 @@ func _test() -> void:
         fail("second city's town hall or independent state disappeared")
         return
     detail.capital_ai_requested.emit()
+    # _refresh_actions() uses queue_free: wait until obsolete controls vanish.
+    await process_frame
     if bool(ui.city["trade_v15"].get("ai_enabled",true)) or \
             bool(satellite.get("auto_build_v47",true)):
         fail("second city AI button didn't turn its own AI off")
