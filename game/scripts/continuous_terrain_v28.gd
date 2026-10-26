@@ -80,7 +80,8 @@ static func surface(world: Dictionary,tile: Vector2i,name: String="DistrictTerra
             var b:=Vector3(x1,height(world,tile,x1,z0),z0)
             var c:=Vector3(x0,height(world,tile,x0,z1),z1)
             var d:=Vector3(x1,height(world,tile,x1,z1),z1)
-            for v in [a,c,b,b,c,d]:
+            # Upward-facing normal required for Godot GL Compatibility/Android.
+            for v in [a,b,c,b,d,c]:
                 tool.set_color(tint)
                 tool.add_vertex(v)
     tool.generate_normals()
