@@ -4,7 +4,7 @@ extends SceneTree
 const Scene=preload("res://content.tscn")
 const World=preload("res://scripts/world_gen_v06.gd")
 const Districts=preload("res://scripts/world_districts_v25.gd")
-const World3D=preload("res://scripts/world_terrain_v40.gd")
+const TerrainMap=preload("res://scripts/world_terrain_v40.gd")
 
 func fail(reason: String) -> void:
     printerr("MAP_NAV_V40 FAIL: "+reason)
