@@ -38,7 +38,7 @@ func _ready() -> void:
     bar.add_theme_constant_override("separation",10)
     bar_scroll.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.42"
+    title.text="KUNINGRIIGID • GODOT 0.49"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
@@ -90,7 +90,7 @@ func _ready() -> void:
     map_frame.add_child(terrain_3d)
     _apply_map_mode()
     var legend:=Label.new()
-    legend.text="3D maailm: puuduta ruutu, topeltpuudutus avab detailkaardi. Lohista / suumi kahe sõrmega. 2D kaart on nupu alt."
+    legend.text="3D maailm: päris kaubateed ja liikuvad karavanid. Topeltpuudutus avab detailkaardi. Lohista / suumi kahe sõrmega."
     legend.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(legend)
     info_label=Label.new()
@@ -143,6 +143,9 @@ func _generate() -> void:
     world=World.generate(seed,true)
     map_canvas.set_world(world)
     terrain_3d.set_world(world)
+    # Discard road overlay when generating a different world seed.
+    map_canvas.set_trade_route({},[])
+    terrain_3d.set_trade_route({},[])
     _repaint_districts()
     if world["starts"].size()>0:
         var first: Dictionary=world["starts"][0]
@@ -157,6 +160,14 @@ func regenerate() -> void:
     if seed>=2147483647:seed=82026
     status_label.text="Uue maailma genereerimine..."
     call_deferred("_generate")
+
+func set_trade_route(route: Dictionary,caravans: Array) -> void:
+    # The fallback atlas and default 3D map share exactly the same data.
+    var fresh: bool=int(route.get("seed",-1))==int(world.get("seed",-2))
+    var shown: Dictionary=route if fresh else {}
+    var moving: Array=caravans if fresh else []
+    if map_canvas!=null:map_canvas.set_trade_route(shown,moving)
+    if terrain_3d!=null:terrain_3d.set_trade_route(shown,moving)
 
 func set_city_districts(city: Dictionary) -> void:
     district_city=city

@@ -5,12 +5,16 @@ extends SubViewportContainer
 signal cell_selected(c: int,r: int)
 signal cell_activated(c: int,r: int)
 const World=preload("res://scripts/world_gen_v06.gd")
+const Trade3D=preload("res://scripts/world_trade_3d_v49.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
 var viewport: SubViewport
 var scene_root: Node3D
 var terrain_node: MeshInstance3D
+var trade_road_root: Node3D
+var trade_caravans_root: Node3D
+var trade_route_key: String=""
 var marker: MeshInstance3D
 var camera: Camera3D
 var camera_target: Vector2=Vector2(110,82.5)
@@ -62,6 +66,12 @@ func _ready() -> void:
     terrain_node=MeshInstance3D.new()
     terrain_node.name="WorldReliefMesh"
     scene_root.add_child(terrain_node)
+    trade_road_root=Node3D.new()
+    trade_road_root.name="TradeRoute3D"
+    scene_root.add_child(trade_road_root)
+    trade_caravans_root=Node3D.new()
+    trade_caravans_root.name="TradeCaravans3D"
+    scene_root.add_child(trade_caravans_root)
     marker=MeshInstance3D.new()
     marker.name="SelectedWorldTile"
     var selection:=BoxMesh.new()
@@ -103,6 +113,12 @@ static func _corner(world_data: Dictionary,c: int,r: int) -> float:
 
 func set_world(data: Dictionary) -> void:
     world=data
+    # New seed invalidates roads and wagons from the previous world.
+    trade_route_key=""
+    if trade_road_root!=null:
+        for child in trade_road_root.get_children():child.free()
+    if trade_caravans_root!=null:
+        for child in trade_caravans_root.get_children():child.free()
     if terrain_node==null or world.is_empty():return
     var vertices:=PackedVector3Array()
     var normals:=PackedVector3Array()
@@ -139,6 +155,20 @@ func set_world(data: Dictionary) -> void:
     zoom=235.0
     _update_camera()
     _move_marker()
+
+func set_trade_route(route: Dictionary,caravans: Array) -> void:
+    if trade_road_root==null or trade_caravans_root==null:return
+    var points: Array[Vector3]=Trade3D.route_points(world,route)
+    var identity: String=JSON.stringify(route) if points.size()>=2 else ""
+    if identity!=trade_route_key:
+        for old in trade_road_root.get_children():old.free()
+        if points.size()>=2:Trade3D.populate_road(trade_road_root,points)
+        trade_route_key=identity
+    # A trade tick updates lightweight wagons, not the fixed road mesh.
+    for old in trade_caravans_root.get_children():old.free()
+    if points.size()>=2:
+        Trade3D.populate_caravans(trade_caravans_root,
+            Trade3D.caravan_positions(points,caravans))
 
 func _update_camera() -> void:
     if camera==null:return

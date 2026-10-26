@@ -177,6 +177,7 @@ jobs:
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_hybrid_v46.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/second_city_detail_v47.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/second_city_traffic_v48.gd
+          timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_trade_3d_v49.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_v08_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/spatial_paths_v09.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/detail_terrain_v10.gd
@@ -223,7 +224,7 @@ jobs:
           source = preset.read_text(encoding="utf-8")
           run_number = int("${{ github.run_number }}")
           # Exactly the same version advertised by gh release create below.
-          version = f"0.48.{run_number}"
+          version = f"0.49.{run_number}"
           fields = {
               "version/code": str(run_number),
               "version/name": f'"{version}"',
@@ -266,7 +267,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.48.${{ github.run_number }}"
+          VERSION="v0.49.${{ github.run_number }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
           gh release create "$VERSION" \

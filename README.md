@@ -509,3 +509,12 @@ Teine linn avaneb maailmakaardilt ja linnapaneelist sama toimiva kaardivahetuse 
 - Teise linna töötajate ja teede vahemälu sõltub linna tõelisest `detail_sim` olekust. Eelvaates kasutatakse kahte väikest MultiMesh tõmmet ja telefoni jõudluse kaitseks maksimaalselt 120 teelahtrit ning 24 töötajat; 3D allikat ei tohi genereerimise ajal muuta.
 - Oma linna hoonete, maakonna ja teise linna ehitusõigused ei muutu. Metsikus naaberruudus ei saa ehitada. Test `second_city_traffic_v48.gd` kontrollib puidu tegelikku korjamist ja toomist, loomulikku liiklusjälge, vanade teede hääbumist, naaberruudu 3D näitamist, materjalide iseseisvust ja salvestust.
 - APK ning Windows EXE tehakse ainult käsitsi `workflow_dispatch` korral, mitte iga koodimuudatusega.
+
+
+## AutoPort 0.49 — päris 3D kaubatee ja karavanid maailmakaardil
+
+- Pealinna ja teise linna 3D maailmakaardil kuvatakse tegelik salvestatud maismaatee; 3D tee ei läbi merd ega mägesid ning kasutab üht instantsitud GPU-meshi. Mõlemad linnad on eraldi tähistatud.
+- Mõlemas suunas liikuvad kaubavankrid järgivad samu \`progress / duration\` väärtusi kui 2D kaardil ning kaovad alles siis, kui algne majandussimulatsioon on kauba kohale toimetanud. Kaubavarud, veokulud ja marsruudi pikkused ei muutu.
+- \`WorldMap.set_trade_route()\` värskendab korraga 2D ja 3D vaadet. Teed jäetakse mängukäikude vahel vahemällu; uuesti luuakse ainult liikuvad vankrid. Uue maailmaseemne või aegunud marsruudi korral vana tee eemaldatakse.
+- \`world_trade_3d_v49.gd\` regressioon kontrollib liikuvat kaupa, mõlema suuna asukohti, saabumisaega, vahemälu, 2D/3D ühtivust ning mõlema linna ressursside puutumatust.
+- APK ja Windows EXE ehitus jääb ainult käsitsi käivitatavaks.

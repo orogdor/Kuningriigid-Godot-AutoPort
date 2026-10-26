@@ -126,11 +126,11 @@ func _sync_trade_map() -> void:
     world_view.map_canvas.set_city_agents(city.get("transport_v26",{}).get("agents",[]),
         Transit.home_key(city))
     if not Trade.has_outpost(city):
-        world_view.map_canvas.set_trade_route({},[])
+        world_view.set_trade_route({},[])
         return
     _satellite_tile()
     var trade: Dictionary=city["trade_v15"]
-    world_view.map_canvas.set_trade_route(trade.get("route_v17",{}),trade.get("caravans",[]))
+    world_view.set_trade_route(trade.get("route_v17",{}),trade.get("caravans",[]))
 
 func _open_satellite() -> void:
     if not Trade.has_outpost(city):
@@ -248,7 +248,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.48",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.49",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -328,7 +328,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.48: teise linna päris töötajad ning isetekkivad teed ka naaberruudu 3D vaates."
+    note.text="0.49: kahe linna kaubatee ja liikuvad vankrid nüüd ka 3D maailmakaardil."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
