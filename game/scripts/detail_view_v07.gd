@@ -367,7 +367,8 @@ func _surface(cell: Dictionary) -> void:
             if selected_biome=="forest":col=Color("#547b4e")
             elif selected_biome=="hills":col=Color("#999b91")
             elif not sea and can_build:col=Color("#a7b779")
-            for v in [a,d,b,b,d,e]:
+            # Correct Godot front-facing winding: generated normals point upward.
+            for v in [a,b,d,b,e,d]:
                 tool.set_color(col)
                 tool.add_vertex(v)
     tool.generate_normals()
