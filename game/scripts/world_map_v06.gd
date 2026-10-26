@@ -25,7 +25,7 @@ func _ready() -> void:
     bar.add_theme_constant_override("separation",10)
     top.add_child(bar)
     var title:=Label.new()
-    title.text="KUNINGRIIGID • GODOT 0.33"
+    title.text="KUNINGRIIGID • GODOT 0.34"
     title.add_theme_font_size_override("font_size",22)
     title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     bar.add_child(title)
