@@ -22,6 +22,7 @@ const Continuous = preload("res://scripts/continuous_city_v27.gd")
 const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
 const Visuals30 = preload("res://scripts/district_visuals_v30.gd")
 const Batches31 = preload("res://scripts/city_render_batch_v31.gd")
+const Perf31 = preload("res://scripts/city_performance_v31.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -48,6 +49,9 @@ var performance_fps_sum: float=0.0
 var performance_last: Dictionary={}
 var performance_enabled: bool=false
 var batched_resource_nodes: int=0
+var quality_state: Dictionary={"level":1,"low":0,"high":0}
+var view_port: SubViewport
+var visual_update_count: int=0
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -91,6 +95,10 @@ func _ready() -> void:
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
+    var stats_button:=Button.new()
+    stats_button.text="FPS"
+    stats_button.pressed.connect(_toggle_performance)
+    top.add_child(stats_button)
     var back:=Button.new()
     back.text="Tagasi maailmakaardile"
     back.pressed.connect(func(): return_requested.emit())
@@ -98,6 +106,12 @@ func _ready() -> void:
     info=Label.new()
     info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     column.add_child(info)
+    performance_label=Label.new()
+    performance_label.text="FPS: --  |  Joonistuskutsed: --  |  3D objekte: --"
+    performance_label.visible=OS.has_feature("mobile")
+    performance_enabled=performance_label.visible
+    performance_label.add_theme_font_size_override("font_size",13)
+    column.add_child(performance_label)
     placement_label=Label.new()
     placement_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     placement_label.text="Vali ehitis, et näha lubatud (roheline) ja keelatud (punane) ehitusruute."
@@ -108,7 +122,9 @@ func _ready() -> void:
     controller.custom_minimum_size=Vector2(300,180)
     column.add_child(controller)
     var viewport:=SubViewport.new()
-    viewport.size=Vector2i(960,600)
+    view_port=viewport
+    quality_state["level"]=1 if OS.has_feature("mobile") else 2
+    viewport.size=Perf31.viewport_size(int(quality_state["level"]))
     viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
     viewport.transparent_bg=false
     viewport.handle_input_locally=true
@@ -165,6 +181,37 @@ func _ready() -> void:
     actions.add_theme_constant_override("v_separation",6)
     column.add_child(actions)
     _refresh_actions()
+
+func _toggle_performance() -> void:
+    performance_enabled=not performance_enabled
+    if performance_label!=null:performance_label.visible=performance_enabled
+
+func _process(delta: float) -> void:
+    if not visible or view_port==null:return
+    performance_timer+=delta
+    if performance_timer<1.0:return
+    var interval: float=performance_timer
+    performance_timer=0.0
+    var fps: float=float(Engine.get_frames_per_second())
+    # Captures hardware-side frame statistics on supported live renderers.
+    # A headless editor can report 0 draw calls: do not fabricate data.
+    var calls: int=RenderingServer.viewport_get_render_info(view_port.get_viewport_rid(),
+        RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,
+        RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
+    var geometry: int=RenderingServer.viewport_get_render_info(view_port.get_viewport_rid(),
+        RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,
+        RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
+    var nodes: int=Batches31.node_count(scene_root)
+    performance_last={"fps":fps,"draw_calls":calls,"visible_meshes":geometry,
+        "scene_nodes":nodes,"quality":int(quality_state["level"]),"sample_interval":interval}
+    if OS.has_feature("mobile"):
+        var next: Dictionary=Perf31.next_quality(fps,quality_state)
+        if int(next["level"])!=int(quality_state["level"]):
+            view_port.size=Perf31.viewport_size(int(next["level"]))
+        quality_state=next
+    if performance_label!=null and performance_enabled:
+        performance_label.text="FPS %.0f | Draw %d | Mesh %d | Sõlmi %d | %s" % [
+            fps,calls,geometry,nodes,Perf31.level_name(int(quality_state["level"]))]
 
 func _material(color: Color, roughness: float=0.95) -> StandardMaterial3D:
     var key: String=color.to_html(true)+"_"+str(snappedf(roughness,0.01))
@@ -872,7 +919,9 @@ func _placement_tile(point: Vector2, color: Color, label: String, width: float=8
 
 func _refresh_grid() -> void:
     if plot_root==null:return
-    for old in plot_root.get_children():old.queue_free()
+    if pending_build=="" and bool(plot_root.get_meta("idle_grid",false)):return
+    plot_root.set_meta("idle_grid",pending_build=="")
+    for old in plot_root.get_children():old.free()
     placement_marker=null
     placement_ghost=null
     placement_ghost_material=null
@@ -1128,7 +1177,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.31: MultiMesh-ressursid, adaptiivne 3D detail ja FPS-i mõõdik mobiilis."
+    note.text="0.31: GPU MultiMesh-ressursid, FPS/Draw loendur ja mobiilis automaatne renderduse eraldusvõime."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -1201,6 +1250,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     resource_root.set_meta("resource_key","")
     active_building_mesh_builds=0
     street_cache_signature=""
+    plot_root.set_meta("idle_grid",false)
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
