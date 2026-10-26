@@ -90,6 +90,10 @@ static func surface(world: Dictionary,tile: Vector2i,name: String="DistrictTerra
     var material:=StandardMaterial3D.new()
     material.vertex_color_use_as_albedo=true
     material.roughness=0.95
+    # A visible terrain plane is essential even on mobile compatibility
+    # renderers where generated triangle winding/lighting differ.
+    material.cull_mode=BaseMaterial3D.CULL_DISABLED
+    material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
     mesh.material_override=material
     mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     return mesh
