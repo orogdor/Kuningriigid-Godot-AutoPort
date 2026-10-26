@@ -620,10 +620,14 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
     var thatch:=Color("#b49b61") if completed else Color("#6a7272")
     match kind:
         "hall":
+            if int(city_state.get("age",0))>=1:
+                _box(parent,place+Vector3(0,0.65,0),Vector3(19,1.3,14),Color("#99938a"),"BronzeHallFoundation")
             _box(parent,place+Vector3(0,4.1,0),Vector3(18,8,13),timber,"HallWalls")
             _roof(parent,place+Vector3(0,10.4,0),Vector3(21,7,16),thatch)
             _box(parent,place+Vector3(0,3,6.7),Vector3(3.1,6,0.5),Color("#473629"),"HallDoor")
         "house":
+            if int(city_state.get("age",0))>=1:
+                _box(parent,place+Vector3(0,0.6,0),Vector3(10,1.2,9),Color("#a29b8e"),"BronzeHouseBase")
             _box(parent,place+Vector3(0,2.8,0),Vector3(9,5.6,8),timber,"HouseWalls")
             _roof(parent,place+Vector3(0,6.8,0),Vector3(11,5,10),thatch)
             _box(parent,place+Vector3(0,1.9,4.1),Vector3(2,3.8,0.3),Color("#4c392a"),"HouseDoor")
@@ -650,6 +654,51 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
                     foliage.radius=0.65
                     foliage.height=1.3
                     _mesh(parent,foliage,place+Vector3(-8+i*3.2,0.8,-7+j*3.4),Color("#5e8d35"),"Crops")
+        "saw":
+            _box(parent,place+Vector3(0,2.9,-1),Vector3(13,5.8,10),timber,"SawmillWalls")
+            _roof(parent,place+Vector3(0,7,-1),Vector3(15,5,12),Color("#936943"))
+            _box(parent,place+Vector3(2,2,6),Vector3(10,2,3.5),Color("#967457"),"SawBench")
+            for i in range(4):
+                _cylinder(parent,place+Vector3(-3.0+i*2.0,1.4,7),0.6,5.0,Color("#b18a55"),"SawLogs")
+        "market":
+            for i in range(3):
+                var x: float=-8.0+float(i)*8.0
+                _box(parent,place+Vector3(x,1.0,0),Vector3(5.5,2.0,4.0),Color("#956c43"),"MarketStall")
+                _roof(parent,place+Vector3(x,5.0,0),Vector3(7.0,3.0,6.0),
+                    Color("#b65f41") if i%2==0 else Color("#c9a867"))
+                _box(parent,place+Vector3(x,2.4,1.6),Vector3(4,0.6,2),Color("#bd9a65"),"MarketGoods")
+        "warehouse":
+            _box(parent,place+Vector3(0,3.2,0),Vector3(17,6.4,12),timber,"WarehouseWalls")
+            _box(parent,place+Vector3(0,0.65,0),Vector3(18,1.2,13),Color("#88867e"),"WarehouseBase")
+            _roof(parent,place+Vector3(0,8.4,0),Vector3(20,6,15),Color("#776b54"))
+            _box(parent,place+Vector3(0,3.0,6.2),Vector3(5.5,5.8,0.5),
+                Color("#493b2a"),"WarehouseDoor")
+            for i in range(3):
+                _box(parent,place+Vector3(-5+float(i)*5,0.8,10),Vector3(3.5,1.6,3.5),
+                    Color("#b78f5d"),"WarehouseCrates")
+        "cellar":
+            _box(parent,place+Vector3(0,1.7,0),Vector3(14,3.4,11),
+                Color("#99988d"),"CellarStoneWalls")
+            _roof(parent,place+Vector3(0,5.4,0),Vector3(16,4,13),Color("#a08a62"))
+            _box(parent,place+Vector3(0,1.8,5.7),Vector3(3.4,3.6,0.5),
+                Color("#5e4735"),"CellarDoor")
+            for i in range(4):
+                _cylinder(parent,place+Vector3(-5.0+float(i)*3.0,1.5,-6.5),
+                    1.0,2.5,Color("#976e47"),"CellarBarrels")
+        "vegetable_garden":
+            for i in range(5):
+                var x: float=-7.5+float(i)*3.8
+                _box(parent,place+Vector3(x,0.23,0),Vector3(2.5,0.45,16),
+                    Color("#674d30"),"GardenBed")
+                for j in range(4):
+                    var vegetable:=SphereMesh.new()
+                    vegetable.radius=0.85
+                    vegetable.height=1.4
+                    _mesh(parent,vegetable,place+Vector3(x,0.95,-6.0+float(j)*3.8),
+                        Color("#478144"),"Vegetables")
+            for z in [-9.5,9.5]:
+                _box(parent,place+Vector3(0,0.9,z),Vector3(22,1.8,0.5),
+                    Color("#8d6a46"),"GardenFence")
         _:
             _box(parent,place+Vector3(0,2.5,0),Vector3(7,5,7),timber,"WorkshopWalls")
             _roof(parent,place+Vector3(0,6,0),Vector3(9,4,9),thatch)
@@ -1280,7 +1329,8 @@ func _refresh_actions() -> void:
             pending_build="bridge"
             info.text="SILD: vali vee kohal sobiv sillaehituskoht, ±30 m mööda jõelõiku.")
         actions.add_child(bridge_button)
-    for kind in ["house","lumber","well","quarry","farm"]:
+    for kind in ["house","lumber","well","quarry","farm",
+            "saw","warehouse","market","vegetable_garden","cellar"]:
         var button:=Button.new()
         button.text="Ehita "+kind
         button.disabled=not _can_build(kind)

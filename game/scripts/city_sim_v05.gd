@@ -9,6 +9,7 @@ const Freight = preload("res://scripts/freight_v14.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Trade = preload("res://scripts/two_city_trade_v15.gd")
 const Unlock = preload("res://scripts/building_unlocks_v36.gd")
+const BronzeAI = preload("res://scripts/bronze_city_ai_v37.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -338,25 +339,29 @@ static func _satellite_ai_tick(town: Dictionary, defs: Dictionary) -> void:
             var kind: String=String(b.get("type",""))
             counts[kind]=int(counts.get(kind,0))+1
     var candidate: String=""
-    # Basic survival and building progression based on needs.
-    if int(counts.get("lumber",0))<1:
-        candidate="lumber"
-    elif int(counts.get("well",0))<1:
-        candidate="well"
-    elif int(counts.get("house",0))<1 or (housing_capacity(buildings)-float(realm.get("pop",3)))<1.0:
-        candidate="house"
-    elif int(counts.get("quarry",0))<1:
-        candidate="quarry"
-    elif int(counts.get("farm",0))<1:
-        candidate="farm"
-    elif int(counts.get("warehouse",0))<1:
-        candidate="warehouse"
+    if town.has("research_v35"):
+        candidate=BronzeAI.choose(town,defs)
     else:
-        # Grow buildings gradually in proportion to demand, not indefinitely.
-        if int(counts.get("house",0))<mini(5,int(realm.get("pop",3))/2):
+        var candidate: String=""
+        # Basic survival and building progression based on needs.
+        if int(counts.get("lumber",0))<1:
+            candidate="lumber"
+        elif int(counts.get("well",0))<1:
+            candidate="well"
+        elif int(counts.get("house",0))<1 or (housing_capacity(buildings)-float(realm.get("pop",3)))<1.0:
             candidate="house"
-        elif int(counts.get("farm",0))<mini(2,int(realm.get("pop",3))/7):
+        elif int(counts.get("quarry",0))<1:
+            candidate="quarry"
+        elif int(counts.get("farm",0))<1:
             candidate="farm"
+        elif int(counts.get("warehouse",0))<1:
+            candidate="warehouse"
+        else:
+            # Grow buildings gradually in proportion to demand, not indefinitely.
+            if int(counts.get("house",0))<mini(5,int(realm.get("pop",3))/2):
+                candidate="house"
+            elif int(counts.get("farm",0))<mini(2,int(realm.get("pop",3))/7):
+                candidate="farm"
     if candidate=="":return
     # AI towns cannot build what their nation has not researched.
     if Unlock.block(town,candidate)!="":

@@ -417,3 +417,13 @@ Windowsi käivitusprogrammi järeltesti aegunud 0.17-versiooni kontroll on asend
 ## AutoPort 0.36 — tehnoloogiate nõuded ehitistele
 
 Teadusavastused avavad nüüd ehitised. Samad reeglid kehtivad linnamenüüs, mobiili detailkaardil, otseses ehitamisfunktsioonis ja teise linna AI-s. Kaev vajab veevarustust, kivimurd kivitööriistu, talu põlluharimist. Saekaater, veski, pagarikoda, turg ja laod on seotud vastavate teadustega. Olemasolevaid maju ei kustutata ning 0.5 majanduse pariteeditest jääb muutmata. Detailkaardi ehitusribalt pääseb nüüd teadusmenüüsse. Kontroll: `game/tests/building_unlocks_v36.gd`.
+
+
+## AutoPort 0.37 — pronksiaja linnapilt ja teise linna AI
+
+- Jätkab olemasolevaid Three.js-st genereeritud `city_buildings` retsepte: **saeveski, materjaliladu, turg, toidukelder ja köögiviljaaed**. Kõik kasutavad tegelikku tootmist, tarbimist, ehitusaega ja teaduslukke.
+- Uus `bronze_city_ai_v37.gd` valib teise linna jaoks eluliselt vajaliku hoone ja seejärel pronksiajal kõrgema taseme töökojad/teenused. Elamute siht kasvab kuni kümneni, farmide siht kolmeni; uusi ressursse õhust ei teki ega toimu automaatset rahvusvahelist ostu.
+- Detailkaardil on viiele hoonetüübile eristatavad 3D mudelid ja pronksiaja hoonetele kivist soklid. Kompaktne üherealine horisontaalselt keritav mobiilimenüü laseb need välja valida.
+- `bronze_city_v37.gd` testib AI ehitusjärjestust, tegelikku köögiviljatootmist, teaduslukke, salvestamist ja viis eri 3D mudelit. Sama regressioonitest käib nii Android/Windows ehitamisel kui Three.js reeglite sünkroonimisel.
+
+See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- ja sõjasüsteemi port.
