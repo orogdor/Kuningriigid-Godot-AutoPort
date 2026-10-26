@@ -342,7 +342,6 @@ static func _satellite_ai_tick(town: Dictionary, defs: Dictionary) -> void:
     if town.has("research_v35"):
         candidate=BronzeAI.choose(town,defs)
     else:
-        var candidate: String=""
         # Basic survival and building progression based on needs.
         if int(counts.get("lumber",0))<1:
             candidate="lumber"
