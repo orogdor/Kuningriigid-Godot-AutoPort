@@ -45,6 +45,7 @@ var selected: Vector2i = Vector2i(-1,-1)
 var active_tile: Vector2i=Vector2i(-1,-1)
 var combined_city: bool=false
 var combined_root: Node3D
+var seam_preview_root: Node3D
 var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
 var terrain_mesh_builds: int=0
@@ -203,6 +204,9 @@ func _ready() -> void:
     combined_root=Node3D.new()
     combined_root.name="ContinuousCity"
     scene_root.add_child(combined_root)
+    seam_preview_root=Node3D.new()
+    seam_preview_root.name="SurroundingDetailTiles"
+    scene_root.add_child(seam_preview_root)
     # Fixed-height, horizontally scrollable toolbar. Priority buttons no
     # longer wrap to 10+ rows or cover the 3D view as the town grows.
     # The enclosing plain Control holds an exact one-row height. The
@@ -587,6 +591,28 @@ func _render_neighbors() -> void:
             _box(combined_root,midpoint,shape,Color("#c3a371"),
                 "ContinuousStreet_"+str(i))
         street_cache_signature=current_signature
+
+func _render_seam_previews() -> void:
+    if seam_preview_root==null:return
+    for old in seam_preview_root.get_children():old.free()
+    if combined_city:return # Existing 0.27 city already draws its own tiles.
+    for dr in range(-1,2):
+        for dc in range(-1,2):
+            if dc==0 and dr==0:continue
+            var neighbor: Dictionary=World.cell(world,selected.x+dc,selected.y+dr)
+            if neighbor.is_empty():continue
+            var biome: String=String(neighbor.get("biome","sea"))
+            var shade:=Color("#3984a2") if biome=="sea" else Color("#8aa66b")
+            if biome=="forest":shade=Color("#54845a")
+            elif biome=="hills":shade=Color("#9b9d94")
+            var height: float=clampf(float(neighbor.get("h",0.0))*0.02,-1.0,1.7)
+            # One inexpensive visible terrain proxy per adjacent 225x195m
+            # tile, as in the web map's 3x3 preloaded neighborhood.
+            _box(seam_preview_root,Vector3(
+                float(dc)*SURFACE_WIDTH,height-0.26,
+                float(dr)*SURFACE_DEPTH),
+                Vector3(SURFACE_WIDTH-0.05,0.48,SURFACE_DEPTH-0.05),
+                shade,"DetailNeighbor_%d_%d" % [dc,dr])
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
@@ -1469,7 +1495,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         # A queued mesh still has the DetailTerrain name this frame.
         # Replace it now so the terrain and color cannot be shadowed by
@@ -1478,4 +1504,5 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     var tile: Dictionary=World.cell(world,c,r)
     if tile.is_empty():return
     _surface(tile)
+    _render_seam_previews()
     refresh_buildings()

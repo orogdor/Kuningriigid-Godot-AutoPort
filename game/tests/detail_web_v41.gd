@@ -33,6 +33,9 @@ func _test() -> void:
     var home: Vector2i=Districts.origin(ui.world_view.world)
     ui._show_detail(home.x,home.y)
     await process_frame
+    if not ui.detail_view.combined_city and ui.detail_view.seam_preview_root.get_child_count()<3:
+        fail("web-style 3x3 nearby terrain previews are missing")
+        return
     var ctrl=ui.detail_view.controller
     if not ctrl.seam_enabled or ctrl.max_distance<450.0:
         fail("web-style edge and zoom navigation are not enabled")

@@ -457,3 +457,5 @@ See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- 
 ## AutoPort 0.41 — veebimängu detailkaartide juhtimine
 
 Veebimängu V123 eeskujul ei vahetata kaarte enam ainult nuppudega. Detailkaart on 225 × 195 m. Ühe sõrme või hiire vasaku nupu lohistamine liigutab kaamera fookust; üle detailruudu ääre liikudes avatakse vastav naaberruut, säilitades kaamera asukoha ja suumi. Ka diagonaalne suund toimib. Hiire parema nupuga saab endiselt kaamerat pöörata. Detailvaates lõpuni välja suumides naaseb mäng 3D maailmakaardile just selle ruudu kohale. Maailmakaardi topeltpuudutus avab endiselt detailvaate. Vana nelja noolega juhtimine jääb abivõimaluseks. Eraldi test detail_web_v41.gd kontrollib veebiversiooni piiriületuse koordinaate, sujuvust ja tagasipöördumist.
+
+Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruudu maastikueelvaadet (3 × 3 naabrus), nii et üle serva lohistamisel ei ole enne järgmist kaarti tühi taust. Linna olemasolev ühise 3D detailkaartide visualiseerimine jääb muutmata.
