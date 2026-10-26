@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "source_commit": "9ffde1877bd96adae649ab4df2d5bcc8754a9b13",
+  "source_commit": "db7155c22724426c332eddce70a303244129a925",
   "upstream_files": {
     "economy.js": "1d67be6857d9dcc2cfdffbcaa3d0286ec36bfa9e1381af52a2b0cc317c53bccd",
     "labor.js": "7e5f623a5f691c3a4f0678f4577b0fa5311ffe2742dfeb41c9434eb52d0b0156",
