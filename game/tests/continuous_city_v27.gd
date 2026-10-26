@@ -29,8 +29,11 @@ func _test() -> void:
     if ui.detail_view.combined_city:
         fail("single-city 0.26 save wrongly entered combined view")
         return
-    if ui.detail_view.controller.max_distance!=180.0:
-        fail("standalone city camera lost its legacy zoom range")
+    # v0.41 adds web-style zoom-out to the world map for standalone cities.
+    # Legacy v0.27 city-district geometry must remain 160m; camera range
+    # is now deliberately larger than the old 180m cutoff.
+    if not ui.detail_view.controller.seam_enabled or ui.detail_view.controller.max_distance<450.0:
+        fail("standalone city lost its web-style detail-to-world zoom range")
         return
     var city: Dictionary=ui.city
     var stock: Dictionary=city["realms"][0]["resources"]
