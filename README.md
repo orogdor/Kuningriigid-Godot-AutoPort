@@ -459,3 +459,11 @@ See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- 
 Veebimängu V123 eeskujul ei vahetata kaarte enam ainult nuppudega. Detailkaart on 225 × 195 m. Ühe sõrme või hiire vasaku nupu lohistamine liigutab kaamera fookust; üle detailruudu ääre liikudes avatakse vastav naaberruut, säilitades kaamera asukoha ja suumi. Ka diagonaalne suund toimib. Hiire parema nupuga saab endiselt kaamerat pöörata. Detailvaates lõpuni välja suumides naaseb mäng 3D maailmakaardile just selle ruudu kohale. Maailmakaardi topeltpuudutus avab endiselt detailvaate. Vana nelja noolega juhtimine jääb abivõimaluseks. Eraldi test detail_web_v41.gd kontrollib veebiversiooni piiriületuse koordinaate, sujuvust ja tagasipöördumist.
 
 Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruudu maastikueelvaadet (3 × 3 naabrus), nii et üle serva lohistamisel ei ole enne järgmist kaarti tühi taust. Linna olemasolev ühise 3D detailkaartide visualiseerimine jääb muutmata.
+
+
+## AutoPort 0.42 – pidev naabermaastik veebiversiooni järgi
+
+- Kõik kaheksa 3D detailkaardi naaberruutu saavad nüüd päris kõrguse ja varjutusega 225×195m maastikuvõrgud tasaste kastide asemel. Maastiku kõrgused arvutatakse maailma ühiskoordinaatidest, nii et kahe tühja detailruudu piirilt ei teki kõrgusastmeid.
+- Lähedased metsad ja mäed on ka naaberruutudes näha juba enne kaamera piirist üle lohistamist: piiratud arv instantsitud puid, võrad ja kaljud ei koorma mobiili kümnete eraldi objektidega. Meri ja jõed on samuti naaberruutudel nähtavad.
+- Varem lisatud 0.41 kaamera pööramise ja suumi säilitamine ning maailmakaardile suumimine jääb alles, samuti mängija ehitusõiguse piirangud, läbitud radadest kasvavad teed ning 0.27 ühendatud linnaosa olemasolev 160m geomeetria.
+- Uus `seam_terrain_v42.gd` test kontrollib igas suunas täpseid maastikupiire, 3×3 naabervõrku, mitme järjestikuse detailkaardi läbimist, kaamera suuna/suumi säilimist ja maailmapiiride käsitlemist.

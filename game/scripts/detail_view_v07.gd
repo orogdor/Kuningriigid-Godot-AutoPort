@@ -36,6 +36,7 @@ const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
+const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -106,7 +107,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.41 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.42 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -340,9 +341,8 @@ func _elevation(x: float, z: float, base: float, plain: bool) -> float:
     if plain and city_state.has("detail_sim"):
         return Terrain.elevation(city_state["detail_sim"],x,z)
     if plain:return 0.0
-    # Mild relief. Full web-game detail-sample parity belongs to a future port.
-    var wave: float=sin(x*0.046+selected.x*0.2)*cos(z*0.064+selected.y*0.1)
-    return base+wave*1.7
+    # Same world-coordinate relief as surrounding tiles: no step at borders.
+    return SeamTerrain42.height_at(world,selected,x,z)
 
 func _surface(cell: Dictionary) -> void:
     selected_biome=String(cell.get("biome","sea"))
@@ -595,24 +595,29 @@ func _render_neighbors() -> void:
 func _render_seam_previews() -> void:
     if seam_preview_root==null:return
     for old in seam_preview_root.get_children():old.free()
-    if combined_city:return # Existing 0.27 city already draws its own tiles.
+    if combined_city:return # Existing 0.27 city draws its own 160m districts.
     for dr in range(-1,2):
         for dc in range(-1,2):
             if dc==0 and dr==0:continue
-            var neighbor: Dictionary=World.cell(world,selected.x+dc,selected.y+dr)
+            var tile: Vector2i=selected+Vector2i(dc,dr)
+            var neighbor: Dictionary=World.cell(world,tile.x,tile.y)
             if neighbor.is_empty():continue
-            var biome: String=String(neighbor.get("biome","sea"))
-            var shade:=Color("#3984a2") if biome=="sea" else Color("#8aa66b")
-            if biome=="forest":shade=Color("#54845a")
-            elif biome=="hills":shade=Color("#9b9d94")
-            var height: float=clampf(float(neighbor.get("h",0.0))*0.02,-1.0,1.7)
-            # One inexpensive visible terrain proxy per adjacent 225x195m
-            # tile, as in the web map's 3x3 preloaded neighborhood.
-            _box(seam_preview_root,Vector3(
-                float(dc)*SURFACE_WIDTH,height-0.26,
-                float(dr)*SURFACE_DEPTH),
-                Vector3(SURFACE_WIDTH-0.05,0.48,SURFACE_DEPTH-0.05),
-                shade,"DetailNeighbor_%d_%d" % [dc,dr])
+            var part:=Node3D.new()
+            part.name="DetailNeighbor_%d_%d" % [dc,dr]
+            part.position=Vector3(float(dc)*SURFACE_WIDTH,0,float(dr)*SURFACE_DEPTH)
+            seam_preview_root.add_child(part)
+            part.add_child(SeamTerrain42.surface(world,tile))
+            SeamTerrain42.decorate(part,world,tile)
+            # A lightweight sea/river indication keeps all eight previews
+            # readable before the user crosses into a different biome.
+            if String(neighbor.get("biome","sea"))=="sea":
+                _box(part,Vector3(0,-1.4,0),
+                    Vector3(SURFACE_WIDTH,0.12,SURFACE_DEPTH),
+                    Color("#3b86a8"),"NeighborSea")
+            elif bool(neighbor.get("river",false)):
+                _box(part,Vector3(0,-0.25,25.0),
+                    Vector3(SURFACE_WIDTH,0.12,14.0),
+                    Color("#419abb"),"NeighborRiver")
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
