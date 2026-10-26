@@ -13,6 +13,7 @@ const DetailView = preload("res://scripts/detail_view_v07.gd")
 const Districts = preload("res://scripts/world_districts_v25.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
+const Research = preload("res://scripts/research_v35.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -35,6 +36,10 @@ var construction_rows: VBoxContainer
 var info_text: Label
 var trade_label: Label
 var satellite_label: Label
+var research_status: Label
+var research_options: OptionButton
+var research_start: Button
+var research_choice_ids: Array[String]=[]
 var detail_town: String="capital"
 var auto_button: Button
 var timer: Timer
@@ -49,6 +54,7 @@ func _ready() -> void:
         add_child(warning)
         return
     city = _load_city()
+    Research.ensure(city) # Add research to legacy saves without changing their economy.
     _setup_ui()
     timer = Timer.new()
     timer.wait_time = 1.0
@@ -211,7 +217,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.34",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.35",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -240,6 +246,19 @@ func _setup_ui() -> void:
     info_text = _heading("",16)
     info_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     body.add_child(info_text)
+    body.add_child(HSeparator.new())
+    body.add_child(_heading("Teadus — kiviaeg ja pronksiaeg",20))
+    research_status=_heading("",15)
+    research_status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    body.add_child(research_status)
+    var research_row:=HBoxContainer.new()
+    body.add_child(research_row)
+    research_options=OptionButton.new()
+    research_options.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    research_options.custom_minimum_size=Vector2(170,42)
+    research_row.add_child(research_options)
+    research_start=_button("Alusta uurimist",_start_research)
+    research_row.add_child(research_start)
     body.add_child(HSeparator.new())
     body.add_child(_heading("Hoone ehitamine",20))
     var hint := Label.new()
@@ -279,6 +298,36 @@ func _setup_ui() -> void:
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
 
+func _start_research() -> void:
+    var selected_index: int=research_options.selected
+    if selected_index<0 or selected_index>=research_choice_ids.size():
+        event_message="Vali kõigepealt uuritav tehnoloogia."
+    else:
+        var id: String=research_choice_ids[selected_index]
+        var error: String=Research.start(city,id)
+        event_message=error if error!="" else "Alustati: "+Research.name_of(id)
+    _save()
+    _refresh()
+
+func _refresh_research() -> void:
+    var r: Dictionary=Research.ensure(city)
+    research_choice_ids=Research.available(city)
+    research_options.clear()
+    for id in research_choice_ids:
+        research_options.add_item(Research.name_of(id))
+    if not research_choice_ids.is_empty():research_options.select(0)
+    research_options.disabled=research_choice_ids.is_empty() or String(r["active"])!=""
+    research_start.disabled=research_options.disabled
+    var active: String=String(r["active"])
+    var progress: String="Vali järgmisena uuritav avastus."
+    if active!="":
+        progress="%s: %.1f / %.1f teaduspunkti" % [
+            Research.name_of(active),float(r["progress"].get(active,0)),Research.cost(active)]
+    if String(r["age_wait"])!="":progress+=" | "+String(r["age_wait"])
+    var age: int=clampi(int(city.get("age",0)),0,1)
+    research_status.text="%s | Teada %d | %.1f teaduspunkti/min | %s" % [
+        Research.ERA_NAMES[age],r["known"].size(),Research.science_rate(city),progress]
+
 func _toggle_satellite_ai() -> void:
     if not Trade.has_outpost(city):
         event_message="Asuta enne teine linn."
@@ -293,6 +342,7 @@ func _found_trade_city() -> void:
     event_message=Trade.found(city)
     if event_message=="":
         city["trade_v15"]["ai_enabled"]=true
+        Trade.ensure_city(city)["age"]=int(city.get("age",0))
         event_message="Teine linn asutati. Ehitus-AI on sees."
     _sync_trade_map()
     _save()
@@ -318,6 +368,7 @@ func _reset() -> void:
         timer.stop()
         auto_button.text="Auto: väljas"
     city = City.default_state()
+    Research.ensure(city)
     _sync_trade_map()
     event_message="Uus kiviaegne linn on rajatud."
     _save()
@@ -327,10 +378,14 @@ func _advance(n: int) -> void:
     var before: int = int(city["realms"][0]["pop"])
     if world_view!=null and not world_view.world.is_empty():
         Transit.configure(city,world_view.world)
+    var discoveries: Array[String]=[]
     for i in range(n):
         City.tick(city)
+        discoveries.append_array(Research.tick(city))
     var after: int = int(city["realms"][0]["pop"])
     event_message="%d käiku möödus. Elanikkond: %d → %d." % [n,before,after]
+    for id in discoveries:
+        event_message+=" Avastati: "+Research.name_of(id)+"."
     if bool(city["realms"][0].get("housingShortage",false)):
         event_message += " Toidu või vee puudus!"
     _sync_trade_map()
@@ -454,6 +509,7 @@ func _refresh() -> void:
     info_text.text="%s\nKasv: %.2f / %.2f  |  Toitu minutis: %.2f  |  Vett minutis: %.2f" % [
         event_message,float(realm.get("growthProgress",0)),next_growth,
         pop*0.60,pop*0.45]
+    _refresh_research()
     for child in workshop_rows.get_children():
         child.queue_free()
     for kind in SHOW_TYPES:

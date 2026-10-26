@@ -401,3 +401,14 @@ Regressioonitest `game/tests/city_lod_stability_v33.gd` kontrollib LOD vahetuse 
 Mobiili horisontaalvaates jäetakse 3D detailvaatele piisavalt ruumi. Ülemine majandusinfo on üks lühendatud rida, kõik ehitusnupud on ühel horisontaalselt keritaval 46-pikslisel ribal ja FPS näidiku saab avada päisenupust. Mitmekümne ehituse prioriteedinupu lisamine ei suurenda enam tööriistariba kõrgust. Kahepoolne ja valgustusest sõltumatu maastikumaterjal tagab, et nii 225×195 m üksikdetaili kui ka 160×160 m ühendatud linnaosa pind on nähtav. Eelmise detailkaardi pind eemaldatakse enne uue loomist, vältides kattuvaid/valesti nime saanud sõlmi.
 
 Windowsi käivitusprogrammi järeltesti aegunud 0.17-versiooni kontroll on asendatud käivitatud sisu ja projekti versioonide kooskõla kontrolliga. `game/tests/detail_screen_v34.gd` avab 720×420 ekraanil detailvaate ja kontrollib 3D vaate kõrgust, nupuriba kõrgust ka 70 lisanduva ehitusnupuga, korrektset kaamera suunda, maapinna kahepoolset pinnameshi ja kahe linnaosa maastiku olemasolu. Vanade salvestuste ja majanduse reegleid ei muudeta. Versioon `v0.34.<run_number>`.
+
+
+## AutoPort 0.35 — esimene mängitav riiklik teadussüsteem
+
+- Uus `game/scripts/research_v35.gd` kasutab olemasolevat V118 tehnoloogiate eeldusgraafi, kiviaja/pronksiaja uurimiskestusi ning eksporditud teadus- ja ajastumaterjalide reegleid.
+- Kiviaja linnavaates saab uurimist alustada, jälgida teaduspunktide kogunemist ja salvestada avastusi. Iga elanik annab ühe teaduspunkti mänguminutis; ka teise linna elanikud panustavad.
+- Pronksiaega jõudmisel tuleb teadustöö lõpetamise järel korraga tasuda 35 puitu, 25 kivi ja 15 toiduühikut. Ressursipuuduse korral teadustöö ootab ning osalisi kulusid ei võeta.
+- Varasemad salvestused täiendatakse ilma olemasoleva majandusseisundi või hoonete muutmiseta. 0.5 majanduspariteedi arvutus jääb puutumata.
+- Kontrolltest `research_v35.gd` käib nii ehitamise kui ülesvoolu reeglite sünkroonimise CI-s.
+
+**Piir:** see on teaduse esimene mängitav port kiviajast pronksiaega. Eureka boonused, kõigi hilisemate ajastute uurimine, järjekorrad ja kõigi hoonete tehnoloogiapõhised lukud on veel lõpetamata. 3D lahinguid ja täielikku AI tsivilisatsiooni ei ole.
