@@ -80,6 +80,11 @@ func _test() -> void:
     if screen.city["buildings"].size()!=invalid_count or float(screen.city["realms"][0]["resources"]["wood"])!=stock_before:
         fail("overlapping construction spent stock or placed a building")
         return
+    # 0.36: A quarry requires researched Stone Tools, unlike the old
+    # 0.8 unresearched sandbox. Keep the physical worker/path test intact.
+    var research: Dictionary=screen.city.get("research_v35",{})
+    if not research.get("known",[]).has("stone_tools"):
+        research["known"].append("stone_tools")
     screen._build_at("quarry",-30,20)
     await process_frame
     if screen.city["buildings"].size()!=invalid_count+1:
