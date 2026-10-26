@@ -34,6 +34,11 @@ static func ensure(state: Dictionary) -> Dictionary:
     if research.get("active",null)==null:research["active"]=""
     if not research.has("rate"):research["rate"]=0.0
     if not research.has("age_wait"):research["age_wait"]=""
+    # Re-link nation research and city age after saves; share one dictionary.
+    if Trade.has_outpost(state) and not bool(state.get("satellite_town",false)):
+        var satellite: Dictionary=Trade.ensure_city(state)
+        satellite["research_v35"]=research
+        satellite["age"]=int(state.get("age",0))
     return research
 
 static func catalog() -> Dictionary:

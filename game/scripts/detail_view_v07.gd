@@ -7,6 +7,7 @@ signal build_at_requested(kind: String, x: float, z: float, rotation: int)
 signal bridge_requested(x: float, z: float)
 signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
+signal research_requested
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
@@ -25,6 +26,7 @@ const Batches31 = preload("res://scripts/city_render_batch_v31.gd")
 const Perf31 = preload("res://scripts/city_performance_v31.gd")
 const LOD32 = preload("res://scripts/city_building_lod_v32.gd")
 const Stable33 = preload("res://scripts/city_lod_stability_v33.gd")
+const Unlock36 = preload("res://scripts/building_unlocks_v36.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -98,7 +100,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.35 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.36 • 3D LINN"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -1263,6 +1265,11 @@ func _refresh_actions() -> void:
     turn.text="+10 käiku"
     turn.pressed.connect(func(): turns_requested.emit(10))
     actions.add_child(turn)
+    var study:=Button.new()
+    study.text="Teadus"
+    study.tooltip_text="Ava linna uurimismenüü"
+    study.pressed.connect(func(): research_requested.emit())
+    actions.add_child(study)
     var bridge_state: Dictionary=Transit._local_state(city_state,
         Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
     var bridge_sim: Dictionary=bridge_state.get("detail_sim",{})
@@ -1277,6 +1284,8 @@ func _refresh_actions() -> void:
         var button:=Button.new()
         button.text="Ehita "+kind
         button.disabled=not _can_build(kind)
+        var reason: String=Unlock36.block(city_state,kind)
+        if reason!="":button.tooltip_text=reason
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     # No wrapping informational label in the one-row toolbar: on phones
@@ -1301,6 +1310,7 @@ func _can_build(kind: String) -> bool:
     if not defs.has(kind):return false
     var d: Dictionary=defs[kind]
     if int(d.get("age",0))>int(city_state.get("age",0)):return false
+    if not Unlock36.allowed(city_state,kind):return false
     for req in d.get("requires",[]):
         var exists: bool=false
         for b in city_state["buildings"]:

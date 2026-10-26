@@ -14,6 +14,7 @@ const Districts = preload("res://scripts/world_districts_v25.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Research = preload("res://scripts/research_v35.gd")
+const Unlock = preload("res://scripts/building_unlocks_v36.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -79,6 +80,7 @@ func _ready() -> void:
     detail_view.bridge_requested.connect(_build_bridge)
     detail_view.priority_requested.connect(_change_priority)
     detail_view.turns_requested.connect(_advance)
+    detail_view.research_requested.connect(_show_city)
     detail_view.hide()
     city_scroll.hide()
 
@@ -217,7 +219,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.35",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.36",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -342,6 +344,7 @@ func _found_trade_city() -> void:
     event_message=Trade.found(city)
     if event_message=="":
         city["trade_v15"]["ai_enabled"]=true
+        Research.ensure(city)
         var founded: Dictionary=Trade.ensure_city(city)
         founded["age"]=int(city.get("age",0))
         event_message="Teine linn asutati. Ehitus-AI on sees."
@@ -458,6 +461,7 @@ func _affordable(kind: String) -> bool:
     var d: Dictionary = recipes[kind]
     if int(d.get("age",0)) > int(city.get("age",0)):
         return false
+    if not Unlock.allowed(city,kind):return false
     var buildings: Array = city["buildings"]
     for required in d.get("requires",[]):
         var found: bool = false
@@ -522,6 +526,8 @@ func _refresh() -> void:
         var name_label := Label.new()
         name_label.text = "%s  —  %s  •  töötajaid %d" % [
             String(d.get("name",kind)),_render_cost(d.get("cost",{})),int(d.get("workers",0))]
+        var unlock_reason: String=Unlock.block(city,kind)
+        if unlock_reason!="":name_label.text+=" • "+unlock_reason
         name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         row.add_child(name_label)
@@ -529,6 +535,7 @@ func _refresh() -> void:
         b.text="Ehita"
         b.custom_minimum_size=Vector2(92,36)
         b.disabled=not _affordable(kind)
+        if unlock_reason!="":b.tooltip_text=unlock_reason
         b.pressed.connect(_build.bind(kind))
         row.add_child(b)
     for child in construction_rows.get_children():

@@ -412,3 +412,8 @@ Windowsi käivitusprogrammi järeltesti aegunud 0.17-versiooni kontroll on asend
 - Kontrolltest `research_v35.gd` käib nii ehitamise kui ülesvoolu reeglite sünkroonimise CI-s.
 
 **Piir:** see on teaduse esimene mängitav port kiviajast pronksiaega. Eureka boonused, kõigi hilisemate ajastute uurimine, järjekorrad ja kõigi hoonete tehnoloogiapõhised lukud on veel lõpetamata. 3D lahinguid ja täielikku AI tsivilisatsiooni ei ole.
+
+
+## AutoPort 0.36 — tehnoloogiate nõuded ehitistele
+
+Teadusavastused avavad nüüd ehitised. Samad reeglid kehtivad linnamenüüs, mobiili detailkaardil, otseses ehitamisfunktsioonis ja teise linna AI-s. Kaev vajab veevarustust, kivimurd kivitööriistu, talu põlluharimist. Saekaater, veski, pagarikoda, turg ja laod on seotud vastavate teadustega. Olemasolevaid maju ei kustutata ning 0.5 majanduse pariteeditest jääb muutmata. Detailkaardi ehitusribalt pääseb nüüd teadusmenüüsse. Kontroll: `game/tests/building_unlocks_v36.gd`.

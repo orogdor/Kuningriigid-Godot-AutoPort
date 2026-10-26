@@ -8,6 +8,7 @@ const Construction = preload("res://scripts/construction_v12.gd")
 const Freight = preload("res://scripts/freight_v14.gd")
 const Transit = preload("res://scripts/district_transit_v26.gd")
 const Trade = preload("res://scripts/two_city_trade_v15.gd")
+const Unlock = preload("res://scripts/building_unlocks_v36.gd")
 const Rules = preload("res://scripts/generated_rules.gd")
 const FOOD_KEYS: Array[String] = [
     "bread", "grain", "flour", "meat", "fish", "berries",
@@ -92,6 +93,8 @@ static func build(state: Dictionary, building_type: String) -> String:
     var spec: Dictionary = defs[building_type]
     if int(spec.get("age",0)) > int(state.get("age",0)):
         return "Ajastu pole avatud"
+    var locked: String=Unlock.block(state,building_type)
+    if locked!="":return locked
     for req in spec.get("requires",[]):
         if not _has_ready(state["buildings"],String(req)):
             return "Kõigepealt on vaja: " + String(req)
@@ -355,6 +358,12 @@ static func _satellite_ai_tick(town: Dictionary, defs: Dictionary) -> void:
         elif int(counts.get("farm",0))<mini(2,int(realm.get("pop",3))/7):
             candidate="farm"
     if candidate=="":return
+    # AI towns cannot build what their nation has not researched.
+    if Unlock.block(town,candidate)!="":
+        if int(counts.get("house",0))<5 and candidate!="house":
+            candidate="house"
+        else:
+            return
     var recipes: Dictionary=defs.get("buildings",{})
     if not recipes.has(candidate):return
     var recipe: Dictionary=recipes[candidate]
