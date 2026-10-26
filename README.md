@@ -385,3 +385,12 @@ Kui linnaosa asub liiga kaugel kaamera fookusest ja kaamera pole kogu linna üle
 `detail_camera_v07.gd` hiirerulliga suum on nüüd animeeritud liikumisega, säilitades 15 m minimaalse ja iga linna suurusega seotud maksimaalse suumikauguse. Käsuga „Järgmine linnaosa” liigub kaamera fookus sihtpunkti sujuvalt. Kahe sõrme pinch/suum on endiselt vahetu ja säilitab sõrmede all oleva maailmapunkti, et vanad mobiilis kasutatavad puutežestid ei muutuks.
 
 Uus test `game/tests/city_building_lod_v32.gd` kontrollib 72 hoone päris MultiMesh instantside arvu, detailsuse vahetamist, kaamerast kaugel linnaosa peitmist ja taastamist, muutumatute mudelite GPU vahemälu, sujuva suumi vastust ning kõikide majandushoonete säilimist JSON-is. Endised 0.19 kaamera ja 0.31 MultiMesh jõudlustestid jäävad alles mõlemasse GitHub Actionsi töövoogu. Väljalaske versioon on `v0.32.<run_number>`.
+
+
+## AutoPort 0.33 — stabiilne 3D kaamera ja linnaosa LOD
+
+0.32 kaamerast sõltuva hoonete detailsuse peamine puudus oli 195 ja 335 meetri lähedaste väikeste kaameraliigutustega kaasnenud pidev mudelite loomine ja eemaldamine. `game/scripts/city_lod_stability_v33.gd` lisab ±20 meetri hüstereesi lähedaste ja kaugemate hoonete detailsuse piiridel ning ±35 meetri varu linnaosa nähtavuse peitmisele. Kui kaamera hüppab ühe liigutusega väga kaugele või tagasi, valitakse kohe sobiv detailsus. Linnaosade tegelikke majandusandmeid, kaartide ühendusi ja transpordi marsruute ei muudeta.
+
+Keskmisel kaugusel lülitatakse üksikasjalikud majaobjektid välja, aga säilitatakse 3D mälus; nende asemele ilmuvad 0.32 GPU MultiMesh-rühmad. Kaamera tagasiliikumisel taaskasutatakse sama detailse hoone 3D objekti, ilma uut mudelit loomata. Väga kaugel vabastatakse detailne maja mälu, jättes alles ühe lihtsustatud GPU-instantseeritud kujutise, mis uuel lähenemisel taas detailseks muutub. Linnaosa nähtavuse muutmisel säilib ehitusinfo ja elanike arv salvestuses.
+
+Regressioonitest `game/tests/city_lod_stability_v33.gd` kontrollib LOD vahetuse stabiilsust piiride ümbruses, suuremaid kaamerahüppeid, kaugemal detailsete 3D objektide vabastamist, keskmisel kaugusel sama mudeli taaskasutust, tagasitulekul õiget renderdust ning salvestuse muutumatust. Test käivitatakse mõlemas GitHub Actionsi töövoos koos 0.32 ja varasemate regressioonidega. Väljalase: `v0.33.<run_number>`.
