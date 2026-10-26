@@ -205,6 +205,33 @@ jobs:
           test -s dist/Windows-files.json
           test -s dist/Kuningriigid-Content.pck
 
+      - name: Stamp Android APK version from release run number
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          preset = Path("game/export_presets.cfg")
+          source = preset.read_text(encoding="utf-8")
+          run_number = int("${{ github.run_number }}")
+          # Exactly the same version advertised by gh release create below.
+          version = f"0.34.{run_number}"
+          fields = {
+              "version/code": str(run_number),
+              "version/name": f'"{version}"',
+              "package/version_code": str(run_number),
+              "package/version_name": f'"{version}"',
+          }
+          for key, value in fields.items():
+              source, count = re.subn(r"(?m)^" + re.escape(key) + r"=.*$",
+                                      lambda _match: f"{key}={value}", source)
+              if count != 1:
+                  raise SystemExit(f"Expected one Android export field: {key}; found {count}")
+          preset.write_text(source, encoding="utf-8")
+          print(f"Android APK version: {version} (code {run_number})")
+          PY
+
       - name: Build Android ARM64 APK
         shell: bash
         run: |
