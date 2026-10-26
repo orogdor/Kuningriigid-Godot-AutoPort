@@ -26,32 +26,56 @@ func _test() -> void:
             fail("near-detail LOD flickered inside 20m exit hysteresis")
             return
     level=Stable.detail(225.0,76,level)
-    if level!=1:return fail("near-detail did not switch to medium after leaving hysteresis")
+    if level!=1:
+        fail("near-detail did not switch to medium after leaving hysteresis")
+        return
     for d in [200.0,185.0,195.0]:
         level=Stable.detail(d,76,level)
-        if level!=1:return fail("medium-detail model flickered too early")
+        if level!=1:
+            fail("medium-detail model flickered too early")
+            return
     level=Stable.detail(160.0,76,level)
-    if level!=2:return fail("near detail did not recover within return threshold")
+    if level!=2:
+        fail("near detail did not recover within return threshold")
+        return
     level=Stable.detail(370.0,76,1)
-    if level!=0:return fail("medium to far transition failed")
+    if level!=0:
+        fail("medium to far transition failed")
+        return
     level=Stable.detail(335.0,76,level)
-    if level!=0:return fail("far detail flickered near threshold")
+    if level!=0:
+        fail("far detail flickered near threshold")
+        return
     level=Stable.detail(300.0,76,level)
-    if level!=1:return fail("far-detail mesh did not recover when approaching")
+    if level!=1:
+        fail("far-detail mesh did not recover when approaching")
+        return
     var shown: bool=Stable.displayed(500.0,76,false)
-    if not shown:return fail("baseline tile unexpectedly culled")
+    if not shown:
+        fail("baseline tile unexpectedly culled")
+        return
     shown=Stable.displayed(530.0,76,false,shown)
-    if not shown:return fail("tile culling flickered within visibility hysteresis")
+    if not shown:
+        fail("tile culling flickered within visibility hysteresis")
+        return
     shown=Stable.displayed(560.0,76,false,shown)
-    if shown:return fail("tile was not culled beyond viewport hysteresis")
+    if shown:
+        fail("tile was not culled beyond viewport hysteresis")
+        return
     shown=Stable.displayed(500.0,76,false,shown)
-    if shown:return fail("culled tile appeared too early")
+    if shown:
+        fail("culled tile appeared too early")
+        return
     shown=Stable.displayed(450.0,76,false,shown)
-    if not shown:return fail("tile did not reappear near camera")
+    if not shown:
+        fail("tile did not reappear near camera")
+        return
     if not Stable.displayed(9999.0,76,true,false):
-        return fail("active tile can never be culled")
+        fail("active tile can never be culled")
+        return
     if Stable.low_detail_policy(2)!="full" or Stable.low_detail_policy(1)!="retain_hidden" or Stable.low_detail_policy(0)!="release":
-        return fail("detail caching policy changed unexpectedly")
+        fail("detail caching policy changed unexpectedly")
+        return
     var ui: Control=Screen.instantiate()
     root.add_child(ui)
     await process_frame
@@ -62,7 +86,8 @@ func _test() -> void:
     var neighbor:=home+Vector2i(1,0)
     if neighbor.x>=World.COLS:neighbor=home+Vector2i(-1,0)
     if neighbor.x<0 or neighbor.x>=World.COLS:
-        return fail("no horizontally adjacent test district")
+        fail("no horizontally adjacent test district")
+        return
     for tile in [home,neighbor]:
         var cell: Dictionary=world["cells"][tile.y*World.COLS+tile.x]
         cell["land"]=true
@@ -83,54 +108,70 @@ func _test() -> void:
     var view: Control=ui.detail_view
     var label: String="DistrictTile_"+district.replace(":","_")
     var part: Node3D=view.combined_root.get_node_or_null(label) as Node3D
-    if part==null:return fail("neighbor not displayed in the complete 3D town")
+    if part==null:
+        fail("neighbor not displayed in the complete 3D town")
+        return
     var holder: Node3D=part.get_node_or_null("house_"+str(building_index)) as Node3D
-    if holder==null:return fail("near district house did not render")
+    if holder==null:
+        fail("near district house did not render")
+        return
     var built_count: int=view.passive_building_mesh_builds
     var direction: float=float(neighbor.x-home.x)
     view.controller.look_at=Vector3(-direction*40.0,0,0)
     view._render_neighbors()
     if part.get_node_or_null("house_"+str(building_index))!=holder:
-        return fail("camera jitter rebuilt detailed building too early")
+        fail("camera jitter rebuilt detailed building too early")
+        return
     view.controller.look_at=Vector3(-direction*80.0,0,0)
     view._render_neighbors()
     if part.get_node_or_null("house_"+str(building_index))!=holder or holder.visible:
-        return fail("medium-detail transition discarded reusable near mesh")
+        fail("medium-detail transition discarded reusable near mesh")
+        return
     var proxies: Node3D=part.get_node_or_null("BuildingLODs") as Node3D
     if proxies==null or proxies.get_child_count()==0 or not proxies.visible:
-        return fail("medium-detail GPU house silhouette is missing")
+        fail("medium-detail GPU house silhouette is missing")
+        return
     var first_proxy: Node=proxies.get_child(0)
     view.controller.look_at=Vector3(-direction*40.0,0,0)
     view._render_neighbors()
     if part.get_node_or_null("house_"+str(building_index))!=holder or holder.visible:
-        return fail("medium-detail model flickered during close pan")
+        fail("medium-detail model flickered during close pan")
+        return
     view.controller.look_at=Vector3.ZERO
     view._render_neighbors()
     if part.get_node_or_null("house_"+str(building_index))!=holder or not holder.visible:
-        return fail("cached house was not restored after camera return")
+        fail("cached house was not restored after camera return")
+        return
     if view.passive_building_mesh_builds!=built_count:
-        return fail("threshold oscillation unnecessarily reconstructed near building")
+        fail("threshold oscillation unnecessarily reconstructed near building")
+        return
     view.controller.look_at=Vector3(-direction*80.0,0,0)
     view._render_neighbors()
     if proxies.get_child(0)!=first_proxy:
-        return fail("cached medium-detail GPU batch changed without economic edits")
+        fail("cached medium-detail GPU batch changed without economic edits")
+        return
     view.controller.look_at=Vector3(-direction*250.0,0,0)
     view._render_neighbors()
     view._render_neighbors()
     if part.get_node_or_null("house_"+str(building_index))!=null:
-        return fail("far district retained detailed model despite memory-release policy")
+        fail("far district retained detailed model despite memory-release policy")
+        return
     if part.get_node_or_null("BuildingLODs")==null:
-        return fail("far city lost its silhouette")
+        fail("far city lost its silhouette")
+        return
     var before_count: int=city["buildings"].size()
     view.controller.look_at=Vector3.ZERO
     view._render_neighbors()
     view._render_neighbors()
     if view.passive_building_mesh_builds<=built_count:
-        return fail("returning from far district did not rebuild cleared house mesh")
+        fail("returning from far district did not rebuild cleared house mesh")
+        return
     if city["buildings"].size()!=before_count:
-        return fail("pure visual LOD changed real building count")
+        fail("pure visual LOD changed real building count")
+        return
     var save: Variant=JSON.parse_string(JSON.stringify(city))
     if not save is Dictionary or int(save["buildings"].size())!=before_count:
-        return fail("render cache affected saved economic city state")
+        fail("render cache affected saved economic city state")
+        return
     print("CITY_LOD_STABILITY_V33 SUCCESS: no jitter on 195m/335m boundaries, medium cached model, far memory release, economy-safe restoration")
     quit(0)
