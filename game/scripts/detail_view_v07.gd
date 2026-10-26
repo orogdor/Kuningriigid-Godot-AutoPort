@@ -116,7 +116,11 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.48 • 3D KAART"
+    # Always display the packaged project's actual version, even when
+    # the source script is unchanged across later manual APK releases.
+    var installed_name: String=String(ProjectSettings.get_setting(
+        "application/config/name","Kuningriigid Godot AutoPort"))
+    heading.text=installed_name+" • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
