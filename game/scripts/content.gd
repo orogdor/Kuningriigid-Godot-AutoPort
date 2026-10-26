@@ -15,6 +15,7 @@ const Transit = preload("res://scripts/district_transit_v26.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Research = preload("res://scripts/research_v35.gd")
 const Unlock = preload("res://scripts/building_unlocks_v36.gd")
+const CapitalAI = preload("res://scripts/capital_auto_v38.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -43,6 +44,7 @@ var research_start: Button
 var research_choice_ids: Array[String]=[]
 var detail_town: String="capital"
 var auto_button: Button
+var capital_ai_button: Button
 var timer: Timer
 var event_message: String = "Alusta kiviaegse linna rajamist."
 
@@ -81,6 +83,7 @@ func _ready() -> void:
     detail_view.priority_requested.connect(_change_priority)
     detail_view.turns_requested.connect(_advance)
     detail_view.research_requested.connect(_show_city)
+    detail_view.capital_ai_requested.connect(_toggle_capital_ai)
     detail_view.hide()
     city_scroll.hide()
 
@@ -219,7 +222,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.37",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.38",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -237,6 +240,8 @@ func _setup_ui() -> void:
     controls.add_child(_button("+200 käiku",func(): _advance(200)))
     auto_button = _button("Auto: väljas",_toggle_auto)
     controls.add_child(auto_button)
+    capital_ai_button=_button("Pealinna AI: väljas",_toggle_capital_ai)
+    controls.add_child(capital_ai_button)
     controls.add_child(_button("Alusta uuesti",_reset))
     stat_text = _heading("",17)
     stat_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -295,7 +300,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.37: pronksiaja linnamajandus, AI ehitusjärjekord ja eristatavad 3D hooned."
+    note.text="0.38: lülitatav pealinna ehitus-AI, tihe linnasüda ja isetekkelised teed."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -359,6 +364,14 @@ func _trade_send(target: String, kind: String, amount: float) -> void:
     _save()
     _refresh()
 
+func _toggle_capital_ai() -> void:
+    CapitalAI.set_enabled(city,not CapitalAI.enabled(city))
+    event_message="Pealinna automaatne ehitamine: "+("sees" if CapitalAI.enabled(city) else "väljas")
+    _save()
+    _refresh()
+    if detail_view!=null and detail_view.visible:
+        detail_view._refresh_actions()
+
 func _toggle_auto() -> void:
     if timer.is_stopped():
         timer.start()
@@ -383,13 +396,20 @@ func _advance(n: int) -> void:
     if world_view!=null and not world_view.world.is_empty():
         Transit.configure(city,world_view.world)
     var discoveries: Array[String]=[]
+    var built: Array[String]=[]
     for i in range(n):
+        var started: String=CapitalAI.step(city)
+        if started!="":built.append(started)
         City.tick(city)
         discoveries.append_array(Research.tick(city))
     var after: int = int(city["realms"][0]["pop"])
     event_message="%d käiku möödus. Elanikkond: %d → %d." % [n,before,after]
     for id in discoveries:
         event_message+=" Avastati: "+Research.name_of(id)+"."
+    if not built.is_empty():
+        var last_kind: String=built[built.size()-1]
+        event_message+=" Pealinna AI alustas %d hoonet (viimane: %s)." % [
+            built.size(),String(recipes.get(last_kind,{}).get("name",last_kind))]
     if bool(city["realms"][0].get("housingShortage",false)):
         event_message += " Toidu või vee puudus!"
     _sync_trade_map()
@@ -489,6 +509,9 @@ func _refresh() -> void:
     for kind in ["wood","plank","stone","bread","grain","flour","berries","water","gold"]:
         shown.append("%s: %.1f" % [RESOURCE_LABELS[kind],float(stock.get(kind,0))])
     stat_text.text += "     ".join(shown)
+    stat_text.text+="\n"+CapitalAI.summary(city)
+    if capital_ai_button!=null:
+        capital_ai_button.text="Pealinna AI: "+("sees" if CapitalAI.enabled(city) else "väljas")
     if trade_label!=null:
         trade_label.text=Trade.overview(city)
         if Trade.has_outpost(city):

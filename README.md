@@ -427,3 +427,11 @@ Teadusavastused avavad nüüd ehitised. Samad reeglid kehtivad linnamenüüs, mo
 - `bronze_city_v37.gd` testib AI ehitusjärjestust, tegelikku köögiviljatootmist, teaduslukke, salvestamist ja viis eri 3D mudelit. Sama regressioonitest käib nii Android/Windows ehitamisel kui Three.js reeglite sünkroonimisel.
 
 See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- ja sõjasüsteemi port.
+
+
+## AutoPort 0.38 — pealinna automaatne ehitamine
+
+- Uus eraldi lüliti linnamenüüs ja mobiili 3D detailkaardi horisontaalselt keritavas tegevusribas. Vaikimisi välja lülitatud, ka vanades salvestustes.
+- Kasutab 0.37 teaduspõhist AI ehitusjärjekorda, 0.24 ligipääsetavate linnakruntide planeerijat ning päris City.build() reegleid. Ehitamine järgib hoone kulusid, avastusi ja vabu krunte ning kasvab kesksest linnasüdamest väljapoole.
+- Kasutusest tekkivaid teid ei muudeta: 0.9 töötajate liikluse rada tekib ja hääbub edasi. Teine linn töötab oma eraldi AI-ga.
+- Pealinna AI seadistus ja viimased 30 ehitusotsust salvestatakse koos linnaga. Test capital_ai_v38.gd kontrollib ligipääsetavust, kruntide kattumatust, salvestamist, teede säilimist ja mobiili nuppe.

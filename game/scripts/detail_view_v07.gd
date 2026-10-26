@@ -8,6 +8,7 @@ signal bridge_requested(x: float, z: float)
 signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
 signal research_requested
+signal capital_ai_requested
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
 const Spatial = preload("res://scripts/spatial_economy_v08.gd")
@@ -1319,6 +1320,11 @@ func _refresh_actions() -> void:
     study.tooltip_text="Ava linna uurimismenüü"
     study.pressed.connect(func(): research_requested.emit())
     actions.add_child(study)
+    var capital_auto:=Button.new()
+    capital_auto.text="Linna AI: "+("sees" if bool(city_state.get("capital_ai_v38",{}).get("enabled",false)) else "väljas")
+    capital_auto.tooltip_text="Lülita pealinna ehitus-AI sisse või välja"
+    capital_auto.pressed.connect(func(): capital_ai_requested.emit())
+    actions.add_child(capital_auto)
     var bridge_state: Dictionary=Transit._local_state(city_state,
         Transit.home_key(city_state) if district_id=="" else district_id) if city_state.has("transport_v26") else city_state
     var bridge_sim: Dictionary=bridge_state.get("detail_sim",{})
