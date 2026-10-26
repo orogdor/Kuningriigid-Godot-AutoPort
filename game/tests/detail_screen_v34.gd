@@ -53,7 +53,7 @@ func _test() -> void:
     if view.controller==null or view.controller.size.y<180.0:
         fail("the detail 3D viewport was pushed off a 720x420 landscape screen")
         return
-    var scroll: ScrollContainer=view.get_node_or_null("DetailActionsScroll") as ScrollContainer
+    var scroll: ScrollContainer=view.find_child("DetailActionsScroll",true,false) as ScrollContainer
     if scroll==null or scroll.size.y>60.0:
         fail("action buttons do not stay in one short horizontal scroll strip")
         return
