@@ -100,7 +100,7 @@ func _test() -> void:
     if part==null or not view.combined_city:
         fail("neighbor tile not constructed in continuous 3D scene")
         return
-    var first_house: Node=part.get_node_or_null("house_"+str(initial_houses))
+    var first_house: Node=part.get_node_or_null("farm_"+str(initial_houses))
     if first_house==null:
         fail("nearby buildings no longer show detailed geometry")
         return
@@ -112,7 +112,7 @@ func _test() -> void:
     if proxies==null or not proxies.visible or proxies.get_child_count()!=1:
         fail("moving camera away did not switch district buildings to one distant MultiMesh")
         return
-    if part.get_node_or_null("house_"+str(initial_houses))!=null:
+    if part.get_node_or_null("farm_"+str(initial_houses))!=null:
         fail("detailed building meshes were retained beneath the far GPU batch")
         return
     var silhouettes: MultiMeshInstance3D=proxies.get_child(0) as MultiMeshInstance3D
@@ -134,7 +134,7 @@ func _test() -> void:
     view.controller.look_at=Vector3.ZERO
     view.controller.update_camera()
     view._process(0.36)
-    if not part.visible or part.get_node_or_null("house_"+str(initial_houses))==null:
+    if not part.visible or part.get_node_or_null("farm_"+str(initial_houses))==null:
         fail("reentering the district did not restore detailed houses")
         return
     if city["buildings"].size()!=saved_count:
