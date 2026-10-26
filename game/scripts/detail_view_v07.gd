@@ -595,21 +595,32 @@ func _render_neighbors() -> void:
 func _render_seam_previews() -> void:
     if seam_preview_root==null:return
     for old in seam_preview_root.get_children():old.free()
-    if combined_city:return # Existing 0.27 city draws its own 160m districts.
     for dr in range(-1,2):
         for dc in range(-1,2):
             if dc==0 and dr==0:continue
             var tile: Vector2i=selected+Vector2i(dc,dr)
             var neighbor: Dictionary=World.cell(world,tile.x,tile.y)
             if neighbor.is_empty():continue
+            # Existing owned 160m city districts already contain real streets,
+            # buildings and workers. Do not cover them with passive terrain.
+            if combined_city and shown_district_tiles.has(tile):continue
             var part:=Node3D.new()
             part.name="DetailNeighbor_%d_%d" % [dc,dr]
-            part.position=Vector3(float(dc)*SURFACE_WIDTH,0,float(dr)*SURFACE_DEPTH)
+            var width: float=Continuous.TILE_SPAN if combined_city else SURFACE_WIDTH
+            var depth: float=Continuous.TILE_SPAN if combined_city else SURFACE_DEPTH
+            part.position=Vector3(float(dc)*width,0,float(dr)*depth)
             seam_preview_root.add_child(part)
-            part.add_child(SeamTerrain42.surface(world,tile))
-            SeamTerrain42.decorate(part,world,tile)
+            if combined_city:
+                # Same 160m continuous-terrain renderer as neighboring
+                # developed districts, but without inventing buildings or roads.
+                part.add_child(Terrain28.surface(world,tile,"DistrictTerrain"))
+                for river in Terrain28.water(world,tile):part.add_child(river)
+            else:
+                part.add_child(SeamTerrain42.surface(world,tile))
+                SeamTerrain42.decorate(part,world,tile)
             # A lightweight sea/river indication keeps all eight previews
             # readable before the user crosses into a different biome.
+            if combined_city:continue
             if String(neighbor.get("biome","sea"))=="sea":
                 _box(part,Vector3(0,-1.4,0),
                     Vector3(SURFACE_WIDTH,0.12,SURFACE_DEPTH),

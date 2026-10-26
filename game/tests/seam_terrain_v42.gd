@@ -113,5 +113,50 @@ func _test() -> void:
     if view.selected!=limit or ctrl.transition_pending:
         fail("world boundary did not reject crossing safely")
         return
+    # Expanded cities use a distinct legacy 160m world-square grid.
+    # Real owned districts remain visible with their own buildings and roads,
+    # and neighboring wilderness must still have live 3D terrain previews.
+    var annex: Vector2i=Vector2i(-1,-1)
+    for delta in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
+        var candidate: Vector2i=home+delta
+        var cell: Dictionary=World.cell(world,candidate.x,candidate.y)
+        if not cell.is_empty() and bool(cell.get("land",false)) and String(cell.get("biome",""))!="hills":
+            annex=candidate
+            break
+    if annex.x>=0:
+        screen.city["districts_v25"]={"seed":int(world["seed"]),
+            "tiles":[{"c":annex.x,"r":annex.y}]}
+        screen._show_detail(home.x,home.y)
+        await process_frame
+        if not view.combined_city:
+            fail("expanded city did not use existing continuous 3D districts")
+            return
+        var side: Vector2i=annex-home
+        if view.seam_preview_root.has_node("DetailNeighbor_%d_%d" % [side.x,side.y]):
+            fail("fake neighbor preview covers an existing city building district")
+            return
+        var inspected: int=0
+        for z in range(-1,2):
+            for x in range(-1,2):
+                if x==0 and z==0:continue
+                var location: Vector2i=home+Vector2i(x,z)
+                if World.cell(world,location.x,location.y).is_empty() or location==annex:continue
+                var part: Node3D=view.seam_preview_root.get_node_or_null(
+                    "DetailNeighbor_%d_%d" % [x,z]) as Node3D
+                if part==null:
+                    fail("expanded city neighbor wilderness is invisible")
+                    return
+                var terrain: MeshInstance3D=part.get_node_or_null("DistrictTerrain") as MeshInstance3D
+                if terrain==null or terrain.mesh==null:
+                    fail("expanded city's neighboring wilderness has no 3D mesh")
+                    return
+                var dimensions: Vector3=terrain.mesh.get_aabb().size
+                if absf(dimensions.x-160.0)>0.1 or absf(dimensions.z-160.0)>0.1:
+                    fail("neighbor wilderness overlaps legacy 160m city districts")
+                    return
+                inspected+=1
+        if inspected<2:
+            fail("expanded city preview fixture did not inspect neighboring terrain")
+            return
     print("SEAM_TERRAIN_V42 SUCCESS: genuine 3D terrain mesh, forest props, 3x3 preview, continuous heights, triple pan and zoom")
     quit(0)
