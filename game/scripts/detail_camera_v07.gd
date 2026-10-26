@@ -20,6 +20,7 @@ var click_origin: Vector2=Vector2.ZERO
 var move_distance: float=0.0
 var active_fingers: Dictionary={}
 var multitouch_active: bool=false
+var filtered_touch_motion: Vector2=Vector2.ZERO
 
 func _ready() -> void:
     stretch=true
@@ -145,6 +146,7 @@ func _gui_input(event: InputEvent) -> void:
             active_fingers[touch.index]=touch.position
             mouse_left_held=false
             if active_fingers.size()==1:
+                filtered_touch_motion=Vector2.ZERO
                 click_origin=touch.position
                 move_distance=0.0
                 multitouch_active=false
@@ -158,6 +160,7 @@ func _gui_input(event: InputEvent) -> void:
                 active_fingers.erase(touch.index)
             if active_fingers.is_empty():
                 multitouch_active=false
+                filtered_touch_motion=Vector2.ZERO
             else:
                 # The remaining finger may orbit, but release cannot build.
                 move_distance=999.0
@@ -171,8 +174,13 @@ func _gui_input(event: InputEvent) -> void:
             active_fingers[finger.index]=finger.position
             var delta: Vector2=finger.position-old_position
             move_distance+=delta.length()
-            yaw-=delta.x*0.006
-            pitch=clampf(pitch+delta.y*0.004,-1.42,-0.15)
+            # Blend jittery touch deltas but retain exact tap cancellation.
+            # Clamp OS gesture bursts, not the accumulated camera movement.
+            delta.x=clampf(delta.x,-72.0,72.0)
+            delta.y=clampf(delta.y,-72.0,72.0)
+            filtered_touch_motion=filtered_touch_motion.lerp(delta,0.6)
+            yaw-=filtered_touch_motion.x*0.006
+            pitch=clampf(pitch+filtered_touch_motion.y*0.004,-1.42,-0.15)
             update_camera()
         elif active_fingers.size()==2:
             move_distance=999.0
