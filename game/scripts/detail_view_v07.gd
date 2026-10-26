@@ -23,6 +23,7 @@ const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
 const Visuals30 = preload("res://scripts/district_visuals_v30.gd")
 const Batches31 = preload("res://scripts/city_render_batch_v31.gd")
 const Perf31 = preload("res://scripts/city_performance_v31.gd")
+const LOD32 = preload("res://scripts/city_building_lod_v32.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -52,6 +53,10 @@ var batched_resource_nodes: int=0
 var quality_state: Dictionary={"level":1,"low":0,"high":0}
 var view_port: SubViewport
 var visual_update_count: int=0
+var visual_visibility_poll: float=0.0
+var visual_visibility_signature: String=""
+var proxy_building_batches: int=0
+var culled_district_count: int=0
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -91,7 +96,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.31 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.32 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -376,6 +381,17 @@ func _render_neighbors() -> void:
             var resources:=Node3D.new()
             resources.name="DistrictResources"
             part.add_child(resources)
+        var district_offset: Vector3=Continuous.offset(tile,selected)
+        var camera_distance: float=controller.distance
+        var distance_from_focus: float=Vector2(
+            controller.look_at.x-district_offset.x,
+            controller.look_at.z-district_offset.z).length()
+        var draw_tile: bool=LOD32.visible_at(distance_from_focus,camera_distance,tile==active_tile)
+        part.visible=draw_tile
+        if not draw_tile:
+            culled_district_count+=1
+            continue
+        var building_lod: int=LOD32.level_for_distance(distance_from_focus,camera_distance)
         var props: Node3D=part.get_node("DistrictResources") as Node3D
         props.visible=tile!=active_tile
         if tile!=active_tile:
@@ -391,10 +407,24 @@ func _render_neighbors() -> void:
                 props.set_meta("resource_key",sig)
                 prop_builds+=Batches31.populate(props,sim.get("sites",[]),limit,world,tile,true)
                 batched_resource_nodes+=props.get_child_count()
-        # Reuse unchanged buildings; only rebuild a mesh when its stage,
-        # readiness or durable visual details actually changed.
+        # Close buildings keep their complete primitive models. Distant
+        # non-active districts use GPU-instanced silhouettes grouped by type.
+        var proxies: Node3D=part.get_node_or_null("BuildingLODs") as Node3D
+        if proxies==null:
+            proxies=Node3D.new()
+            proxies.name="BuildingLODs"
+            part.add_child(proxies)
+        var use_proxies: bool=tile!=active_tile and building_lod<2
+        proxies.visible=use_proxies
+        if use_proxies:
+            var proxy_sig: String=LOD32.signature(buildings,district,building_lod)
+            if String(proxies.get_meta("signature",""))!=proxy_sig:
+                for old in proxies.get_children():old.free()
+                LOD32.populate(proxies,buildings,district,building_lod)
+                proxies.set_meta("signature",proxy_sig)
+                proxy_building_batches+=proxies.get_child_count()
         var current_buildings: Dictionary={}
-        if tile!=active_tile:
+        if tile!=active_tile and not use_proxies:
             for i in range(buildings.size()):
                 var building: Dictionary=buildings[i]
                 if String(building.get("district",""))!=district:continue
@@ -427,7 +457,7 @@ func _render_neighbors() -> void:
             if bool(child.get_meta("is_building",false)) and not current_buildings.has(child.name):
                 child.free()
         var live_agents: Dictionary={}
-        if tile!=active_tile:
+        if tile!=active_tile and building_lod>=1:
             for agent in agents:
                 if String(agent.get("district",""))!=(local_home if district=="" else district):continue
                 var label_a: String="DistrictAgent_"+str(agent.get("id",0))
@@ -1250,6 +1280,9 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     resource_root.set_meta("resource_key","")
     active_building_mesh_builds=0
     street_cache_signature=""
+    visual_visibility_signature=""
+    culled_district_count=0
+    proxy_building_batches=0
     plot_root.set_meta("idle_grid",false)
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
