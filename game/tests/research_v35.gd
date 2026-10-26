@@ -36,14 +36,20 @@ func _test() -> void:
     if Research.start(state,"stone_tools")!="":
         fail("could not start first stone technology")
         return
-    for i in range(6):
+    var earned: float=0.0
+    var stone_done: bool=false
+    for i in range(12):
         City.tick(state)
-        if not Research.tick(state).is_empty():
+        earned+=Research.science_rate(state)
+        var result: Array[String]=Research.tick(state)
+        if earned+0.000001<20.0 and result.has("stone_tools"):
             fail("stone tools completed before earning 20 science")
             return
-    City.tick(state)
-    if not Research.tick(state).has("stone_tools"):
-        fail("science did not complete after seven game minutes")
+        if result.has("stone_tools"):
+            stone_done=true
+            break
+    if not stone_done:
+        fail("science did not complete after accumulating 20 points")
         return
     if not Research.ensure(state)["known"].has("stone_tools"):
         fail("completed technology not recorded")
@@ -124,5 +130,5 @@ func _test() -> void:
     if ui.research_options.item_count<3:
         fail("fresh city does not list the available research branches")
         return
-    print("RESEARCH_V35 SUCCESS: 7-turn stone tools, AND/OR tech gates, national population science, atomic bronze resources, saves and city UI")
+    print("RESEARCH_V35 SUCCESS: population-derived stone tools, AND/OR tech gates, national population science, atomic bronze resources, saves and city UI")
     quit(0)

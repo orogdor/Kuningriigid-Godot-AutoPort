@@ -76,7 +76,10 @@ static func block(state: Dictionary,id: String) -> String:
         for choice in alternatives:
             if r["known"].has(String(choice)):has_one=true
         if not has_one:
-            return "Eeldab üht: "+", ".join(alternatives.map(func(v):return name_of(String(v))))
+            var labels: Array[String]=[]
+            for choice in alternatives:
+                labels.append(name_of(String(choice)))
+            return "Eeldab üht: "+", ".join(labels)
     return ""
 
 static func available(state: Dictionary) -> Array[String]:
@@ -121,7 +124,8 @@ static func tick(state: Dictionary) -> Array[String]:
         City.spend(stock,materials)
         state["age"]=1
         if Trade.has_outpost(state):
-            Trade.ensure_city(state)["age"]=1
+            var satellite: Dictionary=Trade.ensure_city(state)
+            satellite["age"]=1
     r["age_wait"]=""
     r["known"].append(id)
     r["completed"].append({"id":id,"time":float(state.get("time",0))})

@@ -342,7 +342,8 @@ func _found_trade_city() -> void:
     event_message=Trade.found(city)
     if event_message=="":
         city["trade_v15"]["ai_enabled"]=true
-        Trade.ensure_city(city)["age"]=int(city.get("age",0))
+        var founded: Dictionary=Trade.ensure_city(city)
+        founded["age"]=int(city.get("age",0))
         event_message="Teine linn asutati. Ehitus-AI on sees."
     _sync_trade_map()
     _save()
