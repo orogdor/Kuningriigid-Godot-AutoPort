@@ -8,6 +8,7 @@ signal bridge_requested(x: float, z: float)
 signal priority_requested(index: int, level: String)
 signal turns_requested(count: int)
 signal research_requested
+signal research_ai_requested
 signal capital_ai_requested
 const World = preload("res://scripts/world_gen_v06.gd")
 const CityEconomy = preload("res://scripts/city_sim_v05.gd")
@@ -1320,6 +1321,11 @@ func _refresh_actions() -> void:
     study.tooltip_text="Ava linna uurimismenüü"
     study.pressed.connect(func(): research_requested.emit())
     actions.add_child(study)
+    var science_auto:=Button.new()
+    science_auto.text="Teaduse AI: "+("sees" if bool(city_state.get("research_ai_v39",{}).get("enabled",false)) else "väljas")
+    science_auto.tooltip_text="Automaatne teaduste valik, käsitsi uuringut katkestamata"
+    science_auto.pressed.connect(func(): research_ai_requested.emit())
+    actions.add_child(science_auto)
     var capital_auto:=Button.new()
     capital_auto.text="Linna AI: "+("sees" if bool(city_state.get("capital_ai_v38",{}).get("enabled",false)) else "väljas")
     capital_auto.tooltip_text="Lülita pealinna ehitus-AI sisse või välja"

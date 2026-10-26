@@ -16,6 +16,7 @@ const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Research = preload("res://scripts/research_v35.gd")
 const Unlock = preload("res://scripts/building_unlocks_v36.gd")
 const CapitalAI = preload("res://scripts/capital_auto_v38.gd")
+const ResearchAI = preload("res://scripts/research_auto_v39.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -41,6 +42,7 @@ var satellite_label: Label
 var research_status: Label
 var research_options: OptionButton
 var research_start: Button
+var research_ai_button: Button
 var research_choice_ids: Array[String]=[]
 var detail_town: String="capital"
 var auto_button: Button
@@ -58,6 +60,9 @@ func _ready() -> void:
         return
     city = _load_city()
     Research.ensure(city) # Add research to legacy saves without changing their economy.
+    # Old 0.38 capital-AI saves gain the intended national research partner.
+    if CapitalAI.enabled(city) and not city.has("research_ai_v39"):
+        ResearchAI.set_enabled(city,true)
     _setup_ui()
     timer = Timer.new()
     timer.wait_time = 1.0
@@ -83,6 +88,7 @@ func _ready() -> void:
     detail_view.priority_requested.connect(_change_priority)
     detail_view.turns_requested.connect(_advance)
     detail_view.research_requested.connect(_show_city)
+    detail_view.research_ai_requested.connect(_toggle_research_ai)
     detail_view.capital_ai_requested.connect(_toggle_capital_ai)
     detail_view.hide()
     city_scroll.hide()
@@ -222,7 +228,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.38",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.39",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -266,6 +272,8 @@ func _setup_ui() -> void:
     research_row.add_child(research_options)
     research_start=_button("Alusta uurimist",_start_research)
     research_row.add_child(research_start)
+    research_ai_button=_button("Teaduse AI: väljas",_toggle_research_ai)
+    research_row.add_child(research_ai_button)
     body.add_child(HSeparator.new())
     body.add_child(_heading("Hoone ehitamine",20))
     var hint := Label.new()
@@ -300,7 +308,7 @@ func _setup_ui() -> void:
     trading.add_child(_button("Too 5 puitu pealinna",func(): _trade_send("capital","wood",5.0)))
     body.add_child(HSeparator.new())
     var note := Label.new()
-    note.text="0.38: lülitatav pealinna ehitus-AI, tihe linnasüda ja isetekkelised teed."
+    note.text="0.39: tehnoloogiapuu automaatne uurimine kiviajast pronksiaega; materjalikulu säilib."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.add_theme_color_override("font_color",Color(0.7,0.8,0.82))
     body.add_child(note)
@@ -334,6 +342,9 @@ func _refresh_research() -> void:
     var age: int=clampi(int(city.get("age",0)),0,1)
     research_status.text="%s | Teada %d | %.1f teaduspunkti/min | %s" % [
         Research.ERA_NAMES[age],r["known"].size(),Research.science_rate(city),progress]
+    research_status.text+="\n"+ResearchAI.summary(city)
+    if research_ai_button!=null:
+        research_ai_button.text="Teaduse AI: "+("sees" if ResearchAI.enabled(city) else "väljas")
 
 func _toggle_satellite_ai() -> void:
     if not Trade.has_outpost(city):
@@ -364,9 +375,20 @@ func _trade_send(target: String, kind: String, amount: float) -> void:
     _save()
     _refresh()
 
+func _toggle_research_ai() -> void:
+    ResearchAI.set_enabled(city,not ResearchAI.enabled(city))
+    event_message="Teaduse automaatne valimine: "+("sees" if ResearchAI.enabled(city) else "väljas")
+    _save()
+    _refresh()
+    if detail_view!=null and detail_view.visible:
+        detail_view._refresh_actions()
+
 func _toggle_capital_ai() -> void:
-    CapitalAI.set_enabled(city,not CapitalAI.enabled(city))
-    event_message="Pealinna automaatne ehitamine: "+("sees" if CapitalAI.enabled(city) else "väljas")
+    var turn_on: bool=not CapitalAI.enabled(city)
+    CapitalAI.set_enabled(city,turn_on)
+    # One-click AI builds and researches, while science can be changed alone.
+    ResearchAI.set_enabled(city,turn_on)
+    event_message="Pealinna ehitus- ja teadus-AI: "+("sees" if turn_on else "väljas")
     _save()
     _refresh()
     if detail_view!=null and detail_view.visible:
@@ -400,6 +422,7 @@ func _advance(n: int) -> void:
     for i in range(n):
         var started: String=CapitalAI.step(city)
         if started!="":built.append(started)
+        ResearchAI.step(city)
         City.tick(city)
         discoveries.append_array(Research.tick(city))
     var after: int = int(city["realms"][0]["pop"])

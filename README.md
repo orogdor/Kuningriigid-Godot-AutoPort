@@ -435,3 +435,12 @@ See on laiendatud Godot prototüüp, mitte veel kogu Three.js tsivilisatsiooni- 
 - Kasutab 0.37 teaduspõhist AI ehitusjärjekorda, 0.24 ligipääsetavate linnakruntide planeerijat ning päris City.build() reegleid. Ehitamine järgib hoone kulusid, avastusi ja vabu krunte ning kasvab kesksest linnasüdamest väljapoole.
 - Kasutusest tekkivaid teid ei muudeta: 0.9 töötajate liikluse rada tekib ja hääbub edasi. Teine linn töötab oma eraldi AI-ga.
 - Pealinna AI seadistus ja viimased 30 ehitusotsust salvestatakse koos linnaga. Test capital_ai_v38.gd kontrollib ligipääsetavust, kruntide kattumatust, salvestamist, teede säilimist ja mobiili nuppe.
+
+
+## AutoPort 0.39 — automaatne teadusuuringute puu
+
+- **Teaduse AI** on eraldi sisse/välja lülitatav linna teadusmenüüst ja kitsalt 3D detailkaardi horisontaalsest nupuribast. Uuel mängul on nii teadus kui ehitus käsitsi juhitav. **Pealinna AI** sisselülitamine käivitab ühtlasi Teaduse AI; viimase saab eraldi välja lülitada.
+- Eesmärgipõhine graafialgoritm valib kiviaja elutähtsad avastused (kivitööriistad, veevarustus, põlluharimine), lahendab seejärel sõltuvusahela (AND ja oneOf) kuni pronksiaja avamiseni. Pärast pronksiaega uurib see teenuseid, tööriistu ja linnatehnoloogiaid.
+- Valik ei tühista käsitsi käivitatud uurimist. Teaduspunktid arvestatakse endiselt elanike arvu ja olemasolevate minutipõhiste reeglite järgi; pronksiaeg nõuab endiselt **35 puitu, 25 kivi ja 15 toitu**. Puuduse korral valmis uuring ootab, kuni materjalid on olemas.
+- AI seaded ja viimased 30 valikut salvestatakse. Vana 0.38 salvestatud pealinna-AI saab esmakordsel laadimisel automaatse teaduse partneri. Olemasoleva majandusvõrdluse, linnaehituse, maastiku ja kasutusest tekkivate teede loogikat ei muudeta.
+- Regressioonitest `research_ai_v39.gd` katab sõltuvusahela, 450-minutilise ülesandepiiriga pronksiajani arengu, käsitsi uurimise eelisõiguse, salvestuse, materjalide ootejärjekorra ja mobiili UI.
