@@ -21,6 +21,7 @@ const Transit = preload("res://scripts/district_transit_v26.gd")
 const Continuous = preload("res://scripts/continuous_city_v27.gd")
 const Terrain28 = preload("res://scripts/continuous_terrain_v28.gd")
 const Visuals30 = preload("res://scripts/district_visuals_v30.gd")
+const Batches31 = preload("res://scripts/city_render_batch_v31.gd")
 const Nav = preload("res://scripts/terrain_navigation_v29.gd")
 const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
@@ -40,6 +41,13 @@ var terrain_mesh_builds: int=0
 var prop_builds: int=0
 var active_building_mesh_builds: int=0
 var street_cache_signature: String=""
+var performance_label: Label
+var performance_timer: float=0.0
+var performance_samples: int=0
+var performance_fps_sum: float=0.0
+var performance_last: Dictionary={}
+var performance_enabled: bool=false
+var batched_resource_nodes: int=0
 var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
@@ -79,7 +87,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.30 • 3D LINN"
+    heading.text="KUNINGRIIGID • GODOT 0.31 • 3D LINN"
     heading.add_theme_font_size_override("font_size",20)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -328,30 +336,14 @@ func _render_neighbors() -> void:
                 local_home if district=="" else district).get("detail_sim",{})
             var offset: Vector3=Continuous.offset(tile,selected)
             var level: int=Visuals30.detail_level(controller.look_at,offset)
-            var resource_key: String=""
-            var drawn: int=0
-            var desired_limit: int=Visuals30.resource_limit(level)
-            for deposit in sim.get("sites",[]):
-                if drawn>=desired_limit:break
-                if float(deposit.get("remaining",0))<=0.0:continue
-                resource_key+=str(deposit.get("id",drawn))+":"
-                drawn+=1
-            if int(props.get_meta("visual_lod",-1))!=level or String(props.get_meta("resource_key",""))!=resource_key:
+            var limit: int=Visuals30.resource_limit(level)
+            var sig: String=Batches31.signature(sim.get("sites",[]),limit)
+            if int(props.get_meta("visual_lod",-1))!=level or String(props.get_meta("resource_key",""))!=sig:
                 for old in props.get_children():old.free()
                 props.set_meta("visual_lod",level)
-                props.set_meta("resource_key",resource_key)
-                var resource_count: int=0
-                for deposit in sim.get("sites",[]):
-                    if resource_count>=desired_limit:break
-                    if float(deposit.get("remaining",0))<=0.0:continue
-                    var p:=Vector3(float(deposit.get("x",0)),0.0,float(deposit.get("z",0)))
-                    p.y=Terrain28.height(world,tile,p.x,p.z)
-                    if String(deposit.get("kind",""))=="wood":
-                        _tree(props,p,0.65)
-                    else:
-                        _rock(props,p,0.7)
-                    resource_count+=1
-                    prop_builds+=1
+                props.set_meta("resource_key",sig)
+                prop_builds+=Batches31.populate(props,sim.get("sites",[]),limit,world,tile,true)
+                batched_resource_nodes+=props.get_child_count()
         # Reuse unchanged buildings; only rebuild a mesh when its stage,
         # readiness or durable visual details actually changed.
         var current_buildings: Dictionary={}
@@ -604,22 +596,17 @@ func refresh_buildings() -> void:
 
 func _refresh_resource_meshes() -> void:
     if resource_root==null:return
-    for old in resource_root.get_children():old.queue_free()
     var sim: Dictionary=city_state.get("detail_sim",{})
     if district_id!="":
         sim=city_state.get("transport_v26",{}).get("surfaces",{}).get(district_id,{})
-    for deposit in sim.get("sites",[]):
-        var remaining: float=float(deposit.get("remaining",0))
-        if remaining<=0.0:continue
-        var pos:=Vector3(float(deposit["x"]),0.0,float(deposit["z"]))
-        var node:=Node3D.new()
-        node.name="Deposit_"+str(deposit["id"])
-        resource_root.add_child(node)
-        if String(deposit["kind"])=="wood":
-            _tree(node,pos,clampf(remaining/35.0,0.3,1.1))
-        else:
-            for i in range(3):
-                _rock(node,pos+Vector3((i-1)*1.9,0,((i%2)*2-1)*1.4),clampf(remaining/45.0,0.4,1.0))
+    var signature: String=district_id+":"+Batches31.signature(sim.get("sites",[]),1024)
+    if String(resource_root.get_meta("resource_key",""))==signature:return
+    for old in resource_root.get_children():old.free()
+    resource_root.set_meta("resource_key",signature)
+    var local_tile: Vector2i=active_tile
+    batched_resource_nodes+=Batches31.populate(resource_root,sim.get("sites",[]),1024,
+        world,local_tile,combined_city)
+
 
 func _refresh_worker_meshes() -> void:
     if worker_root==null:return
@@ -1141,7 +1128,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.30: tänavad järgivad päris läbitavaid väravaid; hoonete ja maastiku 3D objekte taaskasutatakse."
+    note.text="0.31: MultiMesh-ressursid, adaptiivne 3D detail ja FPS-i mõõdik mobiilis."
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
@@ -1210,6 +1197,8 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
         for previous in combined_root.get_children():previous.free()
     terrain_mesh_builds=0
     prop_builds=0
+    batched_resource_nodes=0
+    resource_root.set_meta("resource_key","")
     active_building_mesh_builds=0
     street_cache_signature=""
     _clear_buildings()
