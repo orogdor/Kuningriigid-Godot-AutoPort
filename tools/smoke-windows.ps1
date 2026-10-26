@@ -6,9 +6,34 @@ $env:KUNINGRIIGID_HOME = Join-Path $root "Kuningriigid-Data"
 $env:KUNINGRIIGID_VERIFY_ONLY = "1"
 New-Item -ItemType Directory -Force $download | Out-Null
 
-Write-Host "Downloading small Windows launcher from latest GitHub release..."
-gh release download --repo $repo --pattern "Kuningriigid.exe" --dir $download --clobber
-if ($LASTEXITCODE -ne 0) { throw "Could not fetch launcher release" }
+# A workflow_run may start its check-only sibling before a release exists.
+# Test the *specific* successful build, not a stale --latest release.
+$releaseTag = $env:KUNINGRIIGID_SMOKE_RELEASE_TAG
+if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
+    $event = Get-Content $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+    $parentId = [int64]$event.workflow_run.id
+    $parentNumber = [int]$event.workflow_run.run_number
+    $runs = gh api "repos/$repo/actions/runs/$parentId/jobs" | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw "Could not inspect triggering build $parentId" }
+    $successfulBuilds = @($runs.jobs | Where-Object { $_.name -eq "build" -and $_.conclusion -eq "success" })
+    if ($successfulBuilds.Count -eq 0) {
+        Write-Host "SKIP: triggering workflow $parentId was check-only; no new APK/EXE was published"
+        exit 0
+    }
+    $localConfig = Get-Content "game/project.godot" -Raw
+    if ($localConfig -notmatch 'AutoPort 0\.(\d+)') {
+        throw "Missing current version in game/project.godot"
+    }
+    $releaseTag = "v0.$($Matches[1]).$parentNumber"
+}
+if ($releaseTag) {
+    Write-Host "Downloading exact Windows launcher release $releaseTag..."
+    gh release download $releaseTag --repo $repo --pattern "Kuningriigid.exe" --dir $download --clobber
+} else {
+    Write-Host "Downloading small Windows launcher from latest GitHub release..."
+    gh release download --repo $repo --pattern "Kuningriigid.exe" --dir $download --clobber
+}
+if ($LASTEXITCODE -ne 0) { throw "Could not fetch launcher release $releaseTag" }
 $exe = Join-Path $download "Kuningriigid.exe"
 $size = (Get-Item $exe).Length
 if ($size -gt 15000000 -or $size -lt 500000) { throw "Expected small native EXE; size=$size" }
@@ -96,6 +121,9 @@ if ($installedMinor -lt 33 -or $contentScript -notmatch 'Linnamajandus') {
 }
 if ($projectScript -notmatch "AutoPort 0\.$installedMinor") {
     throw "Installed project.godot version does not match scripts/content.gd (0.$installedMinor)"
+}
+if ($releaseTag -and -not $releaseTag.StartsWith("v0.$installedMinor.")) {
+    throw "Installed 0.$installedMinor is not the requested test release $releaseTag"
 }
 foreach ($part in @("scripts/world_trade_routes_v17.gd", "scripts/two_city_trade_v15.gd", "scripts/freight_v14.gd", "scripts/construction_scheduler_v13.gd", "scripts/construction_v12.gd", "scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
     if (-not (Test-Path (Join-Path $game $part))) {
