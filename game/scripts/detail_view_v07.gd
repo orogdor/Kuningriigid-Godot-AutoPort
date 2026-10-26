@@ -340,6 +340,8 @@ func _surface(cell: Dictionary) -> void:
     var material:=StandardMaterial3D.new()
     material.vertex_color_use_as_albedo=true
     material.roughness=0.98
+    material.cull_mode=BaseMaterial3D.CULL_DISABLED
+    material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
     var tool:=SurfaceTool.new()
     tool.begin(Mesh.PRIMITIVE_TRIANGLES)
     var tiles_x: int=30
@@ -1354,7 +1356,10 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     for child in scene_root.get_children():
         if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
-        child.queue_free()
+        # A queued mesh still has the DetailTerrain name this frame.
+        # Replace it now so the terrain and color cannot be shadowed by
+        # an old overlapping surface on a reopened detail view.
+        child.free()
     var tile: Dictionary=World.cell(world,c,r)
     if tile.is_empty():return
     _surface(tile)
