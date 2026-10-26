@@ -80,7 +80,7 @@ var placement_cell: Vector2=Vector2(INF,INF)
 var placement_label: Label
 var controller: SubViewportContainer
 var info: Label
-var actions: HFlowContainer
+var actions: HBoxContainer
 var rendered_buildings: int = 0
 var shared_materials: Dictionary={}
 var shared_boxes: Dictionary={}
@@ -93,13 +93,13 @@ func _ready() -> void:
     mouse_filter=Control.MOUSE_FILTER_STOP
     var column:=VBoxContainer.new()
     column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    column.add_theme_constant_override("separation",8)
+    column.add_theme_constant_override("separation",2)
     add_child(column)
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
     heading.text="KUNINGRIIGID • GODOT 0.33 • 3D LINN"
-    heading.add_theme_font_size_override("font_size",20)
+    heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
     var stats_button:=Button.new()
@@ -107,26 +107,37 @@ func _ready() -> void:
     stats_button.pressed.connect(_toggle_performance)
     top.add_child(stats_button)
     var back:=Button.new()
-    back.text="Tagasi maailmakaardile"
+    back.text="◀ Maailm"
     back.pressed.connect(func(): return_requested.emit())
     top.add_child(back)
     info=Label.new()
-    info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    # Never let hundreds of characters of economic diagnostics shrink the
+    # Godot SubViewport to zero pixels, especially in landscape on Android.
+    info.autowrap_mode=TextServer.AUTOWRAP_OFF
+    info.clip_text=true
+    info.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
+    info.custom_minimum_size=Vector2(0,21)
+    info.tooltip_text="Puuduta teksti, et näha täielikku majandusinfot."
     column.add_child(info)
     performance_label=Label.new()
     performance_label.text="FPS: --  |  Joonistuskutsed: --  |  3D objekte: --"
-    performance_label.visible=OS.has_feature("mobile")
-    performance_enabled=performance_label.visible
+    # FPS remains available from the header button, but is not permanently
+    # taking a second line away from the map on a small phone.
+    performance_label.visible=false
+    performance_enabled=false
     performance_label.add_theme_font_size_override("font_size",13)
     column.add_child(performance_label)
     placement_label=Label.new()
-    placement_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    placement_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+    placement_label.clip_text=true
+    placement_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
+    placement_label.custom_minimum_size=Vector2(0,21)
     placement_label.text="Vali ehitis, et näha lubatud (roheline) ja keelatud (punane) ehitusruute."
     column.add_child(placement_label)
     controller=Controller.new()
     controller.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     controller.size_flags_vertical=Control.SIZE_EXPAND_FILL
-    controller.custom_minimum_size=Vector2(300,180)
+    controller.custom_minimum_size=Vector2(0,180)
     column.add_child(controller)
     var viewport:=SubViewport.new()
     view_port=viewport
@@ -183,10 +194,19 @@ func _ready() -> void:
     combined_root=Node3D.new()
     combined_root.name="ContinuousCity"
     scene_root.add_child(combined_root)
-    actions=HFlowContainer.new()
-    actions.add_theme_constant_override("h_separation",6)
-    actions.add_theme_constant_override("v_separation",6)
-    column.add_child(actions)
+    # Fixed-height, horizontally scrollable toolbar. Priority buttons no
+    # longer wrap to 10+ rows or cover the 3D view as the town grows.
+    var action_scroll:=ScrollContainer.new()
+    action_scroll.name="DetailActionsScroll"
+    action_scroll.custom_minimum_size=Vector2(0,46)
+    action_scroll.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    action_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
+    action_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+    column.add_child(action_scroll)
+    actions=HBoxContainer.new()
+    actions.name="DetailActionButtons"
+    actions.add_theme_constant_override("separation",5)
+    action_scroll.add_child(actions)
     _refresh_actions()
 
 func _toggle_performance() -> void:
@@ -1194,6 +1214,7 @@ func _refresh_info() -> void:
     else:
         text_line+=" | Maastikuvaade (ehitamine ainult oma pealinna ruudul)"
     info.text=text_line
+    info.tooltip_text=text_line
 
 func _refresh_actions() -> void:
     if actions==null:return
@@ -1249,7 +1270,7 @@ func _refresh_actions() -> void:
         button.pressed.connect(select_building.bind(kind))
         actions.add_child(button)
     var note:=Label.new()
-    note.text="0.32: kaugemate majade MultiMesh mudelid, kaamera vaateulatuse järgi peitmine ja sujuv suum."
+    note.text="Linna jõudlus- ja ehitusvalikud"
     note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     actions.add_child(note)
     for i in range(1,city_state.get("buildings",[]).size()):
