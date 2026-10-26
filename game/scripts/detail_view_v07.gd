@@ -38,6 +38,7 @@ const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
+const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -48,6 +49,7 @@ var active_tile: Vector2i=Vector2i(-1,-1)
 var combined_city: bool=false
 var combined_root: Node3D
 var seam_preview_root: Node3D
+var seam_preview_refresh_clock: float=0.0
 var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
 var terrain_mesh_builds: int=0
@@ -108,7 +110,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.44 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.45 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -237,6 +239,11 @@ func _toggle_performance() -> void:
 
 func _process(delta: float) -> void:
     if not visible or view_port==null:return
+    if not combined_city and controller!=null:
+        seam_preview_refresh_clock+=delta
+        if seam_preview_refresh_clock>=0.25:
+            seam_preview_refresh_clock=0.0
+            _refresh_seam_neighbor_buildings()
     if combined_city and controller!=null and not shown_district_tiles.is_empty():
         visual_visibility_poll+=delta
         if visual_visibility_poll>=0.30:
@@ -621,21 +628,9 @@ func _render_seam_previews() -> void:
             else:
                 part.add_child(SeamTerrain42.surface(world,tile))
                 SeamTerrain42.decorate(part,world,tile)
-            # Reuse the actual saved buildings, not generic village props.
-            # The 0.32 instanced LOD batches are cheap on Android and do
-            # not create resources, workers, new cities or simulation state.
-            if not bool(city_state.get("satellite_town",false)) and \
-                    Districts44.owns(city_state,world,tile.x,tile.y):
-                var neighboring_district: String="" if tile==Districts44.origin(world) \
-                    else Districts44.key(tile)
-                var neighbor_buildings: Array=LOD32.eligible(
-                    city_state.get("buildings",[]),neighboring_district)
-                if not neighbor_buildings.is_empty():
-                    var building_preview:=Node3D.new()
-                    building_preview.name="ActualNeighborBuildings"
-                    part.add_child(building_preview)
-                    LOD32.populate(building_preview,neighbor_buildings,
-                        neighboring_district,1)
+            # Runtime representation will switch between actual building
+            # geometry and GPU-instanced silhouettes as camera approaches.
+            part.set_meta("world_tile",tile)
             # A lightweight sea/river indication keeps all eight previews
             # readable before the user crosses into a different biome.
             if combined_city:continue
@@ -647,6 +642,58 @@ func _render_seam_previews() -> void:
                 _box(part,Vector3(0,-0.25,25.0),
                     Vector3(SURFACE_WIDTH,0.12,14.0),
                     Color("#419abb"),"NeighborRiver")
+
+    _refresh_seam_neighbor_buildings()
+
+func _refresh_seam_neighbor_buildings() -> void:
+    # 0.45 is visual-only: no new settlements or source-state mutations.
+    # The full geometry is reused from the *same* _building() /
+    # _construction_site() functions as the active 3D city.
+    if seam_preview_root==null or combined_city or controller==null:return
+    if bool(city_state.get("satellite_town",false)):return
+    var buildings: Array=city_state.get("buildings",[])
+    var definitions: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{})
+    for part in seam_preview_root.get_children():
+        if not part is Node3D or not part.has_meta("world_tile"):continue
+        var tile: Vector2i=part.get_meta("world_tile")
+        if not Districts44.owns(city_state,world,tile.x,tile.y):continue
+        var district: String="" if tile==Districts44.origin(world) else Districts44.key(tile)
+        var eligible: Array=LOD32.eligible(buildings,district)
+        var previous: Node3D=part.get_node_or_null("ActualNeighborBuildings") as Node3D
+        if eligible.is_empty():
+            if previous!=null:previous.free()
+            continue
+        var distance_to_center: float=Vector2(
+            controller.look_at.x-part.position.x,
+            controller.look_at.z-part.position.z).length()
+        var full: bool=NeighborBuildings45.detailed(
+            distance_to_center,controller.distance,eligible.size())
+        var signature: String=NeighborBuildings45.signature(
+            eligible,district,full,definitions)
+        if previous!=null and String(previous.get_meta("render_key",""))==signature:
+            continue
+        if previous!=null:previous.free()
+        var container:=Node3D.new()
+        container.name="ActualNeighborBuildings"
+        container.set_meta("render_key",signature)
+        container.set_meta("full_3d",full)
+        part.add_child(container)
+        if full:
+            for index in range(eligible.size()):
+                var b: Dictionary=eligible[index]
+                var kind: String=String(b.get("type","house"))
+                var holder:=Node3D.new()
+                holder.name=kind+"_"+str(index)
+                holder.position=Vector3(float(b.get("x",0.0)),0.0,
+                    float(b.get("z",0.0)))
+                holder.rotation_degrees.y=float(b.get("rotation",0))
+                container.add_child(holder)
+                if bool(b.get("ready",false)):
+                    _building(holder,kind,Vector3.ZERO,true)
+                else:
+                    _construction_site(holder,kind,Vector3.ZERO,b)
+        else:
+            LOD32.populate(container,eligible,district,1)
 
 func _activate_district(tile: Vector2i) -> void:
     if not combined_city or not shown_district_tiles.has(tile):return
@@ -1538,5 +1585,6 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     var tile: Dictionary=World.cell(world,c,r)
     if tile.is_empty():return
     _surface(tile)
+    seam_preview_refresh_clock=0.0
     _render_seam_previews()
     refresh_buildings()

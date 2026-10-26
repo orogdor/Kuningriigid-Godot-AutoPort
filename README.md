@@ -482,3 +482,11 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 - Kõrvalruudu 3×3 detailmaastikus näidatakse mängija enda **tegelikult salvestatud** linnahooneid ka siis, kui vaatad linna kõrvalt. Kerged MultiMesh LOD32 siluetid kasutavad õiget hoonetüüpi, suurust, asukohta ja valmisolekut. Väljamõeldud külasid või linnahooneid ei genereerita.
 - Eelvaade ei muuda elanikke, ressursse, hoonete ehitust, mänguseisu ega teede kujunemist. Väljaspool linna asuvatelt ruutudelt puuduvad jätkuvalt ehitusõigused.
 - Uus `city_preview_v44.gd` regressioon kinnitab tegeliku hoonete arvu, kaugemal vale linna puudumise, ehitusõigused ning hoonete/varude püsimise edasi-tagasi detailkaartidel liikudes.
+
+
+## AutoPort 0.45 — detailkaardi naaberlinna ehtsad 3D mudelid
+
+- Lähenedes 3D detailkaardilt kõrvalruudu **päriselt salvestatud linnale**, asenduvad kaugemal olevad MultiMesh siluetid aktiivses linnas kasutatavate samade `_building` ja `_construction_site` Godoti mudelitega. Valmis peamaja, elumaja, kaev jms on nüüd lähedalt vaadates päris ehitised, mitte kuubikud.
+- Uued ehitusplatsid ja valmis majad on ruutude vahel järjepidevad: lähivaade näitab tegelikku ehitusjärku ja kasutab salvestatud hoone koordinaate/pööret. Kaugemal on jälle kerge LOD; üle 18 hoonega kõrvalküla kasutab telefoni jõudluse hoidmiseks alati instantsitud kuju.
+- `detail_buildings_v45.gd` kontrollib kaamerale reageerivat lähedast ja kauget taset, ehtsat peamajamudelit, ehitusplatsi uuendust, renderduse vahemälu, ressursi puutumatust ning kaamera suuna/suumi säilimist.
+- Release workflow jääb teadlikult `workflow_dispatch` režiimi; APK/EXE avaldatakse eraldi, mitte iga commit'iga.
