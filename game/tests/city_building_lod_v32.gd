@@ -120,6 +120,10 @@ func _test() -> void:
         fail("distant city silhouettes lost economic houses")
         return
     var before: Node=proxies.get_child(0)
+    view._process(1.0)
+    if not view.performance_last.has("lod_batches") or not view.performance_last.has("culled_districts"):
+        fail("on-device FPS diagnostics omit the new building LOD and culling counts")
+        return
     var saved_count: int=city["buildings"].size()
     view._render_neighbors()
     if proxies.get_child(0)!=before:
