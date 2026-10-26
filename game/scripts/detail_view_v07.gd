@@ -37,6 +37,7 @@ const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
+const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const PREVIEW_TYPES: Array[String] = ["hall","house","lumber","well","quarry","farm"]
 const SURFACE_WIDTH: float = 225.0
 const SURFACE_DEPTH: float = 195.0
@@ -107,7 +108,7 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    heading.text="KUNINGRIIGID • GODOT 0.42 • 3D KAART"
+    heading.text="KUNINGRIIGID • GODOT 0.44 • 3D KAART"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
@@ -620,6 +621,21 @@ func _render_seam_previews() -> void:
             else:
                 part.add_child(SeamTerrain42.surface(world,tile))
                 SeamTerrain42.decorate(part,world,tile)
+            # Reuse the actual saved buildings, not generic village props.
+            # The 0.32 instanced LOD batches are cheap on Android and do
+            # not create resources, workers, new cities or simulation state.
+            if not bool(city_state.get("satellite_town",false)) and \
+                    Districts44.owns(city_state,world,tile.x,tile.y):
+                var neighboring_district: String="" if tile==Districts44.origin(world) \
+                    else Districts44.key(tile)
+                var neighbor_buildings: Array=LOD32.eligible(
+                    city_state.get("buildings",[]),neighboring_district)
+                if not neighbor_buildings.is_empty():
+                    var building_preview:=Node3D.new()
+                    building_preview.name="ActualNeighborBuildings"
+                    part.add_child(building_preview)
+                    LOD32.populate(building_preview,neighbor_buildings,
+                        neighboring_district,1)
             # A lightweight sea/river indication keeps all eight previews
             # readable before the user crosses into a different biome.
             if combined_city:continue

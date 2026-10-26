@@ -475,3 +475,10 @@ Lisaks joonistatakse aktiivse detailkaardi ümber kuni kaheksa kerget naaberruud
 - Detailruudu viimase 30 meetri jooksul sulandub maastik järk-järgult samasse maailmakoordinaatidel arvutatud pinnasse, mida kasutatakse ümbritseval 3×3 naaberruutude võrgul. 225×195 m servas kattuvad kõrgused täpselt, ka diagonaalsete nurkade juures. Varem nähtav linna ja järgmise ruudu kõrgusaste kaob.
 - Täiendav test `city_seam_v43.gd` kontrollib 4 piiri, nurki, tõelisi linna jõeületusi, ehitatava linna sisekõrgust ning 720×420 mobiilivaate säilimist.
 - Tavaline koodimuudatus käivitab GitHubis ainult reeglite sünkroonimise ja regressioonitestid. Android APK ja Windows EXE ehitatakse kulude vähendamiseks eraldi käsitsi GitHub Actions `Build Android APK, Windows EXE and auto-update content` kaudu.
+
+
+## AutoPort 0.44 — naaberlinn on 3D eelvaates päriselt nähtav
+
+- Kõrvalruudu 3×3 detailmaastikus näidatakse mängija enda **tegelikult salvestatud** linnahooneid ka siis, kui vaatad linna kõrvalt. Kerged MultiMesh LOD32 siluetid kasutavad õiget hoonetüüpi, suurust, asukohta ja valmisolekut. Väljamõeldud külasid või linnahooneid ei genereerita.
+- Eelvaade ei muuda elanikke, ressursse, hoonete ehitust, mänguseisu ega teede kujunemist. Väljaspool linna asuvatelt ruutudelt puuduvad jätkuvalt ehitusõigused.
+- Uus `city_preview_v44.gd` regressioon kinnitab tegeliku hoonete arvu, kaugemal vale linna puudumise, ehitusõigused ning hoonete/varude püsimise edasi-tagasi detailkaartidel liikudes.
