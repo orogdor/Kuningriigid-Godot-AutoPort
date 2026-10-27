@@ -48,10 +48,15 @@ func _run() -> void:
     if rivers==null or banks==null or rivers.mesh==null or banks.mesh==null:
         fail("world atlas doesn't have both batched water and shore geometry")
         return
-    if rivers.mesh.surface_get_array_len(0)!=expected*6:
-        fail("world river water isn't one shared indexed drainage mesh")
+    var water_mesh: ArrayMesh=rivers.mesh as ArrayMesh
+    var bank_mesh: ArrayMesh=banks.mesh as ArrayMesh
+    if water_mesh==null or bank_mesh==null:
+        fail("river surfaces are not real Godot ArrayMesh geometries")
         return
-    if banks.mesh.surface_get_array_len(0)!=expected*12:
+    if water_mesh.surface_get_array_len(0)!=expected*6:
+        fail("world river water doesn't match saved drainage segments")
+        return
+    if bank_mesh.surface_get_array_len(0)!=expected*12:
         fail("world river bank geometry isn't aligned with water segments")
         return
     var before_buildings: int=ui.city["buildings"].size()
