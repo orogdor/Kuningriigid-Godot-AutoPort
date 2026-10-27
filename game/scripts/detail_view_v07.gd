@@ -38,6 +38,7 @@ const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
+const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
@@ -415,19 +416,30 @@ func _surface(cell: Dictionary) -> void:
             Color("#3b86a8"),"SeaLevel")
     var rng:=RandomNumberGenerator.new()
     rng.seed=int(world.get("seed",82026))+selected.x*10007+selected.y*19937
-    if not sea:
-        var tree_count: int=50 if selected_biome=="forest" else (6 if selected_biome=="hills" else 16)
-        for i in range(tree_count):
+    if not sea and not can_build:
+        var oaks: Array=[]
+        var pines: Array=[]
+        var rocks: Array=[]
+        var trees: int=50 if selected_biome=="forest" else (6 if selected_biome=="hills" else 16)
+        for i in range(trees):
             var x: float=rng.randf_range(-108,108)
             var z: float=rng.randf_range(-92,92)
-            if can_build:continue
-            _tree(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.7,1.35))
-        var rocks: int=25 if selected_biome=="hills" else 8
-        for i in range(rocks):
+            var factor: float=rng.randf_range(2.4,4.0)
+            var transform:=Transform3D(
+                Basis(Vector3.UP,rng.randf_range(-PI,PI)).scaled(Vector3.ONE*factor),
+                Vector3(x,_elevation(x,z,heights,smooth_centre),z))
+            if selected_biome=="hills" or i%4==0:pines.append(transform)
+            else:oaks.append(transform)
+        for i in range(25 if selected_biome=="hills" else 8):
             var x: float=rng.randf_range(-109,109)
             var z: float=rng.randf_range(-89,89)
-            if can_build:continue
-            _rock(scene_root,Vector3(x,_elevation(x,z,heights,smooth_centre),z),rng.randf_range(0.8,1.6))
+            rocks.append(Transform3D(
+                Basis(Vector3.UP,rng.randf_range(-PI,PI)).scaled(
+                    Vector3.ONE*rng.randf_range(2.0,4.0)),
+                Vector3(x,_elevation(x,z,heights,smooth_centre),z)))
+        WebArt50.add_batch(scene_root,"oak",oaks,"WebActiveOaks")
+        WebArt50.add_batch(scene_root,"pine",pines,"WebActivePines")
+        WebArt50.add_batch(scene_root,"rock",rocks,"WebActiveRocks")
     if bool(cell.get("river",false)):
         _box(scene_root,Vector3(0,-0.26,25),Vector3(width,0.13,14),
             Color("#419abb"),"RiverWater")
@@ -789,11 +801,7 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
             _roof(parent,place+Vector3(0,10.4,0),Vector3(21,7,16),thatch)
             _box(parent,place+Vector3(0,3,6.7),Vector3(3.1,6,0.5),Color("#473629"),"HallDoor")
         "house":
-            if int(city_state.get("age",0))>=1:
-                _box(parent,place+Vector3(0,0.6,0),Vector3(10,1.2,9),Color("#a29b8e"),"BronzeHouseBase")
-            _box(parent,place+Vector3(0,2.8,0),Vector3(9,5.6,8),timber,"HouseWalls")
-            _roof(parent,place+Vector3(0,6.8,0),Vector3(11,5,10),thatch)
-            _box(parent,place+Vector3(0,1.9,4.1),Vector3(2,3.8,0.3),Color("#4c392a"),"HouseDoor")
+            WebArt50.place(parent,"timber_house",place,3.15,"WebTimberHouse")
         "lumber":
             for i in range(4):
                 _cylinder(parent,place+Vector3(-4+i*2.6,0.6,0),0.8,9,Color("#816046"),"FelledLog")
@@ -824,12 +832,9 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
             for i in range(4):
                 _cylinder(parent,place+Vector3(-3.0+i*2.0,1.4,7),0.6,5.0,Color("#b18a55"),"SawLogs")
         "market":
-            for i in range(3):
-                var x: float=-8.0+float(i)*8.0
-                _box(parent,place+Vector3(x,1.0,0),Vector3(5.5,2.0,4.0),Color("#956c43"),"MarketStall")
-                _roof(parent,place+Vector3(x,5.0,0),Vector3(7.0,3.0,6.0),
-                    Color("#b65f41") if i%2==0 else Color("#c9a867"))
-                _box(parent,place+Vector3(x,2.4,1.6),Vector3(4,0.6,2),Color("#bd9a65"),"MarketGoods")
+            WebArt50.place(parent,"market",place,3.5,"WebMarketStalls")
+        "mill":
+            WebArt50.place(parent,"windmill",place,3.4,"WebWindmill")
         "warehouse":
             _box(parent,place+Vector3(0,3.2,0),Vector3(17,6.4,12),timber,"WarehouseWalls")
             _box(parent,place+Vector3(0,0.65,0),Vector3(18,1.2,13),Color("#88867e"),"WarehouseBase")
