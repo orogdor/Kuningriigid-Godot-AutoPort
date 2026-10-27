@@ -536,3 +536,8 @@ Lähtekoodi versioonis 0.50 on kümme algse veebimängu GLB-faili (puud, kivimid
 - 3D detailkaartidel ja 3×3 naaberkaartide eelvaates jookseb samast `river_to` andmestikust jõesäng üle ruudupiiri. Mõlemal pool piiri kasutatakse sama laiust ja kõrgust; olemasolevad linna ehitatavad pinnad, füüsilised jõed ja sillad jäävad puutumata.
 - Uus `game/scripts/web_water_v51.gd` teeb mõlemale kaardile eraldi veepinna ja kaldad. `web_water_v51.gd` test kontrollib päris äravoolu hulka, mesh'i suurust, sujuvaid kõrgusi, kõrvalkaartide jõe jätku, mobiili vaate püsivust ning majanduse puutumatust.
 - Väljalase põhineb versioonil `0.51`. Nagu varem, Androidi ja Windowsi binaarfailid ehitatakse ainult käsitsi käivitatavas GitHub Actionsi töövoos, mitte igal koodimuudatusel.
+
+
+### Väljalaske käsitsi käivitamine (alates 0.51)
+
+APK/EXE/PCK ehitus **ei käivitu igal push'il**. Väljalaske saab käivitada Actions > Build Android APK, Windows EXE... > Run workflow kaudu või teadlikult muutes ainult faili `.github/release-request.txt` sisu. Muud koodimuudatused ei käivita binaariehitust. Seda võimalust kasutati 0.51 graafikauuenduse APK loomiseks.

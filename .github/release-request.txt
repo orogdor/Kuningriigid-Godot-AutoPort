@@ -1,0 +1,5 @@
+KUNINGRIIGID GODOT — EXPLICIT RELEASE REQUEST
+Target: 0.51 Web graphics upgrade
+Base source commit: bdd83fc0c73deba7fcf126b1f4470c8168102b6c
+Reason: manual test APK and EXE for Web 3D models, shared terrain palette, continuous rivers and shorelines.
+Triggered deliberately. Routine source pushes still do not build binary releases.

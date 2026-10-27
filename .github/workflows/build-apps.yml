@@ -6,6 +6,12 @@ name: Build Android APK, Windows EXE and auto-update content
 # when you want to publish a new downloadable version.
 on:
   workflow_dispatch:
+  # A deliberate source-controlled release request is also permitted.
+  # Normal commits and upstream syncs never build APK/EXE.
+  push:
+    branches: [main]
+    paths:
+      - '.github/release-request.txt'
 
 permissions:
   contents: write
