@@ -5,6 +5,7 @@ extends RefCounted
 const World=preload("res://scripts/world_gen_v06.gd")
 const Terrain=preload("res://scripts/detail_terrain_v10.gd")
 const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
+const WebArt50=preload("res://scripts/web_graphics_v50.gd")
 const WIDTH: float=225.0
 const DEPTH: float=195.0
 const NX: int=12
@@ -123,19 +124,29 @@ static func _instanced(parent: Node3D,world: Dictionary,tile: Vector2i,
 static func decorate(parent: Node3D,world: Dictionary,tile: Vector2i) -> void:
     var cell: Dictionary=World.cell(world,tile.x,tile.y)
     if cell.is_empty() or not bool(cell.get("land",false)):return
+    # Deterministic, but reuse the REAL Web mesh surfaces rather than
+    # paired spheres/cylinders. One MultiMesh per source GLB part.
     var biome: String=String(cell.get("biome","plains"))
-    var count: int=7 if biome=="forest" else (1 if biome=="hills" else 3)
-    var trunks:=CylinderMesh.new()
-    trunks.top_radius=0.36
-    trunks.bottom_radius=0.55
-    trunks.height=5.2
-    _instanced(parent,world,tile,count,trunks,Color("#69513a"),"TreeTrunks",2.6)
-    var canopy:=SphereMesh.new()
-    canopy.radius=2.9
-    canopy.height=5.4
-    _instanced(parent,world,tile,count,canopy,Color("#315e37"),"TreeCanopies",6.1)
-    if biome=="hills":
-        var rocks:=SphereMesh.new()
-        rocks.radius=2.6
-        rocks.height=2.1
-        _instanced(parent,world,tile,7,rocks,Color("#777b75"),"MountainRocks",1.1)
+    var oak: Array=[]
+    var pine: Array=[]
+    var rock: Array=[]
+    var rng:=RandomNumberGenerator.new()
+    rng.seed=int(world.get("seed",82026))+tile.x*10007+tile.y*19937
+    var count: int=11 if biome=="forest" else (4 if biome=="hills" else 6)
+    for i in range(count):
+        var x: float=rng.randf_range(-WIDTH*0.43,WIDTH*0.43)
+        var z: float=rng.randf_range(-DEPTH*0.43,DEPTH*0.43)
+        var scale: float=rng.randf_range(2.3,3.6)
+        var pose:=Transform3D(Basis(Vector3.UP,rng.randf_range(-PI,PI)).scaled(
+            Vector3.ONE*scale),Vector3(x,height_at(world,tile,x,z),z))
+        if biome=="hills" or i%4==0:pine.append(pose)
+        else:oak.append(pose)
+    for i in range(9 if biome=="hills" else 3):
+        var x: float=rng.randf_range(-WIDTH*0.45,WIDTH*0.45)
+        var z: float=rng.randf_range(-DEPTH*0.45,DEPTH*0.45)
+        var size: float=rng.randf_range(2.2,4.0)
+        rock.append(Transform3D(Basis(Vector3.UP,rng.randf_range(-PI,PI)).scaled(
+            Vector3.ONE*size),Vector3(x,height_at(world,tile,x,z),z)))
+    WebArt50.add_batch(parent,"oak",oak,"WebOriginalOaks")
+    WebArt50.add_batch(parent,"pine",pine,"WebOriginalPines")
+    WebArt50.add_batch(parent,"rock",rock,"WebOriginalRocks")
