@@ -7,12 +7,14 @@ signal cell_activated(c: int,r: int)
 const World=preload("res://scripts/world_gen_v06.gd")
 const Trade3D=preload("res://scripts/world_trade_3d_v49.gd")
 const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
+const WebArt50=preload("res://scripts/web_graphics_v50.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
 var viewport: SubViewport
 var scene_root: Node3D
 var terrain_node: MeshInstance3D
+var web_props_root: Node3D
 var trade_road_root: Node3D
 var trade_caravans_root: Node3D
 var trade_route_key: String=""
@@ -67,6 +69,9 @@ func _ready() -> void:
     terrain_node=MeshInstance3D.new()
     terrain_node.name="WorldReliefMesh"
     scene_root.add_child(terrain_node)
+    web_props_root=Node3D.new()
+    web_props_root.name="OriginalWebAtlasObjects"
+    scene_root.add_child(web_props_root)
     trade_road_root=Node3D.new()
     trade_road_root.name="TradeRoute3D"
     scene_root.add_child(trade_road_root)
@@ -101,6 +106,19 @@ static func _shade(cell: Dictionary) -> Color:
         col=col.lerp(Color("#428ab1"),0.33)
     return col
 
+static func _corner_tint(data: Dictionary,c: int,r: int) -> Color:
+    # Blend Web atlas colours at shared vertices; eliminate sharp square
+    # biome edges without modifying the actual terrain, river or routes.
+    var total:=Color.BLACK
+    var n: int=0
+    for dr in [-1,0]:
+        for dc in [-1,0]:
+            var cell: Dictionary=World.cell(data,c+dc,r+dr)
+            if cell.is_empty():continue
+            total+=WebPalette50.color(data,c+dc,r+dr)
+            n+=1
+    return total/float(n) if n>0 else WebPalette50.DEEP
+
 static func _corner(world_data: Dictionary,c: int,r: int) -> float:
     var sum: float=0.0
     var total: int=0
@@ -124,6 +142,11 @@ func set_world(data: Dictionary) -> void:
     var vertices:=PackedVector3Array()
     var normals:=PackedVector3Array()
     var colors:=PackedColorArray()
+    var shared_colors:=PackedColorArray()
+    for rr in range(World.ROWS+1):
+        for cc in range(World.COLS+1):
+            shared_colors.append(_corner_tint(world,cc,rr))
+    var stride: int=World.COLS+1
     for r in range(World.ROWS):
         for c in range(World.COLS):
             var cell: Dictionary=World.cell(world,c,r)
@@ -133,12 +156,16 @@ func set_world(data: Dictionary) -> void:
             var b:=Vector3(x+1,_corner(world,c+1,r),z)
             var d:=Vector3(x,_corner(world,c,r+1),z+1)
             var e:=Vector3(x+1,_corner(world,c+1,r+1),z+1)
-            var face_color: Color=WebPalette50.color(world,c,r)
-            # Two triangles with upwards normals, continuous height at edges.
+            # Four shared corners, six original triangle vertices.
+            var ca: Color=shared_colors[r*stride+c]
+            var cb: Color=shared_colors[r*stride+c+1]
+            var cd: Color=shared_colors[(r+1)*stride+c]
+            var ce: Color=shared_colors[(r+1)*stride+c+1]
             for v in [a,d,b,b,d,e]:
                 vertices.append(v)
                 normals.append(Vector3.UP)
-                colors.append(face_color)
+            for tint in [ca,cd,cb,cb,cd,ce]:
+                colors.append(tint)
     var arrays: Array=[]
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX]=vertices
@@ -152,6 +179,9 @@ func set_world(data: Dictionary) -> void:
     material.roughness=1.0
     material.cull_mode=BaseMaterial3D.CULL_DISABLED
     terrain_node.material_override=material
+    if web_props_root!=null:
+        for old in web_props_root.get_children():old.free()
+        WebArt50.atlas_decor(web_props_root,world)
     camera_target=Vector2(World.COLS*0.5,World.ROWS*0.5)
     zoom=235.0
     _update_camera()
