@@ -37,6 +37,7 @@ const Terrain = preload("res://scripts/detail_terrain_v10.gd")
 const CityRecipes = preload("res://scripts/generated_rules.gd")
 const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
+const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
@@ -396,10 +397,9 @@ func _surface(cell: Dictionary) -> void:
             var b:=Vector3(x1,(0.0 if combined_city else _elevation(x1,z0,heights,smooth_centre)),z0)
             var d:=Vector3(x0,(0.0 if combined_city else _elevation(x0,z1,heights,smooth_centre)),z1)
             var e:=Vector3(x1,(0.0 if combined_city else _elevation(x1,z1,heights,smooth_centre)),z1)
-            var col:=Color("#b8ac80") if sea else Color("#86a769")
-            if selected_biome=="forest":col=Color("#547b4e")
-            elif selected_biome=="hills":col=Color("#999b91")
-            elif not sea and can_build:col=Color("#a7b779")
+            var col: Color=WebPalette50.detail(world,selected,
+                (x0+x1)*0.5,(z0+z1)*0.5)
+            if can_build and not sea:col=col.lerp(Color("#bdba8c"),0.12)
             # Correct Godot front-facing winding: generated normals point upward.
             for v in [a,b,d,b,e,d]:
                 tool.set_color(col)

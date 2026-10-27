@@ -6,6 +6,7 @@ signal cell_selected(c: int,r: int)
 signal cell_activated(c: int,r: int)
 const World=preload("res://scripts/world_gen_v06.gd")
 const Trade3D=preload("res://scripts/world_trade_3d_v49.gd")
+const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -132,7 +133,7 @@ func set_world(data: Dictionary) -> void:
             var b:=Vector3(x+1,_corner(world,c+1,r),z)
             var d:=Vector3(x,_corner(world,c,r+1),z+1)
             var e:=Vector3(x+1,_corner(world,c+1,r+1),z+1)
-            var face_color: Color=_shade(cell)
+            var face_color: Color=WebPalette50.color(world,c,r)
             # Two triangles with upwards normals, continuous height at edges.
             for v in [a,d,b,b,d,e]:
                 vertices.append(v)

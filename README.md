@@ -518,3 +518,8 @@ Teine linn avaneb maailmakaardilt ja linnapaneelist sama toimiva kaardivahetuse 
 - \`WorldMap.set_trade_route()\` värskendab korraga 2D ja 3D vaadet. Teed jäetakse mängukäikude vahel vahemällu; uuesti luuakse ainult liikuvad vankrid. Uue maailmaseemne või aegunud marsruudi korral vana tee eemaldatakse.
 - \`world_trade_3d_v49.gd\` regressioon kontrollib liikuvat kaupa, mõlema suuna asukohti, saabumisaega, vahemälu, 2D/3D ühtivust ning mõlema linna ressursside puutumatust.
 - APK ja Windows EXE ehitus jääb ainult käsitsi käivitatavaks.
+
+
+### Godot 0.50 – Webi maastiku värvipaleti ühildamine
+
+Godoti 3D maailmakaart, detailkaardi maapind, kõrvalruudud ja laiendatud linnaosad kasutavad nüüd sama deterministlikku veebimängu järgi valitud paletti: süvameri, rannavesi, rannaliiv, mets, rohumaa, kivine mägi ja niiske jõeserv. Kohalik detailpind ei ole enam igal ruudul täiesti ühetooniline. Värvivahetus ei muuda jõe pikkust, kõrgusi, majandusreegleid, ehitusruute ega salvestusi. Uus automaattest `web_biomes_v50.gd` kontrollib visuaali, determinismi ja mobiili detailvaadet. See on esimene osa ulatuslikumast graafikaportimisest; algsed Web GLB mudelid lisatakse eraldi.

@@ -4,6 +4,7 @@ extends RefCounted
 ## mesh and instanced environmental props keep 720x420 Android viable.
 const World=preload("res://scripts/world_gen_v06.gd")
 const Terrain=preload("res://scripts/detail_terrain_v10.gd")
+const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const WIDTH: float=225.0
 const DEPTH: float=195.0
 const NX: int=12
@@ -69,7 +70,6 @@ static func surface(world: Dictionary,tile: Vector2i,label: String="NeighborTerr
     if cell.is_empty():return ground
     var tool:=SurfaceTool.new()
     tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var tint: Color=color_for(cell)
     for iz in range(subdivisions_z):
         for ix in range(subdivisions_x):
             var x0: float=(-0.5+float(ix)/float(subdivisions_x))*WIDTH
@@ -80,6 +80,8 @@ static func surface(world: Dictionary,tile: Vector2i,label: String="NeighborTerr
             var b:=Vector3(x1,height_at(world,tile,x1,z0),z0)
             var d:=Vector3(x0,height_at(world,tile,x0,z1),z1)
             var e:=Vector3(x1,height_at(world,tile,x1,z1),z1)
+            var tint: Color=WebPalette50.detail(world,tile,
+                (x0+x1)*0.5,(z0+z1)*0.5)
             for v in [a,b,d,b,e,d]:
                 tool.set_color(tint)
                 tool.add_vertex(v)

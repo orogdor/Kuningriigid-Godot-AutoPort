@@ -3,6 +3,7 @@ extends RefCounted
 ## coordinates; river ribbons connect only when BOTH adjoining world cells
 ## have a river. 3D visuals approximate, not a replacement for 0.26 A* rules.
 const World=preload("res://scripts/world_gen_v06.gd")
+const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const SPAN: float=160.0
 const HALF: float=80.0
 const RIVER_HALF_WIDTH: float=6.0
@@ -60,11 +61,7 @@ static func height_from_segments(seed_value: int,tile: Vector2i,rivers: Array,x:
     return elevation
 
 static func biome_color(world: Dictionary,tile: Vector2i) -> Color:
-    match String(World.cell(world,tile.x,tile.y).get("biome","plains")):
-        "forest":return Color("#608653")
-        "hills":return Color("#999d8f")
-        "sea":return Color("#4185a7")
-        _:return Color("#9bad6b")
+    return WebPalette50.color(world,tile.x,tile.y)
 
 static func surface(world: Dictionary,tile: Vector2i,name: String="DistrictTerrain") -> MeshInstance3D:
     var tool:=SurfaceTool.new()
