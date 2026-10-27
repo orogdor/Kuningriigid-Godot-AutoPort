@@ -523,3 +523,8 @@ Teine linn avaneb maailmakaardilt ja linnapaneelist sama toimiva kaardivahetuse 
 ### Godot 0.50 – Webi maastiku värvipaleti ühildamine
 
 Godoti 3D maailmakaart, detailkaardi maapind, kõrvalruudud ja laiendatud linnaosad kasutavad nüüd sama deterministlikku veebimängu järgi valitud paletti: süvameri, rannavesi, rannaliiv, mets, rohumaa, kivine mägi ja niiske jõeserv. Kohalik detailpind ei ole enam igal ruudul täiesti ühetooniline. Värvivahetus ei muuda jõe pikkust, kõrgusi, majandusreegleid, ehitusruute ega salvestusi. Uus automaattest `web_biomes_v50.gd` kontrollib visuaali, determinismi ja mobiili detailvaadet. See on esimene osa ulatuslikumast graafikaportimisest; algsed Web GLB mudelid lisatakse eraldi.
+
+
+### AutoPort 0.50 – algse veebigraafika kontroll
+
+Lähtekoodi versioonis 0.50 on kümme algse veebimängu GLB-faili (puud, kivimid, metsad, küla, varemed, elumaja, turg, tuulik) Godoti 3D maailmakaardi ja detailvaatega seotud. Nende päris import ja renderdamine on nüüd kontrollitud täiendava automaattestiga `web_art_v50.gd`, mis peab nägema algseid GLB ressursse, asulaid, metsa instantsikogumeid ja detailvaate hoonemudeleid. Maastiku, AI ja majandusloogikat ei muudeta. Androidi ja Windowsi versiooninumbri alus on 0.50; binaarfailide ehitamine jääb ainult käsitsi käivitatavaks.
