@@ -166,6 +166,9 @@ func _ready() -> void:
     column.add_child(controller)
     var viewport:=SubViewport.new()
     view_port=viewport
+    # Prevent the world-atlas meshes, light and environment from showing in
+    # this detail view: sibling SubViewports otherwise inherit one World3D.
+    viewport.own_world_3d=true
     quality_state["level"]=1 if OS.has_feature("mobile") else 2
     viewport.size=Perf31.viewport_size(int(quality_state["level"]))
     viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
