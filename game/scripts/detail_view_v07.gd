@@ -839,6 +839,11 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
                 _cylinder(parent,place+Vector3(-3.0+i*2.0,1.4,7),0.6,5.0,Color("#b18a55"),"SawLogs")
         "market":
             WebArt50.place(parent,"market",place,3.5,"WebMarketStalls")
+            # Stable locator for Bronze construction UI, not a duplicate box.
+            var stall:=Marker3D.new()
+            stall.name="MarketStall"
+            stall.position=place+Vector3(0,1.0,0)
+            parent.add_child(stall)
         "mill":
             WebArt50.place(parent,"windmill",place,3.4,"WebWindmill")
         "warehouse":
