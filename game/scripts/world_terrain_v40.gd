@@ -42,6 +42,9 @@ func _ready() -> void:
     custom_minimum_size=Vector2(200,150)
     viewport=SubViewport.new()
     viewport.name="World3DViewport"
+    # Atlas and detail are separate SubViewports. Without an independent World3D,
+    # the atlas relief stays rendered behind (and through) detail terrain.
+    viewport.own_world_3d=true
     viewport.size=Vector2i(900,550)
     viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
     viewport.handle_input_locally=true
