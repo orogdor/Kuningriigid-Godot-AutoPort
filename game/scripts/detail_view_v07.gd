@@ -802,6 +802,12 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
             _box(parent,place+Vector3(0,3,6.7),Vector3(3.1,6,0.5),Color("#473629"),"HallDoor")
         "house":
             WebArt50.place(parent,"timber_house",place,3.15,"WebTimberHouse")
+            # Keep the old door locator used by placement/rotation UI tests.
+            # The real door is already part of WebTimberHouse: no duplicate mesh.
+            var door:=Marker3D.new()
+            door.name="HouseDoor"
+            door.position=place+Vector3(0,1.9,4.1)
+            parent.add_child(door)
         "lumber":
             for i in range(4):
                 _cylinder(parent,place+Vector3(-4+i*2.6,0.6,0),0.8,9,Color("#816046"),"FelledLog")
