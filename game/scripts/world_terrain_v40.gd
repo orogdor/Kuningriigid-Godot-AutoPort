@@ -8,6 +8,7 @@ const World=preload("res://scripts/world_gen_v06.gd")
 const Trade3D=preload("res://scripts/world_trade_3d_v49.gd")
 const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const WebArt50=preload("res://scripts/web_graphics_v50.gd")
+const WebWater51=preload("res://scripts/web_water_v51.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -15,6 +16,7 @@ var viewport: SubViewport
 var scene_root: Node3D
 var terrain_node: MeshInstance3D
 var web_props_root: Node3D
+var river_root: Node3D
 var trade_road_root: Node3D
 var trade_caravans_root: Node3D
 var trade_route_key: String=""
@@ -72,6 +74,9 @@ func _ready() -> void:
     web_props_root=Node3D.new()
     web_props_root.name="OriginalWebAtlasObjects"
     scene_root.add_child(web_props_root)
+    river_root=Node3D.new()
+    river_root.name="OriginalWebRiverLayers51"
+    scene_root.add_child(river_root)
     trade_road_root=Node3D.new()
     trade_road_root.name="TradeRoute3D"
     scene_root.add_child(trade_road_root)
@@ -182,6 +187,9 @@ func set_world(data: Dictionary) -> void:
     if web_props_root!=null:
         for old in web_props_root.get_children():old.free()
         WebArt50.atlas_decor(web_props_root,world)
+    if river_root!=null:
+        for old in river_root.get_children():old.free()
+        river_root.add_child(WebWater51.atlas(world))
     camera_target=Vector2(World.COLS*0.5,World.ROWS*0.5)
     zoom=235.0
     _update_camera()

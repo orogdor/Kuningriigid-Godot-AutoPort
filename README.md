@@ -528,3 +528,11 @@ Godoti 3D maailmakaart, detailkaardi maapind, kõrvalruudud ja laiendatud linnao
 ### AutoPort 0.50 – algse veebigraafika kontroll
 
 Lähtekoodi versioonis 0.50 on kümme algse veebimängu GLB-faili (puud, kivimid, metsad, küla, varemed, elumaja, turg, tuulik) Godoti 3D maailmakaardi ja detailvaatega seotud. Nende päris import ja renderdamine on nüüd kontrollitud täiendava automaattestiga `web_art_v50.gd`, mis peab nägema algseid GLB ressursse, asulaid, metsa instantsikogumeid ja detailvaate hoonemudeleid. Maastiku, AI ja majandusloogikat ei muudeta. Androidi ja Windowsi versiooninumbri alus on 0.50; binaarfailide ehitamine jääb ainult käsitsi käivitatavaks.
+
+
+### AutoPort 0.51 – ühendatud veebilaadne 3D jõe- ja kaldavõrk
+
+- Godoti 3D maailmakaart joonistab iga mängumaailma tegeliku `river_to` äravooluserva põhjal kaks ühendatud GPU-sõbralikku meshkihti: poolläbipaistva vee ja loodusliku jõekalda. Laius arvestab salvestatud `river_flow` väärtust, aga ei muuda jõgede, kaevanduste, teede ega linnade reegleid. Jõeveed ulatuvad merre, mitte ei lõpe juhusliku ruuduvärvina.
+- 3D detailkaartidel ja 3×3 naaberkaartide eelvaates jookseb samast `river_to` andmestikust jõesäng üle ruudupiiri. Mõlemal pool piiri kasutatakse sama laiust ja kõrgust; olemasolevad linna ehitatavad pinnad, füüsilised jõed ja sillad jäävad puutumata.
+- Uus `game/scripts/web_water_v51.gd` teeb mõlemale kaardile eraldi veepinna ja kaldad. `web_water_v51.gd` test kontrollib päris äravoolu hulka, mesh'i suurust, sujuvaid kõrgusi, kõrvalkaartide jõe jätku, mobiili vaate püsivust ning majanduse puutumatust.
+- Väljalase põhineb versioonil `0.51`. Nagu varem, Androidi ja Windowsi binaarfailid ehitatakse ainult käsitsi käivitatavas GitHub Actionsi töövoos, mitte igal koodimuudatusel.

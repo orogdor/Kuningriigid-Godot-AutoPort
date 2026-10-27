@@ -39,6 +39,7 @@ const Controller = preload("res://scripts/detail_camera_v07.gd")
 const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
+const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
@@ -411,6 +412,10 @@ func _surface(cell: Dictionary) -> void:
     ground.mesh=tool.commit()
     ground.material_override=material
     scene_root.add_child(ground)
+    # Water follows the same saved drainage as the world atlas and continues
+    # through neighbor tiles without changing buildable river/bridge physics.
+    if not can_build:
+        scene_root.add_child(WebWater51.detail(world,selected,width,depth))
     if sea or _is_coastal(cell):
         _box(scene_root,Vector3(0,-1.2,0),Vector3(width,0.25,depth),
             Color("#3b86a8"),"SeaLevel")
@@ -650,6 +655,7 @@ func _render_seam_previews() -> void:
             else:
                 part.add_child(SeamTerrain42.surface(world,tile))
                 SeamTerrain42.decorate(part,world,tile)
+                part.add_child(WebWater51.detail(world,tile,width,depth))
             # Runtime representation will switch between actual building
             # geometry and GPU-instanced silhouettes as camera approaches.
             part.set_meta("world_tile",tile)
