@@ -1,5 +1,5 @@
 KUNINGRIIGID GODOT — EXPLICIT RELEASE REQUEST
-Target: 0.51 Web graphics upgrade
-Base source commit: bdd83fc0c73deba7fcf126b1f4470c8168102b6c
-Reason: manual test APK and EXE for Web 3D models, shared terrain palette, continuous rivers and shorelines.
-Triggered deliberately. Routine source pushes still do not build binary releases.
+Target: 0.51 detail viewport isolation hotfix
+Base source commit: 9d189241b2f44fd7791b467f5aad6e199e54117a
+Reason: Fix reported screenshot where continent/world-map mesh bleeds into the capital detail map. Atlas and detail SubViewports now have independent World3D instances, with a regression test.
+Triggered deliberately to provide a new test APK and EXE. Routine source pushes still do not build binary releases.
