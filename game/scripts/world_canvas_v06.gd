@@ -2,6 +2,7 @@ extends Control
 ## Fast world map raster: persistent 220x165 atlas + rivers/cities as overlays.
 signal cell_selected(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
+const Scout = preload("res://scripts/world_scout_v52.gd")
 var world: Dictionary = {}
 var atlas: ImageTexture
 var zoom: float = 3.0
@@ -17,6 +18,7 @@ var trade_caravans: Array=[]
 var city_district_tiles: Array=[]
 var city_district_links: Array=[]
 var city_agents: Array=[]
+var scout_state: Dictionary={}
 var capital_district_id: String=""
 # Track physical fingers independently; never select a tile after a pinch.
 var touch_points: Dictionary={}
@@ -71,6 +73,10 @@ func set_city_districts(tiles: Array, links: Array) -> void:
 func set_city_agents(agents: Array, capital: String) -> void:
     city_agents=agents.duplicate(true)
     capital_district_id=capital
+    queue_redraw()
+
+func set_scout(data: Dictionary) -> void:
+    scout_state=data.duplicate(true)
     queue_redraw()
 
 func fit_to_view() -> void:
@@ -186,6 +192,18 @@ func _draw() -> void:
         var center: Vector2=point(float(site["c"])+0.5,float(site["r"])+0.5)
         draw_circle(center,maxf(5.0,zoom*1.2),colors[i%colors.size()])
         draw_arc(center,maxf(7.0,zoom*1.5),0.0,TAU,20,Color("#182533"),2.0,true)
+    # Strategic scout path and interpolated position are derived from the
+    # same saved state used by the 3D map. Never invent separate 2D motion.
+    if not scout_state.is_empty() and int(scout_state.get("seed",-1))==int(world.get("seed",-2)):
+        var pose: Dictionary=Scout.sample(scout_state)
+        var position: Vector2=point(float(pose["c"])+0.5,float(pose["r"])+0.5)
+        var previous: Vector2=position
+        for next in scout_state.get("path",[]):
+            var destination: Vector2=point(float(next["c"])+0.5,float(next["r"])+0.5)
+            draw_line(previous,destination,Color("#ffe5a5"),maxf(1.6,zoom*0.16),true)
+            previous=destination
+        draw_circle(position,maxf(4.5,zoom*0.54),Color("#fff1b5"))
+        draw_arc(position,maxf(5.8,zoom*0.69),0.0,TAU,18,Color("#42301f"),1.5,true)
     if chosen.x>=0:
         draw_rect(Rect2(point(chosen.x,chosen.y),Vector2.ONE*zoom),Color("#ffe989"),false,maxf(2.0,zoom*0.1))
 
