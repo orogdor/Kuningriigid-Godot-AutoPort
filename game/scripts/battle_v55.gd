@@ -191,13 +191,13 @@ static func _finish(state: Dictionary,world: Dictionary,b: Dictionary) -> void:
         if not b["source_ids"].has(int(army.get("id",-1))):
             survivors.append(army)
             continue
-        var match: Dictionary={}
+        var matching_fighter: Dictionary={}
         for fighter in b["fighters"]:
             if int(fighter.get("source_id",-1))==int(army["id"]):
-                match=fighter
+                matching_fighter=fighter
                 break
-        if match.is_empty():continue
-        var remaining: float=clampf(float(match["hp"]),0.0,float(army.get("hp",0)))
+        if matching_fighter.is_empty():continue
+        var remaining: float=clampf(float(matching_fighter["hp"]),0.0,float(army.get("hp",0)))
         if remaining<=0.0:continue
         army["hp"]=remaining
         army["path"]=[]
