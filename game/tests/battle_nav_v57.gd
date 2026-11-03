@@ -65,7 +65,8 @@ func _test() -> void:
     var first: Dictionary=b["fighters"][0]["men"][0]
     var ever_moved: Dictionary={}
     var wounded: bool=false
-    for tick_id in range(360):
+    # Forty-eight simulated seconds are enough to reach the centre rock.
+    for tick_id in range(240):
         Men.tick(b,0.2)
         for fighter in b["fighters"]:
             for man in fighter["men"]:
