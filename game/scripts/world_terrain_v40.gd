@@ -10,6 +10,7 @@ const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const WebArt50=preload("res://scripts/web_graphics_v50.gd")
 const WebWater51=preload("res://scripts/web_water_v51.gd")
 const Scout52=preload("res://scripts/world_scout_v52.gd")
+const WebUnits53=preload("res://scripts/web_units_v53.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -126,6 +127,15 @@ func _ready() -> void:
     spear.position=Vector3(0.42,1.15,0.1)
     spear.material_override=wood_mat
     scout_actor.add_child(spear)
+    # Use the original Three.js GLB, including its authored materials, when
+    # the exact source models have been imported by GitHub Actions.
+    var original_scout: Node3D=WebUnits53.instance("scout",2.7)
+    if original_scout!=null:
+        original_scout.name="OriginalWebScoutV53"
+        scout_actor.add_child(original_scout)
+        body.visible=false
+        head.visible=false
+        spear.visible=false
     scout_actor.visible=false
     marker=MeshInstance3D.new()
     marker.name="SelectedWorldTile"
