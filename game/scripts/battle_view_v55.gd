@@ -1,0 +1,181 @@
+extends Control
+## First tactical viewport in Godot. 5x5 visible detail tiles (3x3 combat
+## plus retreat ring); original Stone Age GLBs reused as miniature markers.
+## Inputs are explicit, battle_v55.gd owns the entire simulation and saving.
+signal return_requested
+signal battle_command_requested(id: int,order: String)
+signal battle_tick_requested(seconds: float)
+
+const Units=preload("res://scripts/web_units_v53.gd")
+const Battlefield=preload("res://scripts/battle_v55.gd")
+var viewport: SubViewport
+var battle_camera: Camera3D
+var scene_root: Node3D
+var actors_root: Node3D
+var status_label: Label
+var order_picker: OptionButton
+var id_list: Array[int]=[]
+var current_battle: Dictionary={}
+var cam_size: float=700.0
+
+func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
+    var node:=MeshInstance3D.new()
+    node.name=name
+    var mesh:=BoxMesh.new()
+    mesh.size=size
+    node.mesh=mesh
+    node.position=pos
+    var mat:=StandardMaterial3D.new()
+    mat.albedo_color=color
+    mat.roughness=1.0
+    node.material_override=mat
+    parent.add_child(node)
+
+func _button(title: String,callback: Callable) -> Button:
+    var button:=Button.new()
+    button.text=title
+    button.custom_minimum_size=Vector2(95,43)
+    button.pressed.connect(callback)
+    return button
+
+func _issue(cmd: String) -> void:
+    var index: int=order_picker.selected
+    if index>=0 and index<id_list.size():
+        battle_command_requested.emit(id_list[index],cmd)
+
+func _ready() -> void:
+    var column:=VBoxContainer.new()
+    column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    add_child(column)
+    var bar:=HFlowContainer.new()
+    column.add_child(bar)
+    bar.add_child(_button("Tagasi linna",func():return_requested.emit()))
+    bar.add_child(_button("+1 s",func():battle_tick_requested.emit(1.0)))
+    bar.add_child(_button("+10 s",func():battle_tick_requested.emit(10.0)))
+    bar.add_child(_button("+30 s",func():battle_tick_requested.emit(30.0)))
+    bar.add_child(_button("Suumi +",func():_zoom(0.75)))
+    bar.add_child(_button("Suumi −",func():_zoom(1.33)))
+    var tactical:=HFlowContainer.new()
+    column.add_child(tactical)
+    order_picker=OptionButton.new()
+    order_picker.custom_minimum_size=Vector2(160,44)
+    tactical.add_child(order_picker)
+    for option in [
+        ["Ründa","attack"],["Hoia positsiooni","hold"],
+        ["Odade vastuvõtt","spear_wall"],["Hajurivi","loose"],
+        ["Lase ja eemaldu","skirmish"],["Tavarivi","line"],
+        ["Tagane üle piiri","retreat"]
+    ]:
+        tactical.add_child(_button(option[0],_issue.bind(option[1])))
+    status_label=Label.new()
+    status_label.name="BattleStatusV55"
+    status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    status_label.add_theme_font_size_override("font_size",13)
+    column.add_child(status_label)
+    var container:=SubViewportContainer.new()
+    container.stretch=true
+    container.size_flags_vertical=Control.SIZE_EXPAND_FILL
+    column.add_child(container)
+    viewport=SubViewport.new()
+    viewport.name="TacticalViewV55"
+    viewport.own_world_3d=true
+    viewport.size=Vector2i(800,600)
+    viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+    container.add_child(viewport)
+    scene_root=Node3D.new()
+    scene_root.name="BattlefieldV55"
+    viewport.add_child(scene_root)
+    var environment:=WorldEnvironment.new()
+    var env:=Environment.new()
+    env.background_mode=Environment.BG_COLOR
+    env.background_color=Color("#8da4ae")
+    env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
+    env.ambient_light_color=Color("#c6c7b6")
+    env.ambient_light_energy=1.0
+    environment.environment=env
+    scene_root.add_child(environment)
+    var sun:=DirectionalLight3D.new()
+    sun.rotation_degrees=Vector3(-48,-40,0)
+    sun.light_energy=1.3
+    scene_root.add_child(sun)
+    battle_camera=Camera3D.new()
+    battle_camera.projection=Camera3D.PROJECTION_ORTHOGONAL
+    battle_camera.size=cam_size
+    battle_camera.position=Vector3(0,670,520)
+    battle_camera.look_at(Vector3.ZERO,Vector3.UP)
+    battle_camera.current=true
+    scene_root.add_child(battle_camera)
+    # x=-2..2, z=-2..2: the outer 16 tiles are the retreat ring.
+    for r in range(-2,3):
+        for c in range(-2,3):
+            var retreat: bool=absi(c)==2 or absi(r)==2
+            var color:=Color("#a48967") if retreat else Color("#6a8561")
+            _box(scene_root,"Tile_%d_%d" % [c,r],
+                Vector3(224.5,1.0,194.5),Vector3(c*225.0,-1.0,r*195.0),color)
+    var red:=Color("#bd3734")
+    for x in [-Battlefield.HALF_X,Battlefield.HALF_X]:
+        _box(scene_root,"RetreatLineX_"+str(x),
+            Vector3(1.8,0.5,585.0),Vector3(x,0,0),red)
+    for z in [-Battlefield.HALF_Z,Battlefield.HALF_Z]:
+        _box(scene_root,"RetreatLineZ_"+str(z),
+            Vector3(675.0,0.5,1.8),Vector3(0,0,z),red)
+    actors_root=Node3D.new()
+    actors_root.name="TacticalActorsV55"
+    scene_root.add_child(actors_root)
+
+func _zoom(factor: float) -> void:
+    cam_size=clampf(cam_size*factor,120.0,1050.0)
+    if battle_camera!=null:battle_camera.size=cam_size
+
+func set_battle(b: Dictionary) -> void:
+    current_battle=b.duplicate(true)
+    if status_label==null:return
+    var existing_id: int=-1
+    if order_picker.selected>=0 and order_picker.selected<id_list.size():
+        existing_id=id_list[order_picker.selected]
+    id_list.clear()
+    order_picker.clear()
+    var selected_index: int=0
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("team",-1))!=0:continue
+        var id: int=int(fighter.get("id",-1))
+        if id<0:continue
+        id_list.append(id)
+        order_picker.add_item("#%d %s • %.0f HP" % [
+            id,String(fighter["kind"]),float(fighter["hp"])])
+        if id==existing_id:selected_index=id_list.size()-1
+    if not id_list.is_empty():order_picker.select(selected_index)
+    var lines: Array[String]=["Kiviaja proovilahing • kaotused salvestuvad; vastane on testüksus, mitte kampaania-AI."]
+    lines.append("Lahinguaeg %.1f s • tulemus: %s" % [
+        float(current_battle.get("elapsed",0)),
+        "käimas" if current_battle.get("result","")=="" else String(current_battle["result"])])
+    for fighter in current_battle.get("fighters",[]):
+        lines.append("%s %s %.0f/%.0f HP • %s" % [
+            "Sinu" if int(fighter["team"])==0 else "Vastane",
+            String(fighter["kind"]),float(fighter["hp"]),float(fighter["max_hp"]),
+            String(fighter.get("mode",""))])
+    status_label.text=" | ".join(lines)
+    for node in actors_root.get_children():node.free()
+    for fighter in current_battle.get("fighters",[]):
+        if float(fighter.get("hp",0))<=0 or fighter.get("mode","")=="retreated":continue
+        var kind: String=String(fighter.get("kind",""))
+        var model: Node3D=Units.instance(kind,13.0)
+        if model==null:continue
+        var holder:=Node3D.new()
+        holder.name="TacticalSquad_"+str(int(fighter["id"]))
+        holder.set_meta("source_id",int(fighter["source_id"]))
+        holder.position=Vector3(float(fighter["x"]),0.0,float(fighter["z"]))
+        holder.rotation.y=PI*0.5 if int(fighter["team"])==0 else -PI*0.5
+        actors_root.add_child(holder)
+        holder.add_child(model)
+        var foot:=CylinderMesh.new()
+        foot.top_radius=5.0
+        foot.bottom_radius=5.0
+        foot.height=0.25
+        var marker:=MeshInstance3D.new()
+        marker.mesh=foot
+        marker.position.y=0.2
+        var mat:=StandardMaterial3D.new()
+        mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
+        marker.material_override=mat
+        holder.add_child(marker)
