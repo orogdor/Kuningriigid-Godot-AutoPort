@@ -18,6 +18,7 @@ const Unlock = preload("res://scripts/building_unlocks_v36.gd")
 const CapitalAI = preload("res://scripts/capital_auto_v38.gd")
 const ResearchAI = preload("res://scripts/research_auto_v39.gd")
 const SecondCity47 = preload("res://scripts/second_city_detail_v47.gd")
+const WorldScout52 = preload("res://scripts/world_scout_v52.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -78,6 +79,8 @@ func _ready() -> void:
     world_view.open_city_requested.connect(_show_city)
     world_view.open_detail_requested.connect(_show_detail)
     world_view.expand_requested.connect(_expand_district)
+    world_view.scout_destination_requested.connect(_scout_order)
+    world_view.world_generated.connect(_sync_trade_map)
     world_view.set_city_districts(city)
     detail_view=DetailView.new()
     add_child(detail_view)
@@ -123,6 +126,7 @@ func _sync_trade_map() -> void:
     if world_view==null or world_view.world.is_empty():return
     world_view.set_city_districts(city)
     Transit.configure(city,world_view.world)
+    world_view.set_scout(WorldScout52.ensure(city,world_view.world))
     world_view.map_canvas.set_city_agents(city.get("transport_v26",{}).get("agents",[]),
         Transit.home_key(city))
     if not Trade.has_outpost(city):
@@ -131,6 +135,14 @@ func _sync_trade_map() -> void:
     _satellite_tile()
     var trade: Dictionary=city["trade_v15"]
     world_view.set_trade_route(trade.get("route_v17",{}),trade.get("caravans",[]))
+
+func _scout_order(c: int,r: int) -> void:
+    if world_view==null or world_view.world.is_empty():return
+    var message: String=WorldScout52.order(city,world_view.world,Vector2i(c,r))
+    event_message=message if message!="" else "Avastajale anti uus sihtkoht: %d × %d." % [c,r]
+    _sync_trade_map()
+    _save()
+    _refresh()
 
 func _open_satellite() -> void:
     if not Trade.has_outpost(city):
@@ -248,7 +260,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.51",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.52",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -455,6 +467,10 @@ func _advance(n: int) -> void:
         discoveries.append_array(Research.tick(city))
     var after: int = int(city["realms"][0]["pop"])
     event_message="%d käiku möödus. Elanikkond: %d → %d." % [n,before,after]
+    # One economy turn is one game minute; original Three.js V258 movement
+    # measures distance in 225x195 detail units and speed in units/second.
+    if world_view!=null and not world_view.world.is_empty():
+        WorldScout52.tick(city,world_view.world,float(n)*60.0)
     for id in discoveries:
         event_message+=" Avastati: "+Research.name_of(id)+"."
     if not built.is_empty():
