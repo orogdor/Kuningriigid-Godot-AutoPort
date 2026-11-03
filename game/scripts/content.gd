@@ -23,6 +23,7 @@ const Military54 = preload("res://scripts/military_v54.gd")
 const Battle55 = preload("res://scripts/battle_v55.gd")
 const BattleView55 = preload("res://scripts/battle_view_v55.gd")
 const Raider56 = preload("res://scripts/raider_v56.gd")
+const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -393,7 +394,9 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.56",26))
+    var version_heading: Label=_heading("KUNINGRIIGID   •   "+BuildInfo58.content_caption(),26)
+    version_heading.name="ContentVersionV58"
+    body.add_child(version_heading)
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -440,7 +443,7 @@ func _setup_ui() -> void:
     research_ai_button=_button("Teaduse AI: väljas",_toggle_research_ai)
     research_row.add_child(research_ai_button)
     body.add_child(HSeparator.new())
-    body.add_child(_heading("Kiviaja sõjavägi – Godot 0.56",20))
+    body.add_child(_heading("Kiviaja sõjavägi",20))
     military_status=_heading("",15)
     military_status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(military_status)
