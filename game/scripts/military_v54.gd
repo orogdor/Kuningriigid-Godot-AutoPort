@@ -135,21 +135,77 @@ static func army_by_id(state: Dictionary,world: Dictionary,id: int) -> Dictionar
         if int(army.get("id",-1))==id:return army
     return {}
 
+static func _in_battle(m: Dictionary,id: int) -> bool:
+    var b: Dictionary=m.get("skirmish_v55",{})
+    return not b.is_empty() and String(b.get("result",""))=="" and \
+        b.get("source_ids",[]).has(id)
+
+static func rally(state: Dictionary,world: Dictionary,id: int) -> String:
+    # Three.js rallyArmies: order friendly detachments to an id, preserving
+    # their independent units and HP. Group only once they physically arrive.
+    var m: Dictionary=ensure(state,world)
+    var target: Dictionary=army_by_id(state,world,id)
+    if target.is_empty():return "Väesalka ei leitud."
+    if _in_battle(m,id):return "Lõpeta enne lahing."
+    if not target.get("path",[]).is_empty():return "Kogunemispunkt peab olema paigal."
+    target["group_id"]=id
+    var destination:=Vector2i(int(target["c"]),int(target["r"]))
+    var ordered: int=0
+    for army in m["armies"]:
+        if int(army["id"])==id or float(army.get("hp",0))<=0:continue
+        var army_id: int=int(army["id"])
+        if _in_battle(m,army_id):continue
+        var start:=Vector2i(int(army["c"]),int(army["r"]))
+        var path: Array=Routes.build_path(world,start,destination)
+        if start!=destination and path.size()<2:continue
+        army["rally_target"]=id
+        if start==destination:
+            army["group_id"]=id
+            army["path"]=[]
+            army["travelClock"]=0.0
+            army["travelDuration"]=0.0
+        else:
+            army["path"]=path.slice(1)
+            army["travelClock"]=0.0
+            army["travelDuration"]=Movement.segment_seconds(
+                army,army["path"][0],float(army["speed"]))
+        ordered+=1
+    return "" if ordered>0 else "Ühtegi teist väesalka ei saanud koondada."
+
 static func order(state: Dictionary,world: Dictionary,id: int,at: Vector2i) -> String:
     var army: Dictionary=army_by_id(state,world,id)
     if army.is_empty():return "Sellist sõjaväeüksust ei leitud."
+    if _in_battle(ensure(state,world),id):return "Seda väesalka juhitakse lahinguväljal."
     if not Routes.passable(world,at.x,at.y):return "Armee ei saa liikuda merre või mägedesse."
     var origin:=Vector2i(int(army["c"]),int(army["r"]))
+    # One order for a physically gathered formation moves all linked units.
+    # Each paid squad retains its own ID and HP; slowest member sets pace.
+    var m: Dictionary=ensure(state,world)
+    var group_id: int=int(army.get("group_id",army["id"]))
+    var members: Array=[]
+    for candidate in m["armies"]:
+        var same_group: bool=int(candidate.get("group_id",candidate.get("id",-1)))==group_id
+        var here: bool=int(candidate["c"])==origin.x and int(candidate["r"])==origin.y
+        if same_group and here and not _in_battle(m,int(candidate["id"])):
+            members.append(candidate)
+    if members.is_empty():members.append(army)
     if origin==at:
-        army["path"]=[]
-        army["travelClock"]=0.0
-        army["travelDuration"]=0.0
+        for member in members:
+            member["path"]=[]
+            member["travelClock"]=0.0
+            member["travelDuration"]=0.0
         return ""
     var route: Array=Routes.build_path(world,origin,at)
     if route.size()<2:return "Maismaateed sihtkohta ei leitud."
-    army["path"]=route.slice(1)
-    army["travelClock"]=0.0
-    army["travelDuration"]=Movement.segment_seconds(army,army["path"][0],float(army["speed"]))
+    var slowest: float=INF
+    for member in members:
+        slowest=minf(slowest,float(member.get("speed",2.7)))
+    for member in members:
+        member["path"]=route.slice(1)
+        member["travelClock"]=0.0
+        member["march_speed"]=slowest
+        member["travelDuration"]=Movement.segment_seconds(
+            member,member["path"][0],slowest)
     return ""
 
 static func _march(army: Dictionary,world: Dictionary,seconds: float) -> void:
@@ -159,7 +215,8 @@ static func _march(army: Dictionary,world: Dictionary,seconds: float) -> void:
         if not Routes.passable(world,int(next["c"]),int(next["r"])):
             army["path"]=[]
             break
-        var duration: float=Movement.segment_seconds(army,next,float(army["speed"]))
+        var duration: float=Movement.segment_seconds(
+            army,next,float(army.get("march_speed",army["speed"])))
         if duration<=0.0 or not is_finite(duration):break
         Movement.rescale_travel(army,duration)
         var pending: float=maxf(0.0,duration-float(army.get("travelClock",0)))
@@ -201,7 +258,15 @@ static func tick(state: Dictionary,world: Dictionary,seconds: float) -> void:
                 "morale":100.0,"travelClock":0.0,"travelDuration":0.0})
             m["queue"].pop_front()
     for army in m["armies"]:
+        var id: int=int(army.get("id",-1))
+        if _in_battle(m,id):continue
         _march(army,world,seconds)
+        if army.has("rally_target") and army.get("path",[]).is_empty():
+            var target: Dictionary=army_by_id(state,world,int(army["rally_target"]))
+            if not target.is_empty() and int(army["c"])==int(target["c"]) and \
+                    int(army["r"])==int(target["r"]):
+                army["group_id"]=int(target["id"])
+            army.erase("rally_target")
 
 static func sample(army: Dictionary) -> Dictionary:
     return Movement.sample(army)

@@ -20,6 +20,8 @@ const ResearchAI = preload("res://scripts/research_auto_v39.gd")
 const SecondCity47 = preload("res://scripts/second_city_detail_v47.gd")
 const WorldScout52 = preload("res://scripts/world_scout_v52.gd")
 const Military54 = preload("res://scripts/military_v54.gd")
+const Battle55 = preload("res://scripts/battle_v55.gd")
+const BattleView55 = preload("res://scripts/battle_view_v55.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -34,6 +36,7 @@ var city: Dictionary = {}
 var city_scroll: ScrollContainer
 var world_view: Control
 var detail_view: Control
+var battle_view: Control
 var recipes: Dictionary = {}
 var stat_text: Label
 var population_bar: ProgressBar
@@ -84,6 +87,8 @@ func _ready() -> void:
     world_view.expand_requested.connect(_expand_district)
     world_view.scout_destination_requested.connect(_scout_order)
     world_view.army_destination_requested.connect(_army_order)
+    world_view.battle_requested.connect(_start_skirmish)
+    world_view.army_rally_requested.connect(_army_rally)
     world_view.world_generated.connect(_sync_trade_map)
     world_view.set_city_districts(city)
     detail_view=DetailView.new()
@@ -102,7 +107,17 @@ func _ready() -> void:
     detail_view.research_ai_requested.connect(_toggle_research_ai)
     detail_view.capital_ai_requested.connect(_toggle_capital_ai)
     detail_view.hide()
+    battle_view=BattleView55.new()
+    battle_view.name="BattleViewV55"
+    add_child(battle_view)
+    battle_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    battle_view.return_requested.connect(_show_city)
+    battle_view.battle_command_requested.connect(_battle_command)
+    battle_view.battle_tick_requested.connect(_battle_tick)
+    battle_view.hide()
     city_scroll.hide()
+    if Battle55.active(city,world_view.world):
+        event_message="Salvestatud lahing on pooleli; ava see sõjaväe menüüst."
 
 func _detail_state() -> Dictionary:
     if detail_town=="outpost" and Trade.has_outpost(city):
@@ -181,6 +196,70 @@ func _recruit_military(kind: String) -> void:
     _save()
     _refresh()
 
+func _army_rally(id: int) -> void:
+    if world_view==null or world_view.world.is_empty():return
+    var error: String=Military54.rally(city,world_view.world,id)
+    event_message=error if error!="" else "Väesalgad kogunevad üksuse #%d juurde." % id
+    _sync_trade_map()
+    _save()
+    _refresh()
+
+func _start_skirmish(selected_id: int=-1) -> void:
+    if world_view==null or world_view.world.is_empty():return
+    if Battle55.active(city,world_view.world):
+        _open_battle_v55()
+        return
+    var military: Dictionary=Military54.ensure(city,world_view.world)
+    var chosen: Dictionary={}
+    if selected_id>=0:chosen=Military54.army_by_id(city,world_view.world,selected_id)
+    if chosen.is_empty() and not military.get("armies",[]).is_empty():
+        chosen=military["armies"][0]
+    if chosen.is_empty():
+        event_message="Värba enne lahingut vähemalt üks kiviaja sõdur."
+        _refresh()
+        return
+    var ids: Array=[]
+    for army in military["armies"]:
+        if int(army["c"])==int(chosen["c"]) and int(army["r"])==int(chosen["r"]) \
+                and float(army["hp"])>0 and army.get("path",[]).is_empty():
+            ids.append(int(army["id"]))
+            if ids.size()>=Battle55.MAX_ALLIES:break
+    var message: String=Battle55.start(city,world_view.world,ids)
+    if message!="":
+        event_message=message
+        _refresh()
+        return
+    _save()
+    _open_battle_v55()
+
+func _open_battle_v55() -> void:
+    if battle_view==null or world_view==null:return
+    var battle: Dictionary=Battle55.current(city,world_view.world)
+    if battle.is_empty():
+        event_message="Aktiivset lahingut ei leitud."
+        _refresh()
+        return
+    if timer!=null and not timer.is_stopped():
+        timer.stop()
+        auto_button.text="Auto: väljas"
+    battle_view.set_battle(battle)
+    city_scroll.hide()
+    world_view.hide()
+    detail_view.hide()
+    battle_view.show()
+
+func _battle_command(id: int,command: String) -> void:
+    var result: String=Battle55.command(city,world_view.world,id,command)
+    if result!="":event_message=result
+    battle_view.set_battle(Battle55.current(city,world_view.world))
+    _save()
+
+func _battle_tick(seconds: float) -> void:
+    Battle55.tick(city,world_view.world,seconds)
+    battle_view.set_battle(Battle55.current(city,world_view.world))
+    _sync_trade_map()
+    _save()
+
 func _open_satellite() -> void:
     if not Trade.has_outpost(city):
         event_message="Asuta kõigepealt teine linn"
@@ -195,6 +274,7 @@ func _open_satellite() -> void:
     _show_detail(int(location["c"]),int(location["r"]))
 
 func _show_city() -> void:
+    if battle_view!=null:battle_view.hide()
     detail_town="capital"
     if world_view != null:world_view.hide()
     if detail_view != null:detail_view.hide()
@@ -215,12 +295,14 @@ func _switch_detail_seamlessly(c: int,r: int,local_focus: Vector3,zoom: float) -
         detail_view.controller.restore_detail_focus(local_focus,zoom)
 
 func _show_world() -> void:
+    if battle_view!=null:battle_view.hide()
     _sync_trade_map()
     if city_scroll != null:city_scroll.hide()
     if detail_view != null:detail_view.hide()
     if world_view != null:world_view.show()
 
 func _show_detail(c: int, r: int) -> void:
+    if battle_view!=null:battle_view.hide()
     if world_view == null or detail_view == null or world_view.world.is_empty():
         return
     var capital: bool=false
@@ -301,7 +383,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.54",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.55",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -348,13 +430,15 @@ func _setup_ui() -> void:
     research_ai_button=_button("Teaduse AI: väljas",_toggle_research_ai)
     research_row.add_child(research_ai_button)
     body.add_child(HSeparator.new())
-    body.add_child(_heading("Kiviaja sõjavägi – Godot 0.54",20))
+    body.add_child(_heading("Kiviaja sõjavägi – Godot 0.55",20))
     military_status=_heading("",15)
     military_status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(military_status)
     var army_controls:=HFlowContainer.new()
     body.add_child(army_controls)
     army_controls.add_child(_button("Ehita sõdalaste laager",_build_military_camp))
+    army_controls.add_child(_button("Alusta proovilahingut",_start_skirmish))
+    army_controls.add_child(_button("Ava pooleliolev lahing",_open_battle_v55))
     military_grade=OptionButton.new()
     for label in ["Mobiliseeritud","Standard","Eliit"]:
         military_grade.add_item(label)
@@ -364,7 +448,7 @@ func _setup_ui() -> void:
         army_controls.add_child(_button("Värba "+String(Military54.TROOPS[kind]["name"]),
             _recruit_military.bind(kind)))
     var troop_hint:=Label.new()
-    troop_hint.text="Vajalik teadus: sõjapidamine. Laager: 20 puitu + 9 kivi. Värbamiseks vähemalt 6 elanikku. Vali väesalk maailmakaardil ja saada ta liikuma."
+    troop_hint.text="Vajalik teadus: sõjapidamine. Värba enne sõdurid. Proovilahingus kasutatakse 3×3 lahinguvälja; vastane on testüksus ja sinu sõdurite kaotused säilivad."
     troop_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(troop_hint)
     body.add_child(HSeparator.new())
@@ -515,6 +599,10 @@ func _reset() -> void:
     _refresh()
 
 func _advance(n: int) -> void:
+    if world_view!=null and Battle55.active(city,world_view.world):
+        event_message="Lõpeta või tagane lahingust enne majanduskäikude jätkamist."
+        _refresh()
+        return
     var before: int = int(city["realms"][0]["pop"])
     if world_view!=null and not world_view.world.is_empty():
         Transit.configure(city,world_view.world)
@@ -644,6 +732,9 @@ func _refresh() -> void:
         capital_ai_button.text="Pealinna AI: "+("sees" if CapitalAI.enabled(city) else "väljas")
     if military_status!=null and world_view!=null:
         military_status.text=Military54.summary(city,world_view.world)
+        var battle: Dictionary=Battle55.current(city,world_view.world)
+        if not battle.is_empty():
+            military_status.text+=" | Lahing: "+("käimas" if String(battle.get("result",""))=="" else String(battle["result"]))
         var m: Dictionary=Military54.ensure(city,world_view.world)
         var list: Array=[]
         for group in m.get("armies",[]):
