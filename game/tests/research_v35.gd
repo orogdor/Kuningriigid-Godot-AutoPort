@@ -66,7 +66,7 @@ func _test() -> void:
     if Research.block(state,"bronze_crafts")=="":
         fail("bronze age gate skipped")
         return
-    for id in ["antler_picks","stone_wedges","copper_tin","fire_use",
+    for id in ["antler_picks","stone_wedges","fire_use","copper_tin",
             "pottery","copper_smelting","woodworking","stone_crafts"]:
         if not _finish(state,id):
             fail("broken source tech prerequisite chain at "+id)
