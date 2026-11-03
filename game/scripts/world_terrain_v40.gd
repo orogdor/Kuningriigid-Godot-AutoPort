@@ -24,6 +24,7 @@ var trade_caravans_root: Node3D
 var trade_route_key: String=""
 var scout_actor: Node3D
 var army_root_v54: Node3D
+var hostile_actor_v56: Node3D
 var marker: MeshInstance3D
 var camera: Camera3D
 var camera_target: Vector2=Vector2(110,82.5)
@@ -141,6 +142,24 @@ func _ready() -> void:
     army_root_v54=Node3D.new()
     army_root_v54.name="StoneAgeArmiesV54"
     scene_root.add_child(army_root_v54)
+    hostile_actor_v56=Node3D.new()
+    hostile_actor_v56.name="HostileRaiderV56"
+    scene_root.add_child(hostile_actor_v56)
+    var enemy_model: Node3D=WebUnits53.instance("spearman",2.9)
+    if enemy_model!=null:hostile_actor_v56.add_child(enemy_model)
+    var hostile_marker:=MeshInstance3D.new()
+    hostile_marker.name="HostileMarker"
+    var marker_mesh:=CylinderMesh.new()
+    marker_mesh.top_radius=0.55
+    marker_mesh.bottom_radius=0.55
+    marker_mesh.height=0.12
+    hostile_marker.mesh=marker_mesh
+    hostile_marker.position.y=0.03
+    var red:=StandardMaterial3D.new()
+    red.albedo_color=Color("#d83c31")
+    hostile_marker.material_override=red
+    hostile_actor_v56.add_child(hostile_marker)
+    hostile_actor_v56.visible=false
     marker=MeshInstance3D.new()
     marker.name="SelectedWorldTile"
     var selection:=BoxMesh.new()
@@ -198,6 +217,7 @@ func set_world(data: Dictionary) -> void:
     # New seed invalidates roads and wagons from the previous world.
     trade_route_key=""
     if scout_actor!=null:scout_actor.visible=false
+    if hostile_actor_v56!=null:hostile_actor_v56.visible=false
     if army_root_v54!=null:
         for child in army_root_v54.get_children():child.free()
     if trade_road_root!=null:
@@ -324,6 +344,21 @@ func set_armies_v54(armies: Array) -> void:
             var next: Dictionary=path[0]
             unit.rotation.y=atan2(float(next["c"])-float(c),float(next["r"])-float(r))
         shown+=1
+
+func set_raider_v56(enemy: Dictionary) -> void:
+    if hostile_actor_v56==null:return
+    var valid: bool=not enemy.is_empty() and not world.is_empty() and \
+        not bool(enemy.get("defeated",false)) and \
+        int(enemy.get("seed",-1))==int(world.get("seed",-2)) and \
+        not World.cell(world,int(enemy.get("c",-1)),int(enemy.get("r",-1))).is_empty()
+    hostile_actor_v56.visible=valid
+    if not valid:return
+    hostile_actor_v56.position=scout_point_for(enemy)
+    var path: Array=enemy.get("path",[])
+    if not path.is_empty():
+        var next: Dictionary=path[0]
+        hostile_actor_v56.rotation.y=atan2(float(next["c"])-float(enemy["c"]),
+            float(next["r"])-float(enemy["r"]))
 
 func _update_camera() -> void:
     if camera==null:return
