@@ -364,7 +364,7 @@ func _setup_ui() -> void:
         army_controls.add_child(_button("Värba "+String(Military54.TROOPS[kind]["name"]),
             _recruit_military.bind(kind)))
     var troop_hint:=Label.new()
-    troop_hint.text="Laager: 20 puitu + 9 kivi. Värbamiseks vähemalt 6 elanikku. Vali väesalk maailmakaardil ja saada ta liikuma."
+    troop_hint.text="Vajalik teadus: sõjapidamine. Laager: 20 puitu + 9 kivi. Värbamiseks vähemalt 6 elanikku. Vali väesalk maailmakaardil ja saada ta liikuma."
     troop_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(troop_hint)
     body.add_child(HSeparator.new())
