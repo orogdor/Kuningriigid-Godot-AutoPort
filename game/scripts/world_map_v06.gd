@@ -5,6 +5,8 @@ signal open_detail_requested(c: int, r: int)
 signal expand_requested(c: int, r: int)
 signal scout_destination_requested(c: int, r: int)
 signal army_destination_requested(id: int,c: int,r: int)
+signal army_rally_requested(id: int)
+signal battle_requested(id: int)
 signal world_generated
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
@@ -83,6 +85,22 @@ func _ready() -> void:
         if selected_cell.x>=0 and chosen>=0 and chosen<army_ids_v54.size():
             army_destination_requested.emit(army_ids_v54[chosen],selected_cell.x,selected_cell.y))
     bar.add_child(order_army)
+    var rally_button:=Button.new()
+    rally_button.name="ArmyRallyV55"
+    rally_button.text="Koonda väesalgad"
+    rally_button.pressed.connect(func():
+        var index: int=army_selector_v54.selected
+        if index>=0 and index<army_ids_v54.size():
+            army_rally_requested.emit(army_ids_v54[index]))
+    bar.add_child(rally_button)
+    var battle_button:=Button.new()
+    battle_button.name="ArmySkirmishV55"
+    battle_button.text="Proovilahing"
+    battle_button.pressed.connect(func():
+        var index: int=army_selector_v54.selected
+        if index>=0 and index<army_ids_v54.size():
+            battle_requested.emit(army_ids_v54[index]))
+    bar.add_child(battle_button)
     map_mode_button=Button.new()
     map_mode_button.text="2D vaade"
     map_mode_button.pressed.connect(_switch_mode)
@@ -243,7 +261,7 @@ func set_armies_v54(armies: Array) -> void:
         army_selector_v54.add_item("#%d %s" % [id,String(army.get("kind",""))])
         if id==previous_id:choice=army_ids_v54.size()-1
     if not army_ids_v54.is_empty():army_selector_v54.select(choice)
-    army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, siis vajuta Saada väesalk." % army_ids_v54.size()
+    army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, seejärel saada liikuma, koonda väesalgad või ava proovilahing." % army_ids_v54.size()
 
 func set_city_districts(city: Dictionary) -> void:
     district_city=city
