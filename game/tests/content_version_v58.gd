@@ -33,6 +33,10 @@ func _run() -> void:
     if title==null or not "GODOT 0.56.987" in title.text:
         _fail("In-game header still uses a hardcoded version")
         return
+    var detail_title: Label=ui.find_child("DetailVersionV58",true,false) as Label
+    if detail_title==null or not "0.56.987" in detail_title.text:
+        _fail("3D detail title still uses Android APK's stale ProjectSettings version")
+        return
     if exists:
         var restore:=FileAccess.open(PATH,FileAccess.WRITE)
         if restore==null:
