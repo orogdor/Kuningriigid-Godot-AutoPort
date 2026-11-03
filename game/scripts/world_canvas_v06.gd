@@ -20,6 +20,7 @@ var city_district_links: Array=[]
 var city_agents: Array=[]
 var scout_state: Dictionary={}
 var army_state_v54: Array=[]
+var raider_v56: Dictionary={}
 var capital_district_id: String=""
 # Track physical fingers independently; never select a tile after a pinch.
 var touch_points: Dictionary={}
@@ -82,6 +83,10 @@ func set_scout(data: Dictionary) -> void:
 
 func set_armies_v54(armies: Array) -> void:
     army_state_v54=armies.duplicate(true)
+    queue_redraw()
+
+func set_raider_v56(enemy: Dictionary) -> void:
+    raider_v56=enemy.duplicate(true)
     queue_redraw()
 
 func fit_to_view() -> void:
@@ -217,6 +222,12 @@ func _draw() -> void:
         var centre: Vector2=point(float(current["c"])+0.5,float(current["r"])+0.5)
         draw_circle(centre,maxf(3.7,zoom*0.40),Color("#ffbb64"))
         draw_arc(centre,maxf(4.9,zoom*0.53),0.0,TAU,16,Color("#643e1b"),1.5,true)
+    if not raider_v56.is_empty() and not bool(raider_v56.get("defeated",false)) \
+            and int(raider_v56.get("seed",-1))==int(world.get("seed",-2)):
+        var enemy: Dictionary=Scout.sample(raider_v56)
+        var position: Vector2=point(float(enemy["c"])+0.5,float(enemy["r"])+0.5)
+        draw_circle(position,maxf(4.6,zoom*0.53),Color("#e6544d"))
+        draw_arc(position,maxf(6.4,zoom*0.75),0.0,TAU,16,Color("#57201f"),2.0,true)
     if chosen.x>=0:
         draw_rect(Rect2(point(chosen.x,chosen.y),Vector2.ONE*zoom),Color("#ffe989"),false,maxf(2.0,zoom*0.1))
 

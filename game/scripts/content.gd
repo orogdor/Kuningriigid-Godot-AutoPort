@@ -22,6 +22,7 @@ const WorldScout52 = preload("res://scripts/world_scout_v52.gd")
 const Military54 = preload("res://scripts/military_v54.gd")
 const Battle55 = preload("res://scripts/battle_v55.gd")
 const BattleView55 = preload("res://scripts/battle_view_v55.gd")
+const Raider56 = preload("res://scripts/raider_v56.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
@@ -149,9 +150,14 @@ func _sync_trade_map() -> void:
     world_view.set_scout(scout)
     var military: Dictionary=Military54.ensure(city,world_view.world)
     world_view.set_armies_v54(military.get("armies",[]))
+    var raider: Dictionary=Raider56.ensure(city,world_view.world)
+    world_view.set_raider_v56(raider)
     if detail_view!=null:
         detail_view.set_world_scout_v53(scout)
-        detail_view.set_world_armies_v54(military.get("armies",[]))
+        var detail_armies: Array=military.get("armies",[]).duplicate()
+        if not raider.is_empty() and not bool(raider.get("defeated",false)):
+            detail_armies.append(raider)
+        detail_view.set_world_armies_v54(detail_armies)
         detail_view.set_military_camp_v54(military.get("camp",{}))
     world_view.map_canvas.set_city_agents(city.get("transport_v26",{}).get("agents",[]),
         Transit.home_key(city))
@@ -330,7 +336,11 @@ func _show_detail(c: int, r: int) -> void:
     detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
     detail_view.set_world_scout_v53(WorldScout52.ensure(city,world_view.world))
     var military: Dictionary=Military54.ensure(city,world_view.world)
-    detail_view.set_world_armies_v54(military.get("armies",[]))
+    var detail_armies: Array=military.get("armies",[]).duplicate()
+    var raider: Dictionary=Raider56.ensure(city,world_view.world)
+    if not raider.is_empty() and not bool(raider.get("defeated",false)):
+        detail_armies.append(raider)
+    detail_view.set_world_armies_v54(detail_armies)
     detail_view.set_military_camp_v54(military.get("camp",{}))
     world_view.select_world_cell(c,r)
     if capital or satellite:_save()
@@ -383,7 +393,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.55",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.56",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")
@@ -430,7 +440,7 @@ func _setup_ui() -> void:
     research_ai_button=_button("Teaduse AI: väljas",_toggle_research_ai)
     research_row.add_child(research_ai_button)
     body.add_child(HSeparator.new())
-    body.add_child(_heading("Kiviaja sõjavägi – Godot 0.55",20))
+    body.add_child(_heading("Kiviaja sõjavägi – Godot 0.56",20))
     military_status=_heading("",15)
     military_status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(military_status)
@@ -448,7 +458,7 @@ func _setup_ui() -> void:
         army_controls.add_child(_button("Värba "+String(Military54.TROOPS[kind]["name"]),
             _recruit_military.bind(kind)))
     var troop_hint:=Label.new()
-    troop_hint.text="Vajalik teadus: sõjapidamine. Värba enne sõdurid. Proovilahingus kasutatakse 3×3 lahinguvälja; vastane on testüksus ja sinu sõdurite kaotused säilivad."
+    troop_hint.text="Vajalik teadus: sõjapidamine. Igas väesalgas on 24 eraldi sõdurit, kellel on oma tervis ja asukoht. Vaenulik väesalk marsib maailmakaardil ning kohtumine avab kampaanialahingu. Proovilahing on endiselt eraldi."
     troop_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(troop_hint)
     body.add_child(HSeparator.new())
@@ -608,6 +618,8 @@ func _advance(n: int) -> void:
         Transit.configure(city,world_view.world)
     var discoveries: Array[String]=[]
     var built: Array[String]=[]
+    var completed: int=0
+    var encounter: bool=false
     for i in range(n):
         var started: String=CapitalAI.step(city)
         if started!="":built.append(started)
@@ -615,13 +627,23 @@ func _advance(n: int) -> void:
         City.tick(city)
         if world_view!=null and not world_view.world.is_empty():
             Military54.tick(city,world_view.world,60.0)
+            Raider56.tick(city,world_view.world,60.0)
         discoveries.append_array(Research.tick(city))
+        completed+=1
+        if world_view!=null and not world_view.world.is_empty():
+            var contacts: Array=Raider56.colliding_ids(city,world_view.world)
+            if not contacts.is_empty():
+                var battle_error: String=Battle55.start_campaign(
+                    city,world_view.world,contacts)
+                if battle_error=="":
+                    encounter=true
+                    break
     var after: int = int(city["realms"][0]["pop"])
-    event_message="%d käiku möödus. Elanikkond: %d → %d." % [n,before,after]
-    # One economy turn is one game minute; original Three.js V258 movement
-    # measures distance in 225x195 detail units and speed in units/second.
+    event_message="%d käiku möödus. Elanikkond: %d → %d." % [
+        completed,before,after]
+    # Don't move the scout across turns interrupted by a campaign battle.
     if world_view!=null and not world_view.world.is_empty():
-        WorldScout52.tick(city,world_view.world,float(n)*60.0)
+        WorldScout52.tick(city,world_view.world,float(completed)*60.0)
     for id in discoveries:
         event_message+=" Avastati: "+Research.name_of(id)+"."
     if not built.is_empty():
@@ -630,9 +652,13 @@ func _advance(n: int) -> void:
             built.size(),String(recipes.get(last_kind,{}).get("name",last_kind))]
     if bool(city["realms"][0].get("housingShortage",false)):
         event_message += " Toidu või vee puudus!"
+    if encounter:event_message+=" Vaenulik väesalk ründas: lahing algas!"
     _sync_trade_map()
     _save()
     _refresh()
+    if encounter:
+        _open_battle_v55()
+        return
     if detail_view != null and detail_view.visible:
         detail_view.refresh_buildings()
 

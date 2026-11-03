@@ -64,7 +64,7 @@ func _test() -> void:
     if b.is_empty() or b["fighters"].size()!=4 or not Battle.active(ui.city,world):
         fail("real city UI could not launch three squads versus one test enemy")
         return
-    if ui.battle_view.actors_root.get_child_count()!=4 or \
+    if ui.battle_view.actors_root.get_child_count()!=96 or \
             ui.battle_view.scene_root.get_node_or_null("Tile_-2_-2")==null or \
             ui.battle_view.scene_root.get_node_or_null("Tile_2_2")==null:
         fail("battle UI missing original GLB units or retreat ring")

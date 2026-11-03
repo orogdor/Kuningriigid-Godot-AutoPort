@@ -16,7 +16,7 @@ var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
-var cam_size: float=700.0
+var cam_size: float=560.0
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
     var node:=MeshInstance3D.new()
@@ -145,37 +145,62 @@ func set_battle(b: Dictionary) -> void:
             id,String(fighter["kind"]),float(fighter["hp"])])
         if id==existing_id:selected_index=id_list.size()-1
     if not id_list.is_empty():order_picker.select(selected_index)
-    var lines: Array[String]=["Kiviaja proovilahing • kaotused salvestuvad; vastane on testüksus, mitte kampaania-AI."]
+    var label: String="Kampaanialahing • iga sõdur liigub ja võitleb eraldi." if \
+        bool(current_battle.get("campaign_v56",false)) else \
+        "Kiviaja proovilahing • 24 individuaalset sõdurit väesalgas, päris kaotused."
+    var lines: Array[String]=[label]
     lines.append("Lahinguaeg %.1f s • tulemus: %s" % [
         float(current_battle.get("elapsed",0)),
         "käimas" if current_battle.get("result","")=="" else String(current_battle["result"])])
     for fighter in current_battle.get("fighters",[]):
-        lines.append("%s %s %.0f/%.0f HP • %s" % [
+        lines.append("%s %s %.0f/%.0f HP • %s (%d sõdurit)" % [
             "Sinu" if int(fighter["team"])==0 else "Vastane",
             String(fighter["kind"]),float(fighter["hp"]),float(fighter["max_hp"]),
-            String(fighter.get("mode",""))])
+            String(fighter.get("mode","")),int(fighter.get("menAlive",0))])
     status_label.text=" | ".join(lines)
-    for node in actors_root.get_children():node.free()
+    var used: Dictionary={}
+    var total: int=0
     for fighter in current_battle.get("fighters",[]):
-        if float(fighter.get("hp",0))<=0 or fighter.get("mode","")=="retreated":continue
+        if float(fighter.get("hp",0))<=0 or fighter.get("mode","")=="retreated":
+            continue
         var kind: String=String(fighter.get("kind",""))
-        var model: Node3D=Units.instance(kind,13.0)
-        if model==null:continue
-        var holder:=Node3D.new()
-        holder.name="TacticalSquad_"+str(int(fighter["id"]))
-        holder.set_meta("source_id",int(fighter["source_id"]))
-        holder.position=Vector3(float(fighter["x"]),0.0,float(fighter["z"]))
-        holder.rotation.y=PI*0.5 if int(fighter["team"])==0 else -PI*0.5
-        actors_root.add_child(holder)
-        holder.add_child(model)
-        var foot:=CylinderMesh.new()
-        foot.top_radius=5.0
-        foot.bottom_radius=5.0
-        foot.height=0.25
-        var marker:=MeshInstance3D.new()
-        marker.mesh=foot
-        marker.position.y=0.2
-        var mat:=StandardMaterial3D.new()
-        mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
-        marker.material_override=mat
-        holder.add_child(marker)
+        var men: Array=fighter.get("men",[])
+        if men.is_empty():
+            men=[{"index":0,"x":fighter["x"],"z":fighter["z"],
+                "hp":fighter["hp"],"escaped":false,"heading":0.0}]
+        for man in men:
+            if float(man.get("hp",0))<=0 or bool(man.get("escaped",false)):
+                continue
+            if total>=192:break
+            var key: String="TacticalMan_%d_%d" % [
+                int(fighter["id"]),int(man.get("index",0))]
+            var holder: Node3D=actors_root.get_node_or_null(key) as Node3D
+            if holder==null:
+                var model: Node3D=Units.instance(kind,5.2)
+                if model==null:continue
+                holder=Node3D.new()
+                holder.name=key
+                holder.set_meta("source_id",int(fighter["source_id"]))
+                actors_root.add_child(holder)
+                holder.add_child(model)
+                var foot:=CylinderMesh.new()
+                foot.top_radius=0.39
+                foot.bottom_radius=0.39
+                foot.height=0.10
+                var marker:=MeshInstance3D.new()
+                marker.name="TeamMarker"
+                marker.mesh=foot
+                marker.position.y=0.04
+                var mat:=StandardMaterial3D.new()
+                mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
+                marker.material_override=mat
+                holder.add_child(marker)
+            holder.position=Vector3(float(man["x"]),0.0,float(man["z"]))
+            holder.rotation.y=float(man.get("heading",
+                PI*0.5 if int(fighter["team"])==0 else -PI*0.5))
+            used[key]=true
+            total+=1
+    for node in actors_root.get_children():
+        if used.has(String(node.name)):continue
+        actors_root.remove_child(node)
+        node.free()
