@@ -153,11 +153,10 @@ func set_battle(b: Dictionary) -> void:
         float(current_battle.get("elapsed",0)),
         "käimas" if current_battle.get("result","")=="" else String(current_battle["result"])])
     for fighter in current_battle.get("fighters",[]):
-        lines.append("%s %s %.0f/%.0f HP • %s" % [
+        lines.append("%s %s %.0f/%.0f HP • %s (%d sõdurit)" % [
             "Sinu" if int(fighter["team"])==0 else "Vastane",
             String(fighter["kind"]),float(fighter["hp"]),float(fighter["max_hp"]),
-            String(fighter.get("mode",""))]+
-            " (%d sõdurit)" % int(fighter.get("menAlive",0)))
+            String(fighter.get("mode","")),int(fighter.get("menAlive",0))])
     status_label.text=" | ".join(lines)
     var used: Dictionary={}
     var total: int=0
