@@ -1,11 +1,16 @@
 name: Build Android APK, Windows EXE and auto-update content
 
-# Binary releases are intentionally manual. Normal source pushes and upstream syncs
-# still run their own validation workflows, but do not rebuild APK/EXE/PCK.
-# Run this workflow from Actions > Build Android APK, Windows EXE... > Run workflow
-# when you want to publish a new downloadable version.
+# Release once per validated project major.minor (0.56, 0.57, ...), not every
+# source commit. Manual workflow_dispatch / release-request.txt still force a
+# hotfix release. Without a permanent Android signing key, publish the verified
+# PCK and Windows assets only: never claim a new debug-signed APK is an update.
 on:
   workflow_dispatch:
+  # Automatically publish once after a new validated AutoPort version series
+  # is merged (0.56 -> 0.57), NOT on every source change.
+  workflow_run:
+    workflows: ["Sync Three.js rules to Godot"]
+    types: [completed]
   # A deliberate source-controlled release request is also permitted.
   # Normal commits and upstream syncs never build APK/EXE.
   push:
@@ -17,9 +22,9 @@ permissions:
   contents: write
 
 concurrency:
-  # A completed upstream sync can enqueue a check-only workflow_run.
-  # It must not displace a real push-triggered APK/EXE build.
-  group: autoport-releases-${{ github.event_name }}
+  # Serialise content releases, including automatic and manual requests.
+  # Never allow an automatic run to supersede an explicit release request.
+  group: autoport-releases
   cancel-in-progress: false
 
 jobs:
@@ -39,23 +44,33 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" != "workflow_run" ]]; then
+            # Explicit manual launch or change to .github/release-request.txt.
             echo "build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           PARENT_EVENT="$(jq -r '.workflow_run.event' "$GITHUB_EVENT_PATH")"
           PARENT_CONCLUSION="$(jq -r '.workflow_run.conclusion' "$GITHUB_EVENT_PATH")"
-          if [[ "$PARENT_CONCLUSION" != "success" || ( "$PARENT_EVENT" != "schedule" && "$PARENT_EVENT" != "workflow_dispatch" ) ]]; then
+          PARENT_BRANCH="$(jq -r '.workflow_run.head_branch' "$GITHUB_EVENT_PATH")"
+          if [[ "$PARENT_CONCLUSION" != "success" || "$PARENT_BRANCH" != "main" ]]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "Ignoring failed or non-main validation."
+            exit 0
+          fi
+          if [[ "$PARENT_EVENT" != "push" && "$PARENT_EVENT" != "schedule" && "$PARENT_EVENT" != "workflow_dispatch" ]]; then
             echo "build=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
-          AUTOPORT_SHA="$(git rev-parse HEAD)"
-          LAST_BODY="$(gh release view --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null || true)"
-          if [[ -n "$SHA" && "$LAST_BODY" == *"Source commit: $SHA"* && "$LAST_BODY" == *"AutoPort commit: $AUTOPORT_SHA"* ]]; then
+          # Keep the policy of not rebuilding APK/EXE for every source commit.
+          # One validated release per project major.minor (plus manual hotfixes).
+          PROJECT_VERSION="$(python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number 1 --check-only)"
+          PROJECT_SERIES="${PROJECT_VERSION%.*}"
+          LAST_TAG="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' 2>/dev/null || true)"
+          if [[ "$LAST_TAG" == "v$PROJECT_SERIES."* ]]; then
             echo "build=false" >> "$GITHUB_OUTPUT"
-            echo "Source $SHA and AutoPort $AUTOPORT_SHA already released; no redundant binaries."
+            echo "AutoPort $PROJECT_SERIES already released ($LAST_TAG)."
           else
             echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "First validated AutoPort $PROJECT_SERIES; last tag $LAST_TAG."
           fi
 
   build:
@@ -127,13 +142,33 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME/.config/godot" "$HOME/.android"
           printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$ANDROID_HOME" "$JAVA_HOME" > "$HOME/.config/godot/editor_settings-4.tres"
-          keytool -genkeypair -noprompt \
-            -keystore "$RUNNER_TEMP/autoport-debug.keystore" -storepass android \
-            -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
-            -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/autoport-debug.keystore" >> "$GITHUB_ENV"
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+      # A newly generated debug key makes Android reject installs over the
+      # previous APK. Never publish such APKs as update-compatible builds.
+      # Until a persistent release key is configured, the existing Android APK
+      # keeps receiving verified Content.pck updates.
+      - name: Configure persistent Android signing key (optional)
+        id: android_signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Persistent Android signing secrets not configured. No APK will be published; use the verified Content.pck updater in existing installs."
+            exit 0
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/autoport-release.keystore"
+          chmod 600 "$RUNNER_TEMP/autoport-release.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/autoport-release.keystore" \
+            -storepass "$ANDROID_KEY_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/autoport-release.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
 
       - name: Compare 200 JavaScript city turns per scenario against native Godot
         shell: bash
@@ -222,44 +257,28 @@ jobs:
           test -s dist/Windows-files.json
           test -s dist/Kuningriigid-Content.pck
 
-      - name: Stamp Android APK version from release run number
+      - name: Stamp APK and GitHub Release with actual AutoPort version
+        id: stamp
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          preset = Path("game/export_presets.cfg")
-          source = preset.read_text(encoding="utf-8")
-          run_number = int("${{ github.run_number }}")
-          # Exactly the same version advertised by gh release create below.
-          version = f"0.51.{run_number}"
-          fields = {
-              "version/code": str(run_number),
-              "version/name": f'"{version}"',
-              "package/version_code": str(run_number),
-              "package/version_name": f'"{version}"',
-          }
-          for key, value in fields.items():
-              source, count = re.subn(r"(?m)^" + re.escape(key) + r"=.*$",
-                                      lambda _match: f"{key}={value}", source)
-              if count != 1:
-                  raise SystemExit(f"Expected one Android export field: {key}; found {count}")
-          preset.write_text(source, encoding="utf-8")
-          print(f"Android APK version: {version} (code {run_number})")
-          PY
+          VERSION="$(python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number ${{ github.run_number }})"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release version: v$VERSION (Android versionCode ${{ github.run_number }})"
 
-      - name: Build Android ARM64 APK
+      - name: Build signed Android ARM64 APK (only with persistent key)
+        if: steps.android_signing.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-debug "Android" "$PWD/dist/Kuningriigid.apk"
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-release "Android" "$PWD/dist/Kuningriigid.apk"
           test -s dist/Kuningriigid.apk
 
       - name: Validate artifacts and document hashes
         shell: bash
         run: |
-          (cd dist && sha256sum Kuningriigid.exe Kuningriigid-Engine.exe Windows-files.json Kuningriigid.apk Kuningriigid-Content.pck > SHA256SUMS.txt)
+          (cd dist && sha256sum Kuningriigid.exe Kuningriigid-Engine.exe Windows-files.json Kuningriigid-Content.pck > SHA256SUMS.txt)
+          if [[ -f dist/Kuningriigid.apk ]]; then (cd dist && sha256sum Kuningriigid.apk >> SHA256SUMS.txt); fi
           cat dist/SHA256SUMS.txt
           ls -lh dist/
 
@@ -276,12 +295,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="v0.51.${{ github.run_number }}"
+          VERSION="v${{ steps.stamp.outputs.version }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
-          gh release create "$VERSION" \
-            dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid.apk dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt \
+          RELEASE_FILES=(dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt)
+          ANDROID_NOTE="Existing Android installs update their game content via verified Content.pck; the APK itself is unchanged."
+          if [[ -f dist/Kuningriigid.apk ]]; then
+            RELEASE_FILES+=(dist/Kuningriigid.apk)
+            ANDROID_NOTE="New APK signed with configured persistent keystore. Android in-place install additionally requires the same signing certificate as the currently installed APK."
+          fi
+          cat > /tmp/autoport-release-notes.txt <<EOF
+          Source commit: $SOURCE_SHA
+          AutoPort commit: $AUTOPORT_SHA
+
+          Game version: $VERSION. Windows Kuningriigid.exe checks GitHub Releases and downloads only changed files, with SHA-256 verification and offline fallback.
+          Android: $ANDROID_NOTE
+          The initial Android app keeps its own verified PCK updater. Your saves are not uninstalled or cleared.
+          To install on a new Android device before a permanent signing key is configured, use the earlier bootstrap APK:
+          https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/tag/v0.51.738
+          This is an actively developed Godot port; the newer Stone Age army and battle features are still a partial Three.js port.
+          EOF
+          gh release create "$VERSION" "${RELEASE_FILES[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "Kuningriigid Godot AutoPort $VERSION" \
-            --notes "Source commit: $SOURCE_SHA. AutoPort commit: $AUTOPORT_SHA. Windows Kuningriigid.exe is a small launcher: it downloads GitHub-pinned files into Kuningriigid-Data/versions and a separate Godot runtime; later launches download only changed files and work offline. Android uses the original PCK updater. AutoPort 0.33 prevents LOD flicker near the 195m/335m camera thresholds with 20m hysteresis, delays visibility culling across a 35m band, retains hidden detailed meshes at medium range for seamless camera return, and releases detailed meshes at far distance. Huge camera jumps still update immediately, and all 0.32 tests, economy, trade, save compatibility remain intact. 0.5 JS parity remains unchanged. This is a prototype without army AI or battles." \
+            --notes-file /tmp/autoport-release-notes.txt \
             --latest
