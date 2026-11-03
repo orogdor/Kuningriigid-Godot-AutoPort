@@ -155,7 +155,7 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float) -> void:
         (2.0*BODY_RADIUS+(1.05 if kind=="spearman" else 0.38))
     for man in living(fighter):
         man["cool"]=maxf(0.0,float(man["cool"])-dt)
-        if float(man["cool"])>0:return # cooldown is independent per soldier
+        if float(man["cool"])>0:continue # independent per-soldier cooldown
         var victim: Dictionary=_target_man(man,opponent,reach)
         if victim.is_empty():continue
         if kind=="slinger" and int(man["ammo"])<=0:continue
