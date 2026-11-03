@@ -263,6 +263,16 @@ func set_armies_v54(armies: Array) -> void:
     if not army_ids_v54.is_empty():army_selector_v54.select(choice)
     army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, seejärel saada liikuma, koonda väesalgad või ava proovilahing." % army_ids_v54.size()
 
+func set_raider_v56(enemy: Dictionary) -> void:
+    if map_canvas!=null:map_canvas.set_raider_v56(enemy)
+    if terrain_3d!=null:terrain_3d.set_raider_v56(enemy)
+    if army_status_v54!=null and not enemy.is_empty():
+        if bool(enemy.get("defeated",false)):
+            army_status_v54.text+=" | Vastase väesalk on võidetud."
+        else:
+            army_status_v54.text+=" | Vaenlane (%d,%d) %.0f HP" % [
+                int(enemy["c"]),int(enemy["r"]),float(enemy["hp"])]
+
 func set_city_districts(city: Dictionary) -> void:
     district_city=city
     _repaint_districts()
