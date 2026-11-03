@@ -7,7 +7,7 @@ extends RefCounted
 ## than the original Three.js V91 individual-battle engine.
 const Mil=preload("res://scripts/military_v54.gd")
 const PER_SQUAD: int=24
-const MAX_MEN: int=192
+const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
 const LINE_X: float=337.5
 const LEAVE_X: float=343.5
