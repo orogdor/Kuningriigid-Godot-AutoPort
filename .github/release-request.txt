@@ -1,11 +1,15 @@
-KUNINGRIIGID GODOT — EXPLICIT VERIFIED APP UPDATE RELEASE REQUEST
-Target: AutoPort 0.56 (current game/project.godot), with reliable updater fixes.
-Source: merged PR #7, commit 6618d02b3f0ef0b9baa50a9671cc7531ec05ac5e.
-Reason: Latest published Content.pck/Windows launcher is still 0.51.738 despite
-a tested 0.56 game and its now-repaired update pipeline.
-Publish: SHA-256 verified Content.pck and Windows launcher/manifest/engine.
-Android: publish APK only if persistent signing secrets are configured;
-otherwise existing installed APKs update their game content using PCK.
-No uninstall, no save deletion and no changing the signing key automatically.
-Test gate: PR #7 run 41682935637 passed the updater, version and game regressions.
-This is a deliberate one-off release request, not a build per source commit.
+KUNINGRIIGID GODOT — EXPLICIT ANDROID CONTENT VERSION LABEL HOTFIX
+Target: AutoPort 0.56 with new build number (after v0.56.741).
+Source: merged PR #8, commit 86b8230ea0ba19a3e1f702fc8ce64bc1832e8078.
+Reason: User confirmed 0.51-installed APK can receive newer content after force-stop/cache clear,
+but 3D map version caption stayed at APK project name 0.51 rather than the loaded PCK.
+Fix: both city and 3D map titles read res://data/generated/release.json stamped BEFORE
+Android PCK export. Content file is exported with Android preset; Windows gets separate pack.
+CI: pull request validation 41691860799 passed including content version V58,
+PCK updater recovery, full economy parity (1200 turns) and battle regression.
+Publish: fresh SHA256 verified Android Kuningriigid-Content.pck, Windows EXE
+launcher/manifest/engine and Windows-native content pack.
+Android: NO replacement APK unless the persistent signing secrets are present;
+existing v0.51 APK keeps its own installed app version and its saves intact.
+Release must pass isolated Android PCK mount and exact on-screen release version smoke test.
+This is one explicit hotfix release request, not a binary build on every source commit.
