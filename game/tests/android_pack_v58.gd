@@ -34,8 +34,20 @@ func _check_pack() -> void:
     root.add_child(ui)
     await process_frame
     await process_frame
-    if not _has_version(ui,"GODOT 0.56"):
-        _fail("Content scene still displayed the old 0.51 version")
+    var expected: String=OS.get_environment("ANDROID_RELEASE_VERSION")
+    if expected.is_empty():
+        _fail("Test did not receive the release version")
         return
-    print("ANDROID_PACK_V58 SUCCESS: Android export pack mounted, new content scene loads and shows GODOT 0.56")
+    var manifest_path: String="res://data/generated/release.json"
+    if not FileAccess.file_exists(manifest_path):
+        _fail("Android export pack omitted the content version metadata")
+        return
+    var version_data: Variant=JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+    if not version_data is Dictionary or String(version_data.get("version",""))!=expected:
+        _fail("Mounted PCK reported the wrong content release version")
+        return
+    if not _has_version(ui,"GODOT "+expected):
+        _fail("Game header did not reflect mounted PCK version "+expected)
+        return
+    print("ANDROID_PACK_V58 SUCCESS: Android PCK mounted; UI displays release "+expected)
     quit(0)
