@@ -9,6 +9,7 @@ const Trade3D=preload("res://scripts/world_trade_3d_v49.gd")
 const WebPalette50=preload("res://scripts/web_biomes_v50.gd")
 const WebArt50=preload("res://scripts/web_graphics_v50.gd")
 const WebWater51=preload("res://scripts/web_water_v51.gd")
+const Scout52=preload("res://scripts/world_scout_v52.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -20,6 +21,7 @@ var river_root: Node3D
 var trade_road_root: Node3D
 var trade_caravans_root: Node3D
 var trade_route_key: String=""
+var scout_actor: Node3D
 var marker: MeshInstance3D
 var camera: Camera3D
 var camera_target: Vector2=Vector2(110,82.5)
@@ -86,6 +88,45 @@ func _ready() -> void:
     trade_caravans_root=Node3D.new()
     trade_caravans_root.name="TradeCaravans3D"
     scene_root.add_child(trade_caravans_root)
+    scout_actor=Node3D.new()
+    scout_actor.name="WorldScoutV52"
+    scene_root.add_child(scout_actor)
+    # Temporary native Godot actor; replaces a mere pin, ready for a GLB later.
+    var coat:=StandardMaterial3D.new()
+    coat.albedo_color=Color("#dcc08c")
+    var head_mat:=StandardMaterial3D.new()
+    head_mat.albedo_color=Color("#c49166")
+    var wood_mat:=StandardMaterial3D.new()
+    wood_mat.albedo_color=Color("#69452d")
+    var body:=MeshInstance3D.new()
+    body.name="ScoutBody"
+    var body_mesh:=CapsuleMesh.new()
+    body_mesh.radius=0.30
+    body_mesh.height=1.35
+    body.mesh=body_mesh
+    body.position=Vector3(0,0.85,0)
+    body.material_override=coat
+    scout_actor.add_child(body)
+    var head:=MeshInstance3D.new()
+    head.name="ScoutHead"
+    var head_mesh:=SphereMesh.new()
+    head_mesh.radius=0.23
+    head_mesh.height=0.46
+    head.mesh=head_mesh
+    head.position=Vector3(0,1.73,0)
+    head.material_override=head_mat
+    scout_actor.add_child(head)
+    var spear:=MeshInstance3D.new()
+    spear.name="ScoutSpear"
+    var spear_mesh:=CylinderMesh.new()
+    spear_mesh.top_radius=0.035
+    spear_mesh.bottom_radius=0.035
+    spear_mesh.height=2.2
+    spear.mesh=spear_mesh
+    spear.position=Vector3(0.42,1.15,0.1)
+    spear.material_override=wood_mat
+    scout_actor.add_child(spear)
+    scout_actor.visible=false
     marker=MeshInstance3D.new()
     marker.name="SelectedWorldTile"
     var selection:=BoxMesh.new()
@@ -142,6 +183,7 @@ func set_world(data: Dictionary) -> void:
     world=data
     # New seed invalidates roads and wagons from the previous world.
     trade_route_key=""
+    if scout_actor!=null:scout_actor.visible=false
     if trade_road_root!=null:
         for child in trade_road_root.get_children():child.free()
     if trade_caravans_root!=null:
@@ -211,6 +253,33 @@ func set_trade_route(route: Dictionary,caravans: Array) -> void:
     if points.size()>=2:
         Trade3D.populate_caravans(trade_caravans_root,
             Trade3D.caravan_positions(points,caravans))
+
+func scout_point_for(data: Dictionary) -> Vector3:
+    if world.is_empty() or data.is_empty():return Vector3.ZERO
+    var origin:=Vector2i(int(data.get("c",-1)),int(data.get("r",-1)))
+    if World.cell(world,origin.x,origin.y).is_empty():return Vector3.ZERO
+    var first: Vector3=Trade3D.tile_point(world,origin.x,origin.y)
+    var path: Array=data.get("path",[])
+    if path.is_empty():return first
+    var next: Dictionary=path[0]
+    var end: Vector2i=Vector2i(int(next.get("c",-1)),int(next.get("r",-1)))
+    if World.cell(world,end.x,end.y).is_empty():return first
+    var sample: Dictionary=Scout52.sample(data)
+    return first.lerp(Trade3D.tile_point(world,end.x,end.y),float(sample["fraction"]))
+
+func set_scout(data: Dictionary) -> void:
+    if scout_actor==null:return
+    var valid: bool=not data.is_empty() and not world.is_empty() and \
+        int(data.get("seed",-1))==int(world.get("seed",-2)) and \
+        not World.cell(world,int(data.get("c",-1)),int(data.get("r",-1))).is_empty()
+    scout_actor.visible=valid
+    if not valid:return
+    scout_actor.position=scout_point_for(data)
+    var route: Array=data.get("path",[])
+    if not route.is_empty():
+        var next: Dictionary=route[0]
+        scout_actor.rotation.y=atan2(float(next["c"])-float(data["c"]),
+            float(next["r"])-float(data["r"]))
 
 func _update_camera() -> void:
     if camera==null:return
