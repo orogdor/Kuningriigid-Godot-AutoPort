@@ -112,6 +112,13 @@ static func start_campaign(state: Dictionary,world: Dictionary,ids: Array) -> St
         if army.is_empty() or int(army["c"])!=int(raider["c"]) or \
                 int(army["r"])!=int(raider["r"]):
             return "Väesalgad ei ole vaenlasega samal ruudul."
+    # Ambushed marching armies stop in this tile; never teleport or finish
+    # the remaining strategic path while individual soldiers fight.
+    for id in ids:
+        var army: Dictionary=Mil.army_by_id(state,world,int(id))
+        army["path"]=[]
+        army["travelClock"]=0.0
+        army["travelDuration"]=0.0
     var result: String=start(state,world,ids)
     if result!="":return result
     var b: Dictionary=current(state,world)
