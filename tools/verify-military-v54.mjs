@@ -18,6 +18,10 @@ for(const statement of [
  "axeman:{name:'Kivikirvemehed',age:0,cost:{wood:14,stone:14}",
  "for(const [kind,d]of Object.entries(TROOPS))d.time={scout:18,slinger:25,spearman:30,axeman:35"
 ])assert.ok(core.includes(statement),'Upstream military definition changed: '+statement);
+const research=await readFile(join(dir,'research.js'),'utf8');
+assert.ok(research.includes("barracks:'warfare'"));
+for(const kind of ['slinger','spearman','axeman'])
+ assert.ok(research.includes(kind+":'warfare'"),'Missing upstream warfare technology gate for '+kind);
 const base=(await import(pathToFileURL(join(dir,'economy.js')).href)).BUILDINGS;
 const ai=(await import(pathToFileURL(join(dir,'ai-development-v128.js')).href));
 const v99=(await import(pathToFileURL(join(dir,'unit-balance-v99.js')).href));
