@@ -17,7 +17,7 @@
     "AI decisions"
   ],
   "source_branch": "main",
-  "source_commit": "6f95ac95d282c5aefcb98b36b3811ccae9e73942",
+  "source_commit": "d79a0240da0b5e7512b014fa1480010959f0da7f",
   "source_repository": "https://github.com/orogdor/Kuningriigid",
   "tables": {
     "bronze_fortify_pop": {
@@ -67,28 +67,28 @@
       "file": "food_needs.json",
       "path": "city-needs-v87.js",
       "sha256": "0a1bc8aff19255b7605c3b06445a0c4d20ef3297bbeda1bafdcba34d7f4b43e8",
-      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+      "source_sha256": "f6bc7f376b5545f74ab060fd0142e75818196aeb74987a227b04cbe72e061ea6"
     },
     "good_buildings": {
       "export": "GOOD_BUILDINGS",
       "file": "good_buildings.json",
       "path": "city-needs-v87.js",
       "sha256": "23a1e4c2c453ab91072250de4704b7723dd3c4a31997bb1e35c9c4920c68eb3d",
-      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+      "source_sha256": "f6bc7f376b5545f74ab060fd0142e75818196aeb74987a227b04cbe72e061ea6"
     },
     "goods": {
       "export": "GOODS",
       "file": "goods.json",
       "path": "city-needs-v87.js",
       "sha256": "99529fc51f49020bb3dc00f07995980d3b1342e09eebed11101527c20447d6f4",
-      "source_sha256": "dfa55e6653dc34f9ff0912e78569c3d96882ae9ec8aac7fdff08153ec872796b"
+      "source_sha256": "f6bc7f376b5545f74ab060fd0142e75818196aeb74987a227b04cbe72e061ea6"
     },
     "production_reforms": {
       "export": "PRODUCTION_REFORMS_V125",
       "file": "production_reforms.json",
       "path": "technology-reforms-v125.js",
       "sha256": "6089cd806c883466f73c2d5bd95bce099d12cfbcc96f16668b386e2adca35727",
-      "source_sha256": "c3514fcec25f72c39b27443f3efd0e17634c6ba1ca2ccf1206867d1ee3ed8767"
+      "source_sha256": "4ee3d370a46120a2c0e5487bf334119e75019b71b13964314df92faee48fb893"
     },
     "science_per_city": {
       "export": "SCIENCE_PER_CITY",
@@ -115,15 +115,15 @@
       "export": "TECHS_V125",
       "file": "tech_reforms.json",
       "path": "technology-reforms-v125.js",
-      "sha256": "87063373d458e654066ef0faa8beca3fd4677bc6bcb1827ca2a494fbf5a9f979",
-      "source_sha256": "c3514fcec25f72c39b27443f3efd0e17634c6ba1ca2ccf1206867d1ee3ed8767"
+      "sha256": "7113f4cbb0753105483d11cc7d4278d90b6aab1e141cfd75e87c0a16ce32e651",
+      "source_sha256": "4ee3d370a46120a2c0e5487bf334119e75019b71b13964314df92faee48fb893"
     },
     "tech_tree": {
       "export": "TECH_TREE_V118",
       "file": "tech_tree.json",
       "path": "tech-tree-data-v118.js",
-      "sha256": "72fb1e89b3a42576f645d26f53c11e96508af3ee19684dbb58d5c4525e457199",
-      "source_sha256": "bd5168e0cc8dbcf79ea92924cf96fb10311ea1db81e81ae60c0d3a96a762e959"
+      "sha256": "011c4b83f91c134af5efdf7c49037c8886c4e9fa0391ad31f9141caf07951cb9",
+      "source_sha256": "39998708ae39dc2cb1a2b1494efbe96ee1c80c53accd54855d0b1c6721873817"
     }
   }
 }

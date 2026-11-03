@@ -3,8 +3,7 @@
     "age": 0,
     "name": "Põlluharimine",
     "requires": [
-      "stone_tools",
-      "water"
+      "stone_tools"
     ]
   },
   "ancient_artillery": {
@@ -20,7 +19,8 @@
     "age": 0,
     "name": "Loomade kodustamine",
     "requires": [
-      "hunting"
+      "hunting",
+      "settlement"
     ]
   },
   "antler_picks": {
@@ -36,7 +36,8 @@
     "name": "Vibude valmistamine",
     "requires": [
       "hunting",
-      "ropes"
+      "ropes",
+      "woodworking"
     ]
   },
   "armor_craft": {
@@ -88,7 +89,8 @@
       "copper_smelting",
       "copper_tin",
       "stone_crafts"
-    ]
+    ],
+    "unlocks": "Pronksiaeg, tinakaevandus, pronksisulatus, pronksriistad ja pronksiaja ehitaja (×1.20)"
   },
   "bronze_chisels": {
     "age": 1,
@@ -200,8 +202,10 @@
     "name": "Vasemaagi tundmine",
     "requires": [
       "antler_picks",
-      "stone_wedges"
-    ]
+      "stone_wedges",
+      "fire_use"
+    ],
+    "unlocks": "Vasekaevandus; tina tuleb pronksivaluga"
   },
   "crossbows": {
     "age": 3,
@@ -285,7 +289,8 @@
   "fire_use": {
     "age": 0,
     "name": "Tule kasutamine ja põletus",
-    "requires": []
+    "requires": [],
+    "turns": 1
   },
   "firearms": {
     "age": 4,
@@ -321,8 +326,7 @@
     "age": 0,
     "name": "Puidust kaitserajatised",
     "requires": [
-      "settlement",
-      "woodworking"
+      "stone_tools"
     ]
   },
   "guilds": {
@@ -702,7 +706,8 @@
     "name": "Nöörid ja köied",
     "requires": [
       "stone_tools"
-    ]
+    ],
+    "turns": 2
   },
   "scholasticism": {
     "age": 3,
@@ -857,7 +862,7 @@
     "age": 0,
     "name": "Kaevud ja veevarustus",
     "requires": [
-      "stone_tools"
+      "settlement"
     ]
   },
   "water_meadows": {

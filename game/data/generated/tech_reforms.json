@@ -21,12 +21,12 @@
   },
   "bronze_survey": {
     "age": 1,
-    "name": "Land Surveying",
+    "name": "Maamõõtmine",
     "requires": [
       "math_measure"
     ],
     "turns": 5,
-    "unlocks": "Surveyed fields and mines: +4% resource output"
+    "unlocks": "Mõõdetud põllud ja kaevandused: +4% tooret"
   },
   "cannon_supply": {
     "age": 4,
@@ -59,12 +59,12 @@
   },
   "field_channels": {
     "age": 1,
-    "name": "Field Channels",
+    "name": "Põldude kanalid",
     "requires": [
       "canal_irrigation"
     ],
     "turns": 5,
-    "unlocks": "Canal maintenance: +8% farm production"
+    "unlocks": "Kanalite hooldus: +8% põllusaaki"
   },
   "garrison_system": {
     "age": 3,
@@ -77,12 +77,12 @@
   },
   "grain_storage": {
     "age": 0,
-    "name": "Grain Storage",
+    "name": "Viljaaidad",
     "requires": [
       "pottery"
     ],
     "turns": 3,
-    "unlocks": "Clay-lined grain stores: +5% food production"
+    "unlocks": "Saviga vooderdatud viljaaidad: +5% toidu tootmist"
   },
   "guild_accounts": {
     "age": 3,
@@ -225,22 +225,22 @@
   },
   "trade_roads": {
     "age": 1,
-    "name": "Trade Roads",
+    "name": "Kaubateed",
     "requires": [
       "commerce",
       "wheel"
     ],
     "turns": 5,
-    "unlocks": "Maintained wagon routes: +7% wood and construction materials"
+    "unlocks": "Hooldatud vankriteed: +7% puitu ja ehitusmaterjale"
   },
   "village_council": {
     "age": 0,
-    "name": "Village Councils",
+    "name": "Külanõukogud",
     "requires": [
       "settlement"
     ],
     "turns": 3,
-    "unlocks": "Early settlement administration: +3% food and water production"
+    "unlocks": "Küla ühine otsustamine: +3% toidu ja vee tootmist"
   },
   "water_machinery": {
     "age": 3,
