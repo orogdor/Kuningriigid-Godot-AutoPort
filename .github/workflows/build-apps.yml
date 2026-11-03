@@ -1,9 +1,9 @@
 name: Build Android APK, Windows EXE and auto-update content
 
-# Binary releases are intentionally manual. Normal source pushes and upstream syncs
-# still run their own validation workflows, but do not rebuild APK/EXE/PCK.
-# Run this workflow from Actions > Build Android APK, Windows EXE... > Run workflow
-# when you want to publish a new downloadable version.
+# Release once per validated project major.minor (0.56, 0.57, ...), not every
+# source commit. Manual workflow_dispatch / release-request.txt still force a
+# hotfix release. Without a permanent Android signing key, publish the verified
+# PCK and Windows assets only: never claim a new debug-signed APK is an update.
 on:
   workflow_dispatch:
   # Automatically publish once after a new validated AutoPort version series
@@ -311,6 +311,8 @@ jobs:
           Game version: $VERSION. Windows Kuningriigid.exe checks GitHub Releases and downloads only changed files, with SHA-256 verification and offline fallback.
           Android: $ANDROID_NOTE
           The initial Android app keeps its own verified PCK updater. Your saves are not uninstalled or cleared.
+          To install on a new Android device before a permanent signing key is configured, use the earlier bootstrap APK:
+          https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/tag/v0.51.738
           This is an actively developed Godot port; the newer Stone Age army and battle features are still a partial Three.js port.
           EOF
           gh release create "$VERSION" "${RELEASE_FILES[@]}" \
