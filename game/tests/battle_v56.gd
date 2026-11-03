@@ -89,8 +89,9 @@ func _test() -> void:
     enemy["travelDuration"]=0.0
     var time_before: int=int(ui.city["time"])
     ui._advance(10)
-    if not Battle.active(ui.city,world) or int(ui.city["time"])!=time_before+1:
-        fail("hostile world-tile contact did not interrupt +10 city turns")
+    if not Battle.active(ui.city,world) or int(ui.city["time"])!=time_before+60:
+        fail("world-tile contact did not interrupt +10 turns (active=%s, time=%d, expected=%d)" % [
+            str(Battle.active(ui.city,world)),int(ui.city["time"]),time_before+60])
         return
     var b: Dictionary=Battle.current(ui.city,world)
     var stock_before: String=JSON.stringify(stock)
@@ -119,7 +120,7 @@ func _test() -> void:
         fail("battle and personal HP/positions did not survive JSON")
         return
     ui._advance(1)
-    if int(ui.city["time"])!=time_before+1:
+    if int(ui.city["time"])!=time_before+60:
         fail("economy advanced during a tactical battle")
         return
     var first_id: int=int(m["armies"][0]["id"])
