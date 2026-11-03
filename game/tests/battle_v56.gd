@@ -58,8 +58,7 @@ func _test() -> void:
     if enemy.is_empty() or enemy["path"].is_empty():
         fail("a reachable enemy march path was not created")
         return
-    var stock_before: String=JSON.stringify(stock)
-    var pop_before: float=float(ui.city["realms"][0]["pop"])
+
     var origin: Dictionary=world["starts"][0]
     var home:=Vector2i(int(origin["c"]),int(origin["r"]))
     var far:=Vector2i(int(enemy["c"]),int(enemy["r"]))
@@ -94,6 +93,8 @@ func _test() -> void:
         fail("hostile world-tile contact did not interrupt +10 city turns")
         return
     var b: Dictionary=Battle.current(ui.city,world)
+    var stock_before: String=JSON.stringify(stock)
+    var pop_before: float=float(ui.city["realms"][0]["pop"])
     if not bool(b.get("campaign_v56",false)) or int(b.get("individual_version",0))!=56:
         fail("automatic encounter still uses the V55 demo squad engine")
         return
