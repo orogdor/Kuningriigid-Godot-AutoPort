@@ -38,10 +38,20 @@ static func open_at(p: Vector2,arena: Dictionary,margin: float=RADIUS+MARGIN) ->
     return true
 
 static func clear_segment(start: Vector2,goal: Vector2,arena: Dictionary) -> bool:
-    var distance: float=start.distance_to(goal)
-    var intervals: int=maxi(1,int(ceil(distance/0.65)))
-    for i in range(intervals+1):
-        if not open_at(start.lerp(goal,float(i)/float(intervals)),arena):
+    # Exact segment-circle intersection. Sampling every 0.65m caused
+    # avoidable O(distance) CPU cost for ~200 agents and could skip slivers.
+    # The rectangular bounds are convex, so valid endpoints imply the
+    # entire straight segment lies inside the permitted battlefield.
+    if not open_at(start,arena) or not open_at(goal,arena):return false
+    var segment: Vector2=goal-start
+    var length2: float=segment.length_squared()
+    for obstacle in arena.get("obstacles",[]):
+        var centre: Vector2=_at(obstacle)
+        var t: float=clampf((centre-start).dot(segment)/maxf(0.000001,length2),
+            0.0,1.0)
+        var closest: Vector2=start+segment*t
+        var safe: float=float(obstacle["r"])+RADIUS+MARGIN
+        if centre.distance_squared_to(closest)<safe*safe:
             return false
     return true
 
