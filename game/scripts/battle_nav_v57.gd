@@ -175,7 +175,15 @@ static func nearest_opponent(man: Dictionary,battle: Dictionary,
     var limit: float=max_distance*max_distance
     var p: Vector2=_at(man)
     for fighter in battle.get("fighters",[]):
-        if int(fighter["team"])==team:continue
+        if int(fighter["team"])==team or float(fighter.get("hp",0.0))<=0:
+            continue
+        # Most 24-man squads are many metres apart. Reject the entire
+        # opposing squad before entering its inner 24-man loop. Formation
+        # footprint + safety margin avoids missing any reachable soldier.
+        var border: float=max_distance+12.0
+        if absf(float(fighter["x"])-p.x)>border or \
+                absf(float(fighter["z"])-p.y)>border:
+            continue
         for enemy in fighter.get("men",[]):
             if float(enemy.get("hp",0.0))<=0 or bool(enemy.get("escaped",false)):
                 continue
