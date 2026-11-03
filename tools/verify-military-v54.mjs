@@ -22,7 +22,7 @@ const base=(await import(pathToFileURL(join(dir,'economy.js')).href)).BUILDINGS;
 const ai=(await import(pathToFileURL(join(dir,'ai-development-v128.js')).href));
 const v99=(await import(pathToFileURL(join(dir,'unit-balance-v99.js')).href));
 const barracks={...base.barracks,name:'Sõdalaste laager',cost:{wood:35,stone:15},requires:['hall']};
-const defs={barracks};
+const defs={...base,barracks};
 const units={
  slinger:{cost:{wood:8,stone:18},time:25,hp:85,role:'ranged',age:0},
  spearman:{cost:{wood:22,stone:4},time:30,hp:125,role:'melee',age:0},
