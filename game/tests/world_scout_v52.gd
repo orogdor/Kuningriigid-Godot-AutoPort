@@ -63,8 +63,8 @@ func _test() -> void:
         fail("world-map move command did not update the actual saved path")
         return
     var seconds: float=Scout.segment_seconds(scout,scout["path"][0])
-    var stock_before: String=JSON.stringify(ui.city["realms"][0]["resources"])
     var saved_state: Dictionary=JSON.parse_string(JSON.stringify(ui.city))
+    var stock_before: String=JSON.stringify(saved_state["realms"][0]["resources"])
     var saved_scout: Dictionary=Scout.ensure(saved_state,world)
     if saved_scout["path"].size()!=scout["path"].size():
         fail("active order did not survive JSON save/load")
@@ -80,13 +80,13 @@ func _test() -> void:
             not saved_scout["path"].is_empty():
         fail("scout did not reach the ordered tile and stop")
         return
+    if JSON.stringify(saved_state["realms"][0]["resources"])!=stock_before:
+        fail("scout movement unexpectedly created or consumed resources")
+        return
     ui._advance(1)
     if int(scout["c"])!=target.x or int(scout["r"])!=target.y or \
             int(scout.get("worldArrivalV258",{}).get("c",-1))!=target.x:
         fail("one game minute did not advance the V258 scout")
-        return
-    if JSON.stringify(ui.city["realms"][0]["resources"])!=stock_before:
-        fail("scout movement unexpectedly created or consumed resources")
         return
     var expected: Vector3=map.terrain_3d.scout_point_for(scout)
     if map.terrain_3d.scout_actor.position.distance_to(expected)>0.00001:
