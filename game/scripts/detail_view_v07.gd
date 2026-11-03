@@ -41,6 +41,8 @@ const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const WebUnits53 = preload("res://scripts/web_units_v53.gd")
+const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
+const Military54 = preload("res://scripts/military_v54.gd")
 const Scout52 = preload("res://scripts/world_scout_v52.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
@@ -87,6 +89,8 @@ var district_id: String=""
 var city_state: Dictionary = {}
 var scene_root: Node3D
 var world_scout_actor_v53: Node3D
+var army_detail_root_v54: Node3D
+var camp_detail_root_v54: Node3D
 var construction_root: Node3D
 var resource_root: Node3D
 var worker_root: Node3D
@@ -200,6 +204,13 @@ func _ready() -> void:
         fallback.position.y=1.5
         world_scout_actor_v53.add_child(fallback)
     world_scout_actor_v53.visible=false
+    army_detail_root_v54=Node3D.new()
+    army_detail_root_v54.name="DetailArmiesV54"
+    scene_root.add_child(army_detail_root_v54)
+    camp_detail_root_v54=Node3D.new()
+    camp_detail_root_v54.name="MilitaryCampV54"
+    scene_root.add_child(camp_detail_root_v54)
+    camp_detail_root_v54.visible=false
     var environment:=WorldEnvironment.new()
     var sky_settings:=Environment.new()
     sky_settings.background_mode=Environment.BG_COLOR
@@ -1649,6 +1660,55 @@ func set_world_scout_v53(data: Dictionary) -> void:
         world_scout_actor_v53.rotation.y=atan2(float(next["c"])-float(data["c"]),
             float(next["r"])-float(data["r"]))
 
+func set_world_armies_v54(armies: Array) -> void:
+    if army_detail_root_v54==null:return
+    for node in army_detail_root_v54.get_children():node.free()
+    if world.is_empty() or selected.x<0:return
+    var rendered: int=0
+    for army in armies:
+        if rendered>=18:break
+        var sample: Dictionary=Military54.sample(army)
+        if sample.is_empty():continue
+        var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
+        var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH
+        # The active detail tile owns each actor. Neighbouring tiles never
+        # receive duplicate props; switching tiles picks the same saved pose.
+        if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:continue
+        var kind: String=String(army.get("kind",""))
+        var model: Node3D=WebUnits53.instance(kind,3.1)
+        if model==null:continue
+        var group:=Node3D.new()
+        group.name="DetailArmyV54_"+str(int(army.get("id",0)))
+        group.set_meta("army_id",int(army.get("id",0)))
+        army_detail_root_v54.add_child(group)
+        model.name="OriginalWeb_"+kind
+        group.add_child(model)
+        # Visual formation separation only; no impact on tactical movement.
+        var offset: float=float(posmod(int(army.get("id",0)),5)-2)*2.0
+        group.position=Vector3(x+offset,_elevation(x,z,0.0,can_build),z)
+        var route: Array=army.get("path",[])
+        if not route.is_empty():
+            var next: Dictionary=route[0]
+            group.rotation.y=atan2(float(next["c"])-float(army["c"]),
+                float(next["r"])-float(army["r"]))
+        rendered+=1
+
+func set_military_camp_v54(camp: Dictionary) -> void:
+    if camp_detail_root_v54==null or world.is_empty() or selected.x<0:return
+    var home: Array=world.get("starts",[])
+    var at_home: bool=not home.is_empty() and \
+        int(home[0]["c"])==selected.x and int(home[0]["r"])==selected.y
+    var paid: bool=bool(camp.get("ready",false)) or bool(camp.get("under_construction",false))
+    camp_detail_root_v54.visible=at_home and paid
+    if not camp_detail_root_v54.visible:return
+    var finished: bool=bool(camp.get("ready",false))
+    if camp_detail_root_v54.get_meta("built_state",null)==finished and \
+            camp_detail_root_v54.get_child_count()>0:return
+    for child in camp_detail_root_v54.get_children():child.free()
+    camp_detail_root_v54.set_meta("built_state",finished)
+    camp_detail_root_v54.position=Vector3(48.0,_elevation(48.0,-25.0,0.0,can_build),-25.0)
+    CampVisual54.populate(camp_detail_root_v54,finished)
+
 func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool, district: String="") -> void:
     world=next_world
     selected=Vector2i(c,r)
@@ -1703,7 +1763,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==world_scout_actor_v53 or child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==world_scout_actor_v53 or child==army_detail_root_v54 or child==camp_detail_root_v54 or child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         # A queued mesh still has the DetailTerrain name this frame.
         # Replace it now so the terrain and color cannot be shadowed by
