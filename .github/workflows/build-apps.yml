@@ -282,6 +282,7 @@ jobs:
           cp game/tests/android_pack_v58.gd /tmp/android-pack-smoke/android_pack_v58.gd
           printf 'config_version=5\n[application]\nconfig/name="PCK Smoke Test"\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n' > /tmp/android-pack-smoke/project.godot
           ANDROID_CONTENT_PACK="$PWD/dist/Kuningriigid-Content.pck" \
+            ANDROID_RELEASE_VERSION="${{ steps.stamp.outputs.version }}" \
             timeout --signal=TERM --kill-after=5s 180s \
             /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
             --headless --path /tmp/android-pack-smoke --script res://android_pack_v58.gd
