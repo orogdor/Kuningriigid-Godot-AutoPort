@@ -23,6 +23,7 @@ var trade_road_root: Node3D
 var trade_caravans_root: Node3D
 var trade_route_key: String=""
 var scout_actor: Node3D
+var army_root_v54: Node3D
 var marker: MeshInstance3D
 var camera: Camera3D
 var camera_target: Vector2=Vector2(110,82.5)
@@ -137,6 +138,9 @@ func _ready() -> void:
         head.visible=false
         spear.visible=false
     scout_actor.visible=false
+    army_root_v54=Node3D.new()
+    army_root_v54.name="StoneAgeArmiesV54"
+    scene_root.add_child(army_root_v54)
     marker=MeshInstance3D.new()
     marker.name="SelectedWorldTile"
     var selection:=BoxMesh.new()
@@ -194,6 +198,8 @@ func set_world(data: Dictionary) -> void:
     # New seed invalidates roads and wagons from the previous world.
     trade_route_key=""
     if scout_actor!=null:scout_actor.visible=false
+    if army_root_v54!=null:
+        for child in army_root_v54.get_children():child.free()
     if trade_road_root!=null:
         for child in trade_road_root.get_children():child.free()
     if trade_caravans_root!=null:
@@ -290,6 +296,34 @@ func set_scout(data: Dictionary) -> void:
         var next: Dictionary=route[0]
         scout_actor.rotation.y=atan2(float(next["c"])-float(data["c"]),
             float(next["r"])-float(data["r"]))
+
+func set_armies_v54(armies: Array) -> void:
+    if army_root_v54==null:return
+    # Always derive the drawn position from saved path and duration; the atlas
+    # does not simulate a parallel army clock. Cap actors for mobile GPUs.
+    for node in army_root_v54.get_children():node.free()
+    if world.is_empty():return
+    var shown: int=0
+    for army in armies:
+        if shown>=36:break
+        var c: int=int(army.get("c",-1))
+        var r: int=int(army.get("r",-1))
+        if not bool(World.cell(world,c,r).get("land",false)):continue
+        var kind: String=String(army.get("kind",""))
+        var model: Node3D=WebUnits53.instance(kind,2.7)
+        if model==null:continue
+        var unit:=Node3D.new()
+        unit.name="ArmyActorV54_"+str(int(army.get("id",shown)))
+        unit.set_meta("army_id",int(army.get("id",shown)))
+        army_root_v54.add_child(unit)
+        model.name="OriginalStoneAge_"+kind
+        unit.add_child(model)
+        unit.position=scout_point_for(army)
+        var path: Array=army.get("path",[])
+        if not path.is_empty():
+            var next: Dictionary=path[0]
+            unit.rotation.y=atan2(float(next["c"])-float(c),float(next["r"])-float(r))
+        shown+=1
 
 func _update_camera() -> void:
     if camera==null:return

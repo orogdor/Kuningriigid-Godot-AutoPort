@@ -19,6 +19,7 @@ var city_district_tiles: Array=[]
 var city_district_links: Array=[]
 var city_agents: Array=[]
 var scout_state: Dictionary={}
+var army_state_v54: Array=[]
 var capital_district_id: String=""
 # Track physical fingers independently; never select a tile after a pinch.
 var touch_points: Dictionary={}
@@ -77,6 +78,10 @@ func set_city_agents(agents: Array, capital: String) -> void:
 
 func set_scout(data: Dictionary) -> void:
     scout_state=data.duplicate(true)
+    queue_redraw()
+
+func set_armies_v54(armies: Array) -> void:
+    army_state_v54=armies.duplicate(true)
     queue_redraw()
 
 func fit_to_view() -> void:
@@ -204,6 +209,14 @@ func _draw() -> void:
             previous=scout_waypoint
         draw_circle(position,maxf(4.5,zoom*0.54),Color("#fff1b5"))
         draw_arc(position,maxf(5.8,zoom*0.69),0.0,TAU,18,Color("#42301f"),1.5,true)
+    # The same saved V258 tile interpolation as the 3D atlas.
+    for army in army_state_v54:
+        if int(army.get("id",-1))<0:continue
+        var current: Dictionary=Scout.sample(army)
+        if current.is_empty():continue
+        var centre: Vector2=point(float(current["c"])+0.5,float(current["r"])+0.5)
+        draw_circle(centre,maxf(3.7,zoom*0.40),Color("#ffbb64"))
+        draw_arc(centre,maxf(4.9,zoom*0.53),0.0,TAU,16,Color("#643e1b"),1.5,true)
     if chosen.x>=0:
         draw_rect(Rect2(point(chosen.x,chosen.y),Vector2.ONE*zoom),Color("#ffe989"),false,maxf(2.0,zoom*0.1))
 
