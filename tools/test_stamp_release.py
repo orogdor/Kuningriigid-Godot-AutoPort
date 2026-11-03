@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Regression: no stale v0.51 APK releases, no decreasing Android versionCode."""
 import unittest
+import json
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from stamp_release import build_version
 
@@ -28,6 +32,29 @@ class StampVersionTest(unittest.TestCase):
             build_version(self.project, "", 900)
         with self.assertRaises(ValueError):
             build_version(self.project, self.preset, 0)
+
+    def test_cli_embeds_exact_release_id_before_export(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "project.godot").write_text(self.project, encoding="utf-8")
+            (root / "export_presets.cfg").write_text(self.preset, encoding="utf-8")
+            manifest = root / "release.json"
+            argv = [
+                sys.executable, "tools/stamp_release.py",
+                "--project", str(root / "project.godot"),
+                "--preset", str(root / "export_presets.cfg"),
+                "--content-version-file", str(manifest),
+                "--run-number", "900",
+            ]
+            result = subprocess.run(argv, check=True, capture_output=True, text=True)
+            version = result.stdout.strip()
+            self.assertEqual(json.loads(manifest.read_text(encoding="utf-8"))["version"], version)
+            self.assertEqual(json.loads(manifest.read_text(encoding="utf-8"))["tag"], "v" + version)
+            self.assertIn(f'package/version_name="{version}"',
+                          (root / "export_presets.cfg").read_text(encoding="utf-8"))
+            manifest.unlink()
+            subprocess.run(argv + ["--check-only"], check=True, capture_output=True)
+            self.assertFalse(manifest.exists(), "Check-only must not mutate the release manifest")
 
 
 if __name__ == "__main__":
