@@ -5,6 +5,7 @@ extends RefCounted
 ## Source: civilization-core.js, ai-development-v128.js, military-v88.js.
 ## The real worker/trainer pathfinding and battles remain future work.
 const City=preload("res://scripts/city_sim_v05.gd")
+const Research=preload("res://scripts/research_v35.gd")
 const World=preload("res://scripts/world_gen_v06.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
 const Movement=preload("res://scripts/world_scout_v52.gd")
@@ -79,6 +80,7 @@ static func can_build(state: Dictionary,world: Dictionary) -> bool:
     var camp: Dictionary=military["camp"]
     if bool(camp.get("ready",false)) or bool(camp.get("under_construction",false)):
         return false
+    if not Research.ensure(state)["known"].has("warfare"):return false
     var hall: bool=false
     for building in state.get("buildings",[]):
         if String(building.get("type",""))=="hall" and bool(building.get("ready",false)):
@@ -91,6 +93,8 @@ static func build(state: Dictionary,world: Dictionary) -> String:
     var camp: Dictionary=military["camp"]
     if bool(camp.get("ready",false)) or bool(camp.get("under_construction",false)):
         return "Sõdalaste laager on juba olemas."
+    if not Research.ensure(state)["known"].has("warfare"):
+        return "Uuri kõigepealt sõjapidamine."
     if not can_build(state,world):return "Vaja valmis peahoonet ning 20 puitu ja 9 kivi."
     City.spend(state["realms"][0]["resources"],CAMP_COST)
     camp["under_construction"]=true
@@ -111,6 +115,7 @@ static func recruit(state: Dictionary,world: Dictionary,kind: String,
     var m: Dictionary=ensure(state,world)
     if m.is_empty():return "Maailmakaart pole valmis."
     if not TROOPS.has(kind) or not GRADES.has(grade):return "Tundmatu sõdur või varustustase."
+    if not Research.ensure(state)["known"].has("warfare"):return "Uuri kõigepealt sõjapidamine."
     if not bool(m["camp"].get("ready",false)):return "Ehita ja lõpeta kõigepealt sõdalaste laager."
     if m["queue"].size()>=MAX_QUEUE:return "Väljaõppe järjekord on täis (4)."
     if m["armies"].size()+m["queue"].size()>=MAX_ARMIES:return "Üksuste piir on täis."
