@@ -102,9 +102,9 @@ func _ready() -> void:
     battle_camera.projection=Camera3D.PROJECTION_ORTHOGONAL
     battle_camera.size=cam_size
     battle_camera.position=Vector3(0,670,520)
-    battle_camera.look_at(Vector3.ZERO,Vector3.UP)
     battle_camera.current=true
     scene_root.add_child(battle_camera)
+    battle_camera.look_at(Vector3.ZERO,Vector3.UP)
     # x=-2..2, z=-2..2: the outer 16 tiles are the retreat ring.
     for r in range(-2,3):
         for c in range(-2,3):
