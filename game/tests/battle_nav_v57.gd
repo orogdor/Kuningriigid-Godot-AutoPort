@@ -63,8 +63,7 @@ func _test() -> void:
         fail("Failed to initialize the original 24-man Stone Age squad")
         return
     var first: Dictionary=b["fighters"][0]["men"][0]
-    var start_x: float=float(first["x"])
-    var caught: bool=false
+    var ever_moved: Dictionary={}
     var wounded: bool=false
     for tick_id in range(360):
         Men.tick(b,0.2)
@@ -75,13 +74,15 @@ func _test() -> void:
                 if not Nav.open_at(at,arena):
                     fail("Active combatant entered an obstacle during battle")
                     return
-                if bool(man.get("moving",false)):caught=true
+                if int(fighter["team"])==0 and bool(man.get("moving",false)):
+                    ever_moved[String(man["id"])]=true
         if float(b["fighters"][0]["hp"])<250.0 or \
                 float(b["fighters"][1]["hp"])<280.0:
             wounded=true
-            break
-    if not caught or absf(float(first["x"])-start_x)<0.5:
-        fail("The first Stone Age GLB figure never marched")
+        if wounded and ever_moved.size()>=16:break
+    if ever_moved.size()<16:
+        fail("Only %d/24 soldiers ever marched; dense formation still deadlocked" % \
+            ever_moved.size())
         return
     if not wounded:
         fail("Fighters became stuck avoiding the boulder; no melee occurred")
