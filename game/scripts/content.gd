@@ -88,6 +88,7 @@ func _ready() -> void:
     world_view.scout_destination_requested.connect(_scout_order)
     world_view.army_destination_requested.connect(_army_order)
     world_view.battle_requested.connect(_start_skirmish)
+    world_view.army_rally_requested.connect(_army_rally)
     world_view.world_generated.connect(_sync_trade_map)
     world_view.set_city_districts(city)
     detail_view=DetailView.new()
@@ -191,6 +192,14 @@ func _recruit_military(kind: String) -> void:
     var message: String=Military54.recruit(city,world_view.world,kind,grade)
     event_message=message if message!="" else "%s (%s) lisati väljaõppe järjekorda." % [
         String(Military54.TROOPS[kind]["name"]),grade]
+    _sync_trade_map()
+    _save()
+    _refresh()
+
+func _army_rally(id: int) -> void:
+    if world_view==null or world_view.world.is_empty():return
+    var error: String=Military54.rally(city,world_view.world,id)
+    event_message=error if error!="" else "Väesalgad kogunevad üksuse #%d juurde." % id
     _sync_trade_map()
     _save()
     _refresh()
