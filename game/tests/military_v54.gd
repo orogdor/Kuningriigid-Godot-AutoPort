@@ -4,6 +4,7 @@ extends SceneTree
 const Scene=preload("res://content.tscn")
 const World=preload("res://scripts/world_gen_v06.gd")
 const Mil=preload("res://scripts/military_v54.gd")
+const Research=preload("res://scripts/research_v35.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
 
 func fail(message: String) -> void:
@@ -45,6 +46,10 @@ func _test() -> void:
     if Mil.recruit(ui.city,world,"spearman")=="":
         fail("recruited troops without a built military camp")
         return
+    if Mil.build(ui.city,world)=="" or not m["queue"].is_empty():
+        fail("unresearched Stone Age warfare allowed a military camp")
+        return
+    Research.ensure(ui.city)["known"].append("warfare")
     var pop_before: float=float(ui.city["realms"][0]["pop"])
     var wood_before: float=float(stock["wood"])
     var stone_before: float=float(stock["stone"])
