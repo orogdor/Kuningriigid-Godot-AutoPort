@@ -93,6 +93,7 @@ jobs:
       - name: Verify 200 turns of real upstream economy.js against Godot 0.5
         working-directory: port
         run: |
+          timeout --signal=TERM --kill-after=5s 30s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/scout_parse_v52.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/research_ai_v39.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/research_v35.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/map_nav_v40.gd
