@@ -251,11 +251,26 @@ jobs:
           mkdir -p /tmp/godot-windows
           unzip -q /tmp/godot-windows.zip -d /tmp/godot-windows
           cp /tmp/godot-windows/Godot_v4.4.1-stable_win64.exe dist/Kuningriigid-Engine.exe
-          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-pack "Windows Desktop" "$PWD/dist/Kuningriigid-Content.pck"
+          # The installed Android 0.51 APK loads Kuningriigid-Content.pck,
+          # so this asset MUST be exported using the Android preset. Godot's
+          # export-pack pipeline is platform-specific.
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-pack "Android" "$PWD/dist/Kuningriigid-Content.pck"
+          # Preserve a separate desktop PCK for manual Windows engine launches.
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-pack "Windows Desktop" "$PWD/dist/Kuningriigid-Windows-Content.pck"
           test -s dist/Kuningriigid.exe
           test -s dist/Kuningriigid-Engine.exe
           test -s dist/Windows-files.json
           test -s dist/Kuningriigid-Content.pck
+          test -s dist/Kuningriigid-Windows-Content.pck
+
+      - name: Smoke-test the actual Android PCK before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_CONTENT_PACK="$PWD/dist/Kuningriigid-Content.pck" \
+            timeout --signal=TERM --kill-after=5s 180s \
+            /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
+            --headless --path game --script res://tests/android_pack_v58.gd
 
       - name: Stamp APK and GitHub Release with actual AutoPort version
         id: stamp
@@ -277,7 +292,7 @@ jobs:
       - name: Validate artifacts and document hashes
         shell: bash
         run: |
-          (cd dist && sha256sum Kuningriigid.exe Kuningriigid-Engine.exe Windows-files.json Kuningriigid-Content.pck > SHA256SUMS.txt)
+          (cd dist && sha256sum Kuningriigid.exe Kuningriigid-Engine.exe Windows-files.json Kuningriigid-Content.pck Kuningriigid-Windows-Content.pck > SHA256SUMS.txt)
           if [[ -f dist/Kuningriigid.apk ]]; then (cd dist && sha256sum Kuningriigid.apk >> SHA256SUMS.txt); fi
           cat dist/SHA256SUMS.txt
           ls -lh dist/
@@ -298,7 +313,7 @@ jobs:
           VERSION="v${{ steps.stamp.outputs.version }}"
           SOURCE_SHA="$(python3 -c 'import json; print(json.load(open("game/data/generated/manifest.json"))["source_commit"])')"
           AUTOPORT_SHA="$(git rev-parse HEAD)"
-          RELEASE_FILES=(dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid-Content.pck dist/SHA256SUMS.txt)
+          RELEASE_FILES=(dist/Kuningriigid.exe dist/Kuningriigid-Engine.exe dist/Windows-files.json dist/Kuningriigid-Content.pck dist/Kuningriigid-Windows-Content.pck dist/SHA256SUMS.txt)
           ANDROID_NOTE="Existing Android installs update their game content via verified Content.pck; the APK itself is unchanged."
           if [[ -f dist/Kuningriigid.apk ]]; then
             RELEASE_FILES+=(dist/Kuningriigid.apk)
@@ -310,6 +325,7 @@ jobs:
 
           Game version: $VERSION. Windows Kuningriigid.exe checks GitHub Releases and downloads only changed files, with SHA-256 verification and offline fallback.
           Android: $ANDROID_NOTE
+          Kuningriigid-Content.pck is exported specifically for Android and verified by a Godot PCK mount/scene-load regression. Manual Windows pack: Kuningriigid-Windows-Content.pck.
           The initial Android app keeps its own verified PCK updater. Your saves are not uninstalled or cleared.
           To install on a new Android device before a permanent signing key is configured, use the earlier bootstrap APK:
           https://github.com/orogdor/Kuningriigid-Godot-AutoPort/releases/tag/v0.51.738
