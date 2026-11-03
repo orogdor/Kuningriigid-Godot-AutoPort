@@ -135,9 +135,47 @@ static func army_by_id(state: Dictionary,world: Dictionary,id: int) -> Dictionar
         if int(army.get("id",-1))==id:return army
     return {}
 
+static func _in_battle(m: Dictionary,id: int) -> bool:
+    var b: Dictionary=m.get("skirmish_v55",{})
+    return not b.is_empty() and String(b.get("result",""))=="" and \
+        b.get("source_ids",[]).has(id)
+
+static func rally(state: Dictionary,world: Dictionary,id: int) -> String:
+    # Three.js rallyArmies: order friendly detachments to an id, preserving
+    # their independent units and HP. Group only once they physically arrive.
+    var m: Dictionary=ensure(state,world)
+    var target: Dictionary=army_by_id(state,world,id)
+    if target.is_empty():return "Väesalka ei leitud."
+    if _in_battle(m,id):return "Lõpeta enne lahing."
+    if not target.get("path",[]).is_empty():return "Kogunemispunkt peab olema paigal."
+    target["group_id"]=id
+    var destination:=Vector2i(int(target["c"]),int(target["r"]))
+    var ordered: int=0
+    for army in m["armies"]:
+        if int(army["id"])==id or float(army.get("hp",0))<=0:continue
+        var army_id: int=int(army["id"])
+        if _in_battle(m,army_id):continue
+        var start:=Vector2i(int(army["c"]),int(army["r"]))
+        var path: Array=Routes.build_path(world,start,destination)
+        if start!=destination and path.size()<2:continue
+        army["rally_target"]=id
+        if start==destination:
+            army["group_id"]=id
+            army["path"]=[]
+            army["travelClock"]=0.0
+            army["travelDuration"]=0.0
+        else:
+            army["path"]=path.slice(1)
+            army["travelClock"]=0.0
+            army["travelDuration"]=Movement.segment_seconds(
+                army,army["path"][0],float(army["speed"]))
+        ordered+=1
+    return "" if ordered>0 else "Ühtegi teist väesalka ei saanud koondada."
+
 static func order(state: Dictionary,world: Dictionary,id: int,at: Vector2i) -> String:
     var army: Dictionary=army_by_id(state,world,id)
     if army.is_empty():return "Sellist sõjaväeüksust ei leitud."
+    if _in_battle(ensure(state,world),id):return "Seda väesalka juhitakse lahinguväljal."
     if not Routes.passable(world,at.x,at.y):return "Armee ei saa liikuda merre või mägedesse."
     var origin:=Vector2i(int(army["c"]),int(army["r"]))
     if origin==at:
@@ -201,7 +239,15 @@ static func tick(state: Dictionary,world: Dictionary,seconds: float) -> void:
                 "morale":100.0,"travelClock":0.0,"travelDuration":0.0})
             m["queue"].pop_front()
     for army in m["armies"]:
+        var id: int=int(army.get("id",-1))
+        if _in_battle(m,id):continue
         _march(army,world,seconds)
+        if army.has("rally_target") and army.get("path",[]).is_empty():
+            var target: Dictionary=army_by_id(state,world,int(army["rally_target"]))
+            if not target.is_empty() and int(army["c"])==int(target["c"]) and \
+                    int(army["r"])==int(target["r"]):
+                army["group_id"]=int(target["id"])
+            army.erase("rally_target")
 
 static func sample(army: Dictionary) -> Dictionary:
     return Movement.sample(army)
