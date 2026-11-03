@@ -126,7 +126,9 @@ func _sync_trade_map() -> void:
     if world_view==null or world_view.world.is_empty():return
     world_view.set_city_districts(city)
     Transit.configure(city,world_view.world)
-    world_view.set_scout(WorldScout52.ensure(city,world_view.world))
+    var scout: Dictionary=WorldScout52.ensure(city,world_view.world)
+    world_view.set_scout(scout)
+    if detail_view!=null:detail_view.set_world_scout_v53(scout)
     world_view.map_canvas.set_city_agents(city.get("transport_v26",{}).get("agents",[]),
         Transit.home_key(city))
     if not Trade.has_outpost(city):
@@ -209,6 +211,7 @@ func _show_detail(c: int, r: int) -> void:
         district_key=Districts.key(Vector2i(c,r))
     detail_view.configure_town_sources_v47(city,second_town,second_tile)
     detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
+    detail_view.set_world_scout_v53(WorldScout52.ensure(city,world_view.world))
     world_view.select_world_cell(c,r)
     if capital or satellite:_save()
     if city_scroll != null:city_scroll.hide()
@@ -260,7 +263,7 @@ func _setup_ui() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation",13)
     margin.add_child(body)
-    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.52",26))
+    body.add_child(_heading("KUNINGRIIGID   •   GODOT 0.53",26))
     body.add_child(_heading("Linnamajandus — esimene mängitav simulatsioon",16))
     var sub := Label.new()
     var manifest: Dictionary = Rules.read_table("manifest")

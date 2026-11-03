@@ -40,6 +40,8 @@ const SeamTerrain42 = preload("res://scripts/detail_neighbor_terrain_v42.gd")
 const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
+const WebUnits53 = preload("res://scripts/web_units_v53.gd")
+const Scout52 = preload("res://scripts/world_scout_v52.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
@@ -84,6 +86,7 @@ var can_build: bool = false
 var district_id: String=""
 var city_state: Dictionary = {}
 var scene_root: Node3D
+var world_scout_actor_v53: Node3D
 var construction_root: Node3D
 var resource_root: Node3D
 var worker_root: Node3D
@@ -178,6 +181,25 @@ func _ready() -> void:
     scene_root=Node3D.new()
     scene_root.name="WorldTile"
     viewport.add_child(scene_root)
+    world_scout_actor_v53=Node3D.new()
+    world_scout_actor_v53.name="DetailScoutV53"
+    scene_root.add_child(world_scout_actor_v53)
+    var original_scout: Node3D=WebUnits53.instance("scout",3.1)
+    if original_scout!=null:
+        original_scout.name="OriginalWebScoutDetailV53"
+        world_scout_actor_v53.add_child(original_scout)
+    else:
+        # Source GLB is synchronized separately. An incomplete local checkout
+        # still launches with a simple placeholder rather than failing to load.
+        var fallback:=MeshInstance3D.new()
+        fallback.name="ScoutFallback"
+        var capsule:=CapsuleMesh.new()
+        capsule.height=3.0
+        capsule.radius=0.45
+        fallback.mesh=capsule
+        fallback.position.y=1.5
+        world_scout_actor_v53.add_child(fallback)
+    world_scout_actor_v53.visible=false
     var environment:=WorldEnvironment.new()
     var sky_settings:=Environment.new()
     sky_settings.background_mode=Environment.BG_COLOR
@@ -1601,6 +1623,32 @@ func _can_build(kind: String) -> bool:
         if not exists:return false
     return CityEconomy.can_afford(city_state["realms"][0]["resources"],d.get("cost",{}))
 
+func set_world_scout_v53(data: Dictionary) -> void:
+    if world_scout_actor_v53==null or world.is_empty() or selected.x<0 or data.is_empty():
+        if world_scout_actor_v53!=null:world_scout_actor_v53.visible=false
+        return
+    if int(data.get("seed",-1))!=int(world.get("seed",-2)):
+        world_scout_actor_v53.visible=false
+        return
+    var pose: Dictionary=Scout52.sample(data)
+    if pose.is_empty():
+        world_scout_actor_v53.visible=false
+        return
+    var x: float=(float(pose["c"])-float(selected.x))*SURFACE_WIDTH
+    var z: float=(float(pose["r"])-float(selected.y))*SURFACE_DEPTH
+    # V240: the same world position is continuous in both atlas and detail.
+    # Keep the model on its actual tile, never duplicate it in two districts.
+    if absf(x)>SURFACE_WIDTH*0.5 or absf(z)>SURFACE_DEPTH*0.5:
+        world_scout_actor_v53.visible=false
+        return
+    world_scout_actor_v53.visible=true
+    world_scout_actor_v53.position=Vector3(x,_elevation(x,z,0.0,can_build),z)
+    var path: Array=data.get("path",[])
+    if not path.is_empty():
+        var next: Dictionary=path[0]
+        world_scout_actor_v53.rotation.y=atan2(float(next["c"])-float(data["c"]),
+            float(next["r"])-float(data["r"]))
+
 func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital: bool, district: String="") -> void:
     world=next_world
     selected=Vector2i(c,r)
@@ -1655,7 +1703,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==world_scout_actor_v53 or child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         # A queued mesh still has the DetailTerrain name this frame.
         # Replace it now so the terrain and color cannot be shadowed by
