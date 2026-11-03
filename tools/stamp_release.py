@@ -5,6 +5,7 @@ Never hardcode the previous APK's major/minor version in GitHub Actions.
 The monotonically increasing Actions run number becomes Android versionCode.
 """
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -42,6 +43,11 @@ def main() -> None:
     parser.add_argument("--preset", default="game/export_presets.cfg")
     parser.add_argument("--run-number", type=int, required=True)
     parser.add_argument("--check-only", action="store_true")
+    parser.add_argument(
+        "--content-version-file",
+        default="game/data/generated/release.json",
+        help="Release identity embedded in exported Android/Windows PCK",
+    )
     args = parser.parse_args()
     preset_path = Path(args.preset)
     original = preset_path.read_text(encoding="utf-8")
@@ -50,6 +56,13 @@ def main() -> None:
     )
     if not args.check_only:
         preset_path.write_text(updated, encoding="utf-8")
+        version_path = Path(args.content_version_file)
+        version_path.parent.mkdir(parents=True, exist_ok=True)
+        version_path.write_text(
+            json.dumps({"version": version, "tag": "v" + version,
+                        "run_number": args.run_number}, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     print(version)
 
 
