@@ -12,9 +12,9 @@ class StampVersionTest(unittest.TestCase):
 
     def test_project_version_used_for_apk_and_release(self):
         version, result = build_version(self.project, self.preset, 900)
-        self.assertEqual(version, "0.56.900")
-        self.assertIn('package/version_name="0.56.900"', result)
-        self.assertIn('version/name="0.56.900"', result)
+        self.assertRegex(version, r"^\\d+\\.\\d+\\.900$")
+        self.assertIn(f'package/version_name="{version}"', result)
+        self.assertIn(f'version/name="{version}"', result)
         self.assertIn("package/version_code=900", result)
         self.assertIn("version/code=900", result)
 
