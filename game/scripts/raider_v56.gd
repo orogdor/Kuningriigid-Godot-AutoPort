@@ -24,7 +24,8 @@ static func _path_from_home(world: Dictionary,origin: Vector2i) -> Array:
     # Bound this search to a small local front, independent from the 220x165
     # world map. Works even if a second civilization is across an ocean.
     var frontier: Array=[{"c":origin.x,"r":origin.y}]
-    var previous: Dictionary={str(origin.x)+":"+str(origin.y):""}
+    var previous: Dictionary={}
+    previous["%d:%d" % [origin.x,origin.y]]=""
     var chosen:=origin
     for i in range(RAID_DISTANCE):
         var fresh: Array=[]
