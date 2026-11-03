@@ -41,6 +41,7 @@ const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const WebUnits53 = preload("res://scripts/web_units_v53.gd")
+const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
 const Military54 = preload("res://scripts/military_v54.gd")
 const Scout52 = preload("res://scripts/world_scout_v52.gd")
@@ -126,11 +127,10 @@ func _ready() -> void:
     var top:=HBoxContainer.new()
     column.add_child(top)
     var heading:=Label.new()
-    # Always display the packaged project's actual version, even when
-    # the source script is unchanged across later manual APK releases.
-    var installed_name: String=String(ProjectSettings.get_setting(
-        "application/config/name","Kuningriigid Godot AutoPort"))
-    heading.text=installed_name+" • 3D KAART"
+    # ProjectSettings stays at the original APK version (0.51) after a PCK
+    # content update. Read the mounted pack's build identity instead.
+    heading.text="Kuningriigid Godot "+BuildInfo58.release_version()+" • 3D KAART"
+    heading.name="DetailVersionV58"
     heading.add_theme_font_size_override("font_size",16)
     heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     top.add_child(heading)
