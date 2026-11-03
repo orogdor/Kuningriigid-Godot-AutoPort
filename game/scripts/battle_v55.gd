@@ -5,6 +5,8 @@ extends RefCounted
 ## included. The opposing raider is a demo combatant, not a full enemy AI.
 const Mil=preload("res://scripts/military_v54.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
+const Men56=preload("res://scripts/individual_v56.gd")
+const Raider56=preload("res://scripts/raider_v56.gd")
 const KEY: String="skirmish_v55"
 const SCALE: float=0.5 # battle-pacing-v93.js
 const STEP: float=0.2
@@ -88,13 +90,41 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":55,"seed":int(world["seed"]),
+    military[KEY]={"version":56,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
         "battlefield":{"columns":3,"rows":3,"ring":1,
             "tileWidth":225.0,"tileDepth":195.0}}
+    Men56.initialize(military[KEY])
     _message(military[KEY],"Harjutusvastasega kokkupõrge. Kaotused on päris, saaki ei jagata.")
+    return ""
+
+static func start_campaign(state: Dictionary,world: Dictionary,ids: Array) -> String:
+    var raider: Dictionary=Raider56.current(state,world)
+    if raider.is_empty() or bool(raider.get("defeated",false)):
+        return "Kampaania vastane puudub."
+    if raider.get("engaged",false) or int(raider.get("cooldown",0))>0:
+        return "Vastasel on ajutine kaitseaeg."
+    if ids.is_empty():return "Vali väesalk."
+    for id in ids:
+        var army: Dictionary=Mil.army_by_id(state,world,int(id))
+        if army.is_empty() or int(army["c"])!=int(raider["c"]) or \
+                int(army["r"])!=int(raider["r"]):
+            return "Väesalgad ei ole vaenlasega samal ruudul."
+    var result: String=start(state,world,ids)
+    if result!="":return result
+    var b: Dictionary=current(state,world)
+    b["campaign_v56"]=true
+    b["opponent_id"]=int(raider["id"])
+    b["fighters"][b["fighters"].size()-1]["hp"]=float(raider["hp"])
+    b["fighters"][b["fighters"].size()-1]["max_hp"]=float(raider["max_hp"])
+    b["fighters"][b["fighters"].size()-1]["id"]=int(raider["id"])
+    b["fighters"][b["fighters"].size()-1]["source_id"]=int(raider["id"])
+    b["individual_version"]=0
+    Men56.initialize(b)
+    raider["engaged"]=true
+    _message(b,"Kampaanialahing: vaenulik väesalk. Tulemused säilivad maailmakaardil.")
     return ""
 
 static func command(state: Dictionary,world: Dictionary,id: int,kind: String) -> String:
@@ -205,6 +235,13 @@ static func _finish(state: Dictionary,world: Dictionary,b: Dictionary) -> void:
         army["travelDuration"]=0.0
         survivors.append(army)
     m["armies"]=survivors
+    if bool(b.get("campaign_v56",false)):
+        var opponent_hp: float=0.0
+        for fighter in b["fighters"]:
+            if int(fighter.get("team",-1))==1:
+                opponent_hp=float(fighter["hp"])
+                break
+        Raider56.settle(state,world,opponent_hp)
     m["last_battle_v55"]={"result":b["result"],"elapsed":b["elapsed"],
         "survivors":survivors.size()}
     b["resolved"]=true
@@ -238,8 +275,11 @@ static func tick(state: Dictionary,world: Dictionary,wall_seconds: float) -> voi
         if posmod(int(roundf(float(b["elapsed"])/STEP)),2)==0:
             fighters=fighters.duplicate()
             fighters.reverse()
-        for f in fighters:
-            _tick_unit(b,f,STEP)
+        if int(b.get("version",55))>=56:
+            Men56.tick(b,STEP)
+        else:
+            for f in fighters:
+                _tick_unit(b,f,STEP)
         _outcome(state,world,b)
 
 static func status(state: Dictionary,world: Dictionary) -> String:
