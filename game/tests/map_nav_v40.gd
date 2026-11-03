@@ -25,9 +25,9 @@ func _test() -> void:
     # detail tile, which visual navigation alone cannot detect reliably.
     var atlas_view: SubViewport=map.terrain_3d.viewport
     var detail_viewport: SubViewport=ui.detail_view.view_port
-    var atlas_world: World3D=atlas_view.get_world_3d()
-    var detail_world: World3D=detail_viewport.get_world_3d()
-    if not atlas_view.own_world_3d or not detail_viewport.own_world_3d or atlas_world==detail_world:
+    var atlas_world: World3D=atlas_view.find_world_3d()
+    var detail_world: World3D=detail_viewport.find_world_3d()
+    if atlas_world==null or detail_world==null or not atlas_view.own_world_3d or not detail_viewport.own_world_3d or atlas_world==detail_world:
         fail("world atlas and detail map must not share a rendered World3D")
         return
     if map.terrain_3d.scene_root.get_world_3d()!=atlas_world or ui.detail_view.scene_root.get_world_3d()!=detail_world:

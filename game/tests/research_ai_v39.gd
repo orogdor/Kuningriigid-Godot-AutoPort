@@ -97,7 +97,7 @@ func _test() -> void:
     s["bread"]=100.0
     s["water"]=100.0
     var w: Dictionary=Research.ensure(waiting)
-    for known_id in ["stone_tools","hunting","antler_picks","stone_wedges",
+    for known_id in ["stone_tools","hunting","settlement","antler_picks","stone_wedges",
             "copper_tin","fire_use","pottery","copper_smelting","woodworking","stone_crafts"]:
         w["known"].append(known_id)
     AI.set_enabled(waiting,true)
