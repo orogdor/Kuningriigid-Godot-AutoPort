@@ -32,7 +32,7 @@ static func _path_from_home(world: Dictionary,origin: Vector2i) -> Array:
         for cell in frontier:
             var from:=Vector2i(int(cell["c"]),int(cell["r"]))
             for offset in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
-                var target:=from+offset
+                var target: Vector2i=from+Vector2i(offset)
                 var key: String="%d:%d" % [target.x,target.y]
                 if previous.has(key) or not Routes.passable(world,target.x,target.y):continue
                 previous[key]="%d:%d" % [from.x,from.y]
