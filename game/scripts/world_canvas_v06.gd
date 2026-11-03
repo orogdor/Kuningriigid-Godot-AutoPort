@@ -199,9 +199,9 @@ func _draw() -> void:
         var position: Vector2=point(float(pose["c"])+0.5,float(pose["r"])+0.5)
         var previous: Vector2=position
         for next in scout_state.get("path",[]):
-            var destination: Vector2=point(float(next["c"])+0.5,float(next["r"])+0.5)
-            draw_line(previous,destination,Color("#ffe5a5"),maxf(1.6,zoom*0.16),true)
-            previous=destination
+            var scout_waypoint: Vector2=point(float(next["c"])+0.5,float(next["r"])+0.5)
+            draw_line(previous,scout_waypoint,Color("#ffe5a5"),maxf(1.6,zoom*0.16),true)
+            previous=scout_waypoint
         draw_circle(position,maxf(4.5,zoom*0.54),Color("#fff1b5"))
         draw_arc(position,maxf(5.8,zoom*0.69),0.0,TAU,18,Color("#42301f"),1.5,true)
     if chosen.x>=0:
