@@ -239,9 +239,9 @@ func set_battle(b: Dictionary) -> void:
                 var phase: float=float(man.get("anim_phase",0.0))
                 var walking: bool=bool(man.get("moving",false))
                 var attacking: float=float(man.get("attack_anim",0.0))
-                model_node.position.y=absf(sinf(phase))*0.12 if walking else 0.0
-                model_node.rotation.x=-0.27*sinf(attacking/0.36*PI) if attacking>0.0 else 0.0
-                model_node.rotation.z=0.065*sinf(phase) if walking else 0.0
+                model_node.position.y=absf(sin(phase))*0.12 if walking else 0.0
+                model_node.rotation.x=-0.27*sin(attacking/0.36*PI) if attacking>0.0 else 0.0
+                model_node.rotation.z=0.065*sin(phase) if walking else 0.0
             used[key]=true
             total+=1
     for node in actors_root.get_children():
