@@ -6,6 +6,7 @@ extends RefCounted
 const Mil=preload("res://scripts/military_v54.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
 const Men56=preload("res://scripts/individual_v56.gd")
+const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Raider56=preload("res://scripts/raider_v56.gd")
 const KEY: String="skirmish_v55"
 const SCALE: float=0.5 # battle-pacing-v93.js
@@ -90,13 +91,14 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":56,"seed":int(world["seed"]),
+    military[KEY]={"version":57,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
         "battlefield":{"columns":3,"rows":3,"ring":1,
             "tileWidth":225.0,"tileDepth":195.0}}
     Men56.initialize(military[KEY])
+    Nav57.ensure(military[KEY])
     _message(military[KEY],"Harjutusvastasega kokkupõrge. Kaotused on päris, saaki ei jagata.")
     return ""
 
