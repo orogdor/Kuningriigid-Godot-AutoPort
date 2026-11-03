@@ -42,6 +42,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate app release versions against Godot project
+        working-directory: port
+        shell: bash
+        run: |
+          python3 tools/test_stamp_release.py
+          python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number 900 --check-only
       - name: Check individual soldiers and campaign encounter rules against Three.js
         working-directory: port
         run: node tools/verify-individual-v56.mjs --source ../upstream
@@ -117,6 +123,7 @@ jobs:
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/military_v54.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_v55.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_v56.gd
+          timeout --signal=TERM --kill-after=5s 60s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/updater_v57.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_parity.gd
