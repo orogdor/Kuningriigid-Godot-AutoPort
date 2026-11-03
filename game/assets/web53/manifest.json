@@ -1,0 +1,34 @@
+{
+  "models": {
+    "axeman": {
+      "bytes": 218824,
+      "mesh_count": 1,
+      "sha256": "67a3e97b735ae1e49d576d86315ec06282f7077d1242f5331c7f88fb662cab76",
+      "source": "models-v148/glb/axeman.glb",
+      "triangles": 4780
+    },
+    "scout": {
+      "bytes": 225760,
+      "mesh_count": 1,
+      "sha256": "24c566a7a1d23db81d9010e3882367d1c5ce12ff4eb27c4b5f58c7d933e23bbb",
+      "source": "models-v148/glb/scout.glb",
+      "triangles": 4864
+    },
+    "slinger": {
+      "bytes": 202260,
+      "mesh_count": 1,
+      "sha256": "1db8909d8b6d0b1c616bbc849ef8bb9e4d2954bd908789efc6297f42e4e06438",
+      "source": "models-v148/glb/slinger.glb",
+      "triangles": 4364
+    },
+    "spearman": {
+      "bytes": 220336,
+      "mesh_count": 1,
+      "sha256": "c93b5a7dad6c0b09760de3bc37794b59a9d9a37680a5c6e3c35461ee8472e5d0",
+      "source": "models-v148/glb/spearman.glb",
+      "triangles": 4688
+    }
+  },
+  "source_commit": "d79a0240da0b5e7512b014fa1480010959f0da7f",
+  "source_repository": "orogdor/Kuningriigid"
+}
