@@ -4,6 +4,7 @@ signal open_city_requested
 signal open_detail_requested(c: int, r: int)
 signal expand_requested(c: int, r: int)
 signal scout_destination_requested(c: int, r: int)
+signal army_destination_requested(id: int,c: int,r: int)
 signal world_generated
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
@@ -17,6 +18,10 @@ var terrain_3d: SubViewportContainer
 var map_mode_button: Button
 var map_3d_enabled: bool=true
 var status_label: Label
+var army_status_v54: Label
+var army_selector_v54: OptionButton
+var army_ids_v54: Array[int]=[]
+var army_state_v54: Array=[]
 var scout_status_label: Label
 var scout_state: Dictionary={}
 var info_label: Label
@@ -66,6 +71,18 @@ func _ready() -> void:
     scout_order.pressed.connect(func():
         if selected_cell.x>=0:scout_destination_requested.emit(selected_cell.x,selected_cell.y))
     bar.add_child(scout_order)
+    army_selector_v54=OptionButton.new()
+    army_selector_v54.name="ArmySelectorV54"
+    army_selector_v54.custom_minimum_size=Vector2(160,38)
+    bar.add_child(army_selector_v54)
+    var order_army:=Button.new()
+    order_army.name="SendArmyV54"
+    order_army.text="Saada väesalk"
+    order_army.pressed.connect(func():
+        var chosen: int=army_selector_v54.selected
+        if selected_cell.x>=0 and chosen>=0 and chosen<army_ids_v54.size():
+            army_destination_requested.emit(army_ids_v54[chosen],selected_cell.x,selected_cell.y))
+    bar.add_child(order_army)
     map_mode_button=Button.new()
     map_mode_button.text="2D vaade"
     map_mode_button.pressed.connect(_switch_mode)
@@ -89,6 +106,11 @@ func _ready() -> void:
     scout_status_label.text="Avastaja: maailmakaardi valmimisel."
     scout_status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(scout_status_label)
+    army_status_v54=Label.new()
+    army_status_v54.name="ArmyStatusV54"
+    army_status_v54.text="Väesalgad: puuduvad"
+    army_status_v54.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    top.add_child(army_status_v54)
     var map_frame:=Control.new()
     map_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     map_frame.size_flags_vertical=Control.SIZE_EXPAND_FILL
@@ -174,6 +196,7 @@ func _generate() -> void:
     scout_state={}
     map_canvas.set_scout({})
     terrain_3d.set_scout({})
+    set_armies_v54([])
     world_generated.emit()
 
 func regenerate() -> void:
@@ -201,6 +224,26 @@ func set_scout(data: Dictionary) -> void:
             var path: Array=scout_state.get("path",[])
             var tile: String="%d × %d" % [int(scout_state.get("c",0)),int(scout_state.get("r",0))]
             scout_status_label.text="Avastaja: %s • teel %d ruutu. Vali sihtkoht ja vajuta Saada avastaja." % [tile,path.size()]
+
+func set_armies_v54(armies: Array) -> void:
+    army_state_v54=armies.duplicate(true)
+    if map_canvas!=null:map_canvas.set_armies_v54(army_state_v54)
+    if terrain_3d!=null:terrain_3d.set_armies_v54(army_state_v54)
+    if army_selector_v54==null:return
+    var previous_id: int=-1
+    if army_selector_v54.selected>=0 and army_selector_v54.selected<army_ids_v54.size():
+        previous_id=army_ids_v54[army_selector_v54.selected]
+    army_ids_v54.clear()
+    army_selector_v54.clear()
+    var choice: int=0
+    for army in army_state_v54:
+        var id: int=int(army.get("id",-1))
+        if id<0:continue
+        army_ids_v54.append(id)
+        army_selector_v54.add_item("#%d %s" % [id,String(army.get("kind",""))])
+        if id==previous_id:choice=army_ids_v54.size()-1
+    if not army_ids_v54.is_empty():army_selector_v54.select(choice)
+    army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, siis vajuta Saada väesalk." % army_ids_v54.size()
 
 func set_city_districts(city: Dictionary) -> void:
     district_city=city
