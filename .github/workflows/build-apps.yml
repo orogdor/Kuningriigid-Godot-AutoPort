@@ -240,6 +240,15 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
 
+      - name: Stamp APK and GitHub Release with actual AutoPort version
+        id: stamp
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number ${{ github.run_number }})"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release version: v$VERSION (Android versionCode ${{ github.run_number }})"
+
       - name: Build small native Windows launcher and structured game manifest
         shell: bash
         run: |
@@ -276,15 +285,6 @@ jobs:
             timeout --signal=TERM --kill-after=5s 180s \
             /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
             --headless --path /tmp/android-pack-smoke --script res://android_pack_v58.gd
-
-      - name: Stamp APK and GitHub Release with actual AutoPort version
-        id: stamp
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="$(python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number ${{ github.run_number }})"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Release version: v$VERSION (Android versionCode ${{ github.run_number }})"
 
       - name: Build signed Android ARM64 APK (only with persistent key)
         if: steps.android_signing.outputs.enabled == 'true'
