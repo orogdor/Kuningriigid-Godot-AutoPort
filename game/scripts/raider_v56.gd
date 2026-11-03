@@ -115,7 +115,7 @@ static func colliding_ids(state: Dictionary,world: Dictionary) -> Array:
     for army in m.get("armies",[]):
         if float(army.get("hp",0))<=0:continue
         if int(army["c"])!=int(enemy["c"]) or int(army["r"])!=int(enemy["r"]):continue
-        if not army.get("path",[]).is_empty():continue
+        # An encounter stops marching troops at the actual shared tile.
         ids.append(int(army["id"]))
         if ids.size()>=8:break
     return ids
