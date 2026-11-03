@@ -3,6 +3,8 @@ extends Control
 signal open_city_requested
 signal open_detail_requested(c: int, r: int)
 signal expand_requested(c: int, r: int)
+signal scout_destination_requested(c: int, r: int)
+signal world_generated
 const World = preload("res://scripts/world_gen_v06.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
 const Terrain3D = preload("res://scripts/world_terrain_v40.gd")
@@ -15,6 +17,8 @@ var terrain_3d: SubViewportContainer
 var map_mode_button: Button
 var map_3d_enabled: bool=true
 var status_label: Label
+var scout_status_label: Label
+var scout_state: Dictionary={}
 var info_label: Label
 var seed: int = 82026
 var selected_cell: Vector2i=Vector2i(-1,-1)
@@ -56,6 +60,12 @@ func _ready() -> void:
     annex.pressed.connect(func():
         if selected_cell.x>=0:expand_requested.emit(selected_cell.x,selected_cell.y))
     bar.add_child(annex)
+    var scout_order:=Button.new()
+    scout_order.name="ScoutMoveOrderV52"
+    scout_order.text="Saada avastaja"
+    scout_order.pressed.connect(func():
+        if selected_cell.x>=0:scout_destination_requested.emit(selected_cell.x,selected_cell.y))
+    bar.add_child(scout_order)
     map_mode_button=Button.new()
     map_mode_button.text="2D vaade"
     map_mode_button.pressed.connect(_switch_mode)
@@ -74,6 +84,11 @@ func _ready() -> void:
     status_label.text="Kaardi genereerimine..."
     status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     top.add_child(status_label)
+    scout_status_label=Label.new()
+    scout_status_label.name="ScoutStatusV52"
+    scout_status_label.text="Avastaja: maailmakaardi valmimisel."
+    scout_status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    top.add_child(scout_status_label)
     var map_frame:=Control.new()
     map_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     map_frame.size_flags_vertical=Control.SIZE_EXPAND_FILL
@@ -155,6 +170,11 @@ func _generate() -> void:
         seed,int(world["layout"]["count"]),world["layout"]["islands"].size(),
         int(world["land_count"]),int(world["mountain_count"]),int(world.get("river_count",0))]
     _save_settings()
+    # Main screen rebinds persisted scouts after every world-seed change.
+    scout_state={}
+    map_canvas.set_scout({})
+    terrain_3d.set_scout({})
+    world_generated.emit()
 
 func regenerate() -> void:
     seed+=7919
@@ -169,6 +189,18 @@ func set_trade_route(route: Dictionary,caravans: Array) -> void:
     var moving: Array=caravans if fresh else []
     if map_canvas!=null:map_canvas.set_trade_route(shown,moving)
     if terrain_3d!=null:terrain_3d.set_trade_route(shown,moving)
+
+func set_scout(data: Dictionary) -> void:
+    scout_state=data.duplicate(true)
+    if map_canvas!=null:map_canvas.set_scout(scout_state)
+    if terrain_3d!=null:terrain_3d.set_scout(scout_state)
+    if scout_status_label!=null:
+        if scout_state.is_empty():
+            scout_status_label.text="Avastajat ei ole."
+        else:
+            var path: Array=scout_state.get("path",[])
+            var tile: String="%d × %d" % [int(scout_state.get("c",0)),int(scout_state.get("r",0))]
+            scout_status_label.text="Avastaja: %s • teel %d ruutu. Vali sihtkoht ja vajuta Saada avastaja." % [tile,path.size()]
 
 func set_city_districts(city: Dictionary) -> void:
     district_city=city
