@@ -129,7 +129,17 @@ static func _move_men(fighter: Dictionary,dt: float,
     var formation: String=String(fighter.get("formation","line"))
     if formation=="hold":speed*=0.8
     elif formation=="spear_wall":speed*=0.35
-    for m in men:
+    # March the foremost soldiers first so the back ranks do not remain
+    # pinned against stationary men immediately ahead of them.
+    var walkers: Array=men.duplicate()
+    if int(battle.get("version",56))>=57:
+        var facing: float=float(fighter.get("heading",0.0))
+        var forward:=Vector2(sin(facing),cos(facing))
+        walkers.sort_custom(func(a,b):
+            var pa:=Vector2(float(a["x"]),float(a["z"]))
+            var pb:=Vector2(float(b["x"]),float(b["z"]))
+            return pa.dot(forward)>pb.dot(forward))
+    for m in walkers:
         if float(m["hp"])<=0 or bool(m.get("escaped",false)):continue
         var slot: Vector2=formation_slot(fighter,int(m["index"]),men.size())
         var goal:=Vector2(float(fighter["x"])+slot.x,float(fighter["z"])+slot.y)
