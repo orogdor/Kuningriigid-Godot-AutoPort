@@ -22,8 +22,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: godot-port-sync
-  cancel-in-progress: false
+  group: godot-port-sync-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   port:
