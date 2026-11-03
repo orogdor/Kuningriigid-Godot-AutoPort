@@ -1,5 +1,11 @@
-KUNINGRIIGID GODOT — EXPLICIT RELEASE REQUEST
-Target: 0.51 detail viewport isolation hotfix
-Base source commit: 9d189241b2f44fd7791b467f5aad6e199e54117a
-Reason: Fix reported screenshot where continent/world-map mesh bleeds into the capital detail map. Atlas and detail SubViewports now have independent World3D instances, with a regression test.
-Triggered deliberately to provide a new test APK and EXE. Routine source pushes still do not build binary releases.
+KUNINGRIIGID GODOT — EXPLICIT VERIFIED APP UPDATE RELEASE REQUEST
+Target: AutoPort 0.56 (current game/project.godot), with reliable updater fixes.
+Source: merged PR #7, commit 6618d02b3f0ef0b9baa50a9671cc7531ec05ac5e.
+Reason: Latest published Content.pck/Windows launcher is still 0.51.738 despite
+a tested 0.56 game and its now-repaired update pipeline.
+Publish: SHA-256 verified Content.pck and Windows launcher/manifest/engine.
+Android: publish APK only if persistent signing secrets are configured;
+otherwise existing installed APKs update their game content using PCK.
+No uninstall, no save deletion and no changing the signing key automatically.
+Test gate: PR #7 run 41682935637 passed the updater, version and game regressions.
+This is a deliberate one-off release request, not a build per source commit.
