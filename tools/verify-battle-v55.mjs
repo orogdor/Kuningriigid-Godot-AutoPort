@@ -11,7 +11,6 @@ const source=resolve(process.argv[index+1]);
 const moduleOf=file=>import(pathToFileURL(join(source,file)).href);
 const {BATTLEFIELD:battlefield,battlefieldTiles}=await moduleOf('battlefield-v88.js');
 const {BATTLE_TIME_SCALE}=await moduleOf('battle-pacing-v93.js');
-const {FORMATIONs}=await moduleOf('formations-v94.js').catch(()=>({FORMATIONs:null}));
 const forms=(await moduleOf('formations-v94.js')).FORMATIONS;
 const {formationOptions}=await moduleOf('formations-v94.js');
 assert.equal(battlefield.columns,3);
