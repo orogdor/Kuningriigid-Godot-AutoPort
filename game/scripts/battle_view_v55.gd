@@ -839,7 +839,7 @@ func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,MIN_BATTLE_ZOOM,MAX_BATTLE_ZOOM)
     if battle_camera!=null:battle_camera.size=cam_size
 
-func set_battle(b: Dictionary) -> void:
+func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
     var earlier_elapsed: float=float(current_battle.get("elapsed",-1.0))
     var later_elapsed: float=float(b.get("elapsed",-1.0))
     var elapsed_delta: float=later_elapsed-earlier_elapsed
@@ -848,6 +848,12 @@ func set_battle(b: Dictionary) -> void:
     var can_interpolate: bool=auto_play_enabled and earlier_elapsed>=0.0 and \
         elapsed_delta>0.001 and elapsed_delta<1.0 and \
         int(b.get("version",0))>=61 and String(b.get("result",""))==""
+    # User commands can update the persistent saved battle without advancing
+    # the deterministic clock. In that case keep the currently rendered
+    # interpolated soldier transforms instead of snapping the whole army.
+    var keep_visual: bool=preserve_motion and auto_play_enabled and \
+        absf(elapsed_delta)<0.000001 and earlier_elapsed>=0.0 and \
+        String(b.get("result",""))==""
     var blend_seconds: float=clampf(elapsed_delta/Battlefield.SCALE,0.15,0.6)
     current_battle=b.duplicate(true)
     if status_label==null:return
@@ -970,34 +976,39 @@ func set_battle(b: Dictionary) -> void:
             var model_node: Node3D=holder.get_child(0) as Node3D
             if int(current_battle.get("version",0))>=61:
                 var previous: Dictionary=holder.get_meta("interpolation_v63",{})
-                var smooth: bool=can_interpolate and not previous.is_empty() and \
-                    holder.position.distance_to(target_position)<12.0
-                if not smooth:
-                    holder.position=target_position
-                    holder.rotation.y=target_heading
-                var velocity: Vector3=Vector3.ZERO
-                if smooth:
-                    velocity=(target_position-previous.get("target",holder.position))/\
-                        blend_seconds
-                holder.set_meta("interpolation_v63",{
-                    "origin":holder.position,"target":target_position,
-                    "from_heading":holder.rotation.y,"to_heading":target_heading,
-                    "fraction":0.0 if smooth else 1.0,
-                    "duration":blend_seconds if smooth else 0.01,
-                    "velocity":velocity,
-                    "move_active":bool(man.get("moving",false)) or \
-                        velocity.length_squared()>0.01,
-                    "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
-                        float(man.get("anim_phase",0.0)),
-                    "attack_clock":maxf(float(man.get("attack_anim",0.0)),
-                        float(previous.get("attack_clock",0.0))) if smooth else \
-                        float(man.get("attack_anim",0.0)),
-                    "hit_clock":maxf(float(man.get("hit_anim_v61",0.0)),
-                        float(previous.get("hit_clock",0.0))) if smooth else \
-                        float(man.get("hit_anim_v61",0.0)),
-                    "person":man.duplicate(true),"kind":kind})
-                if not smooth and model_node!=null:
-                    Animation65.apply(model_node,man,kind)
+                if keep_visual and not previous.is_empty():
+                    previous["person"]=man.duplicate(true)
+                    previous["kind"]=kind
+                    holder.set_meta("interpolation_v63",previous)
+                else:
+                    var smooth: bool=can_interpolate and not previous.is_empty() and \
+                        holder.position.distance_to(target_position)<12.0
+                    if not smooth:
+                        holder.position=target_position
+                        holder.rotation.y=target_heading
+                    var velocity: Vector3=Vector3.ZERO
+                    if smooth:
+                        velocity=(target_position-previous.get("target",holder.position))/\
+                            blend_seconds
+                    holder.set_meta("interpolation_v63",{
+                        "origin":holder.position,"target":target_position,
+                        "from_heading":holder.rotation.y,"to_heading":target_heading,
+                        "fraction":0.0 if smooth else 1.0,
+                        "duration":blend_seconds if smooth else 0.01,
+                        "velocity":velocity,
+                        "move_active":bool(man.get("moving",false)) or \
+                            velocity.length_squared()>0.01,
+                        "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
+                            float(man.get("anim_phase",0.0)),
+                        "attack_clock":maxf(float(man.get("attack_anim",0.0)),
+                            float(previous.get("attack_clock",0.0))) if smooth else \
+                            float(man.get("attack_anim",0.0)),
+                        "hit_clock":maxf(float(man.get("hit_anim_v61",0.0)),
+                            float(previous.get("hit_clock",0.0))) if smooth else \
+                            float(man.get("hit_anim_v61",0.0)),
+                        "person":man.duplicate(true),"kind":kind})
+                    if not smooth and model_node!=null:
+                        Animation65.apply(model_node,man,kind)
             else:
                 holder.position=target_position
                 holder.rotation.y=target_heading
