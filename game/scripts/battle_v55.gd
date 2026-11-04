@@ -94,7 +94,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":69,"seed":int(world["seed"]),
+    military[KEY]={"version":70,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -130,7 +130,7 @@ static func start_demo(state: Dictionary,world: Dictionary) -> String:
         "hp":foe_hp,"max_hp":foe_hp,
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":69,"seed":int(world["seed"]),
+    military[KEY]={"version":70,"seed":int(world["seed"]),
         "demo_v61":true,"fighters":troops,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
         "log":[],"battlefield":{"columns":3,"rows":3,"ring":1,
@@ -167,7 +167,7 @@ static func start_large_demo(state: Dictionary,world: Dictionary) -> String:
                 "mode":"attack","formation":"line",
                 "cool":0.0,"shots":0,
                 "ammo":18 if kind=="slinger" else -1})
-    military[KEY]={"version":69,"seed":int(world["seed"]),
+    military[KEY]={"version":70,"seed":int(world["seed"]),
         "demo_v61":true,"large_demo_v64":true,
         "fighters":fighters,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,

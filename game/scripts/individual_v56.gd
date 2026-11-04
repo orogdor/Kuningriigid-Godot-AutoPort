@@ -45,13 +45,17 @@ static func initialize(b: Dictionary) -> void:
             var hp: float=minf(man_hp,available)
             available=maxf(0.0,available-hp)
             var slot: Vector2=formation_slot(fighter,i,count)
-            men.append({"id":"%d:%d" % [int(fighter["id"]),i],"index":i,
-                "x":float(fighter["x"])+slot.x,
+            var person: Dictionary={"id":"%d:%d" % [int(fighter["id"]),i],
+                "index":i,"x":float(fighter["x"])+slot.x,
                 "z":float(fighter["z"])+slot.y,
                 "hp":hp,"max_hp":man_hp,"cool":float(posmod(i,4))*0.11,
                 "shots":0,"ammo":12 if kind=="slinger" else -1,
                 "escaped":false,"heading":0.0,"moving":false,
-                "anim_phase":0.0,"attack_anim":0.0})
+                "anim_phase":0.0,"attack_anim":0.0}
+            if int(b.get("version",56))>=70:
+                person["strike_seq_v70"]=0
+                person["hit_seq_v70"]=0
+            men.append(person)
         fighter["men"]=men
         fighter["menAlive"]=men.filter(func(m):return float(m["hp"])>0).size()
         fighter["max_hp"]=max_hp
@@ -253,12 +257,19 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float,
         man["shots"]=int(man["shots"])+1
         man["cool"]=1.6 if kind=="slinger" else 1.35
         man["attack_anim"]=0.36
+        # V70: exact, monotonic combat event. Rendering can trigger the
+        # imported GLB clip once even when two ticks arrive in one frame.
+        # This counter does not participate in damage/cooldown calculations.
+        if int(b.get("version",56))>=70:
+            man["strike_seq_v70"]=int(man.get("strike_seq_v70",0))+1
         if kind=="slinger":
             man["ammo"]=int(man["ammo"])-1
             if int(b.get("version",56))>=58 or not hits:continue
         victim["hp"]=maxf(0.0,float(victim["hp"])-power)
         if int(b.get("version",56))>=61:
             victim["hit_anim_v61"]=0.36
+        if int(b.get("version",56))>=70:
+            victim["hit_seq_v70"]=int(victim.get("hit_seq_v70",0))+1
 
 static func _aggregate(fighter: Dictionary) -> void:
     var total: float=0.0
