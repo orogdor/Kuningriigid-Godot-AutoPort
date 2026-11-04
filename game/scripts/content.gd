@@ -123,6 +123,7 @@ func _ready() -> void:
     battle_view.battle_move_requested.connect(_battle_move)
     battle_view.battle_individual_move_requested.connect(_battle_individual_move)
     battle_view.battle_individual_return_requested.connect(_battle_individual_rejoin)
+    battle_view.battle_individual_attack_requested.connect(_battle_individual_attack)
     battle_view.battle_tick_requested.connect(_battle_tick)
     battle_view.battle_auto_paused.connect(_save)
     battle_view.battle_demo_retry_requested.connect(_retry_demo_battle)
@@ -327,6 +328,14 @@ func _battle_move(id: int,x: float,z: float) -> void:
 
 func _battle_individual_move(id: int,index: int,x: float,z: float) -> void:
     var result: String=Battle55.move_individual(city,world_view.world,id,index,Vector2(x,z))
+    if result!="":event_message=result
+    battle_view.set_battle(Battle55.current(city,world_view.world))
+    _save()
+
+func _battle_individual_attack(id: int,index: int,
+        enemy_squad: int,enemy_index: int) -> void:
+    var result: String=Battle55.attack_individual(city,world_view.world,
+        id,index,enemy_squad,enemy_index)
     if result!="":event_message=result
     battle_view.set_battle(Battle55.current(city,world_view.world))
     _save()
