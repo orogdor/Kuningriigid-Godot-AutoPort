@@ -14,6 +14,15 @@ func fail(message: String) -> void:
     printerr("BATTLE_SQUAD_V71 FAIL: "+message)
     quit(1)
 
+func _free_destination(battle: Dictionary) -> Vector2:
+    var arena: Dictionary=Nav.ensure(battle)
+    for x in range(-120,121,8):
+        for z in range(-100,101,8):
+            var point:=Vector2(float(x),float(z))
+            if Nav.open_at(point,arena):
+                return point
+    return Vector2(INF,INF)
+
 func _initialize() -> void:
     call_deferred("_run")
 
@@ -127,10 +136,10 @@ func _run() -> void:
 
     # A manual personal movement order overrides a group command.
     var person: Dictionary=own["men"][1]
-    var goal:=Vector2(float(person["x"])-3.0,float(person["z"])+3.0)
-    var arena: Dictionary=Nav.ensure(battle)
-    if not Nav.open_at(goal,arena):
-        goal=Vector2.ZERO
+    var goal: Vector2=_free_destination(battle)
+    if not is_finite(goal.x) or not is_finite(goal.y):
+        fail("No clear battlefield destination for personal override")
+        return
     if Battle.move_individual(ui.city,world,900101,1,goal)!="":
         fail("Personal movement was rejected under a group target")
         return
@@ -159,7 +168,7 @@ func _run() -> void:
         return
 
     # New group move order cancels existing group attack and manual flags.
-    if Battle.move(ui.city,world,900101,Vector2(0,0))!="":
+    if Battle.move(ui.city,world,900101,goal)!="":
         fail("Cannot give the selected squad a replacement move order")
         return
     if own.has(Squad.KEY) or person.has(Squad.MANUAL):
