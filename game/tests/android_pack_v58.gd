@@ -49,5 +49,26 @@ func _check_pack() -> void:
     if not _has_version(ui,"GODOT "+expected):
         _fail("Game header did not reflect mounted PCK version "+expected)
         return
+    # Old regression checks passed with all GLBs silently missing from PCK.
+    # Validate the assets that are dynamically loaded by tactical/world views.
+    for kind in ["axeman","spearman","slinger"]:
+        var path: String="res://assets/web73/"+kind+".glb"
+        if not ResourceLoader.exists(path):
+            _fail("Exported PCK omitted visible rigged warrior: "+path)
+            return
+        var resource: Resource=ResourceLoader.load(path)
+        if not resource is PackedScene:
+            _fail("Exported PCK failed to load rigged warrior: "+path)
+            return
+        var actor: Node3D=(resource as PackedScene).instantiate() as Node3D
+        if actor==null:
+            _fail("Exported warrior has no scene root: "+kind)
+            return
+        var visible_meshes: Array=actor.find_children("*","MeshInstance3D",true,false)
+        var bones: Array=actor.find_children("*","Skeleton3D",true,false)
+        if visible_meshes.is_empty() or bones.is_empty():
+            _fail("Exported soldier lost actual skin or geometry: "+kind)
+            return
+        actor.free()
     print("ANDROID_PACK_V58 SUCCESS: Android PCK mounted; UI displays release "+expected)
     quit(0)

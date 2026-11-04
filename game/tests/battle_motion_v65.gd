@@ -106,7 +106,7 @@ func _run() -> void:
         fail("Cannot pan around a very close 3D battle")
         return
     view._reset_camera()
-    if absf(view.cam_size-175.0)>0.001:
+    if absf(view.cam_size-90.0)>0.001:
         fail("Whole battlefield button failed to restore camera")
         return
 
@@ -216,7 +216,7 @@ func _run() -> void:
         return
     view._follow_selected_soldier()
     view._reset_camera()
-    if view.follow_actor_key!="" or absf(view.cam_size-175.0)>0.001:
+    if view.follow_actor_key!="" or absf(view.cam_size-90.0)>0.001:
         fail("Whole-battle reset failed to release tracking and full zoom")
         return
     print("BATTLE_MOTION_V65 SUCCESS: 96 imported skeletal GLB animations, poses and frame animation, zoom to 1.5m, wheel/pinch, soldier follow, manual pan and reset")

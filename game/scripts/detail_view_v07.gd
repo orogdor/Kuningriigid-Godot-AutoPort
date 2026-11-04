@@ -1695,9 +1695,16 @@ func set_world_armies_v54(armies: Array) -> void:
         model.name="OriginalWeb_"+kind
         group.add_child(model)
         WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
-        # Visual formation separation only; no impact on tactical movement.
-        var offset: float=float(posmod(int(army.get("id",0)),5)-2)*2.0
-        group.position=Vector3(x+offset,_elevation(x,z,0.0,can_build),z)
+        # V75: x=z=0 on capital tiles is occupied by the hall. Previous
+        # 0-4m offsets left the soldier INSIDE that opaque building.
+        # Use a visible rally area about 25m from the centre. This shifts
+        # only the detail prop, never the saved march path or combat position.
+        var rally_x: float=24.0+float(rendered%5)*4.0
+        var rally_z: float=16.0+float(rendered/5)*4.0
+        var draw_x: float=x+rally_x
+        var draw_z: float=z+rally_z
+        group.position=Vector3(draw_x,
+            _elevation(draw_x,draw_z,0.0,can_build),draw_z)
         var route: Array=army.get("path",[])
         if not route.is_empty():
             var next: Dictionary=route[0]

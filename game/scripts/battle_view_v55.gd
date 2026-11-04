@@ -53,7 +53,8 @@ var obstacle_signature: String="__uninitialized__"
 var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
-var cam_size: float=175.0
+const DEFAULT_CAMERA_SIZE_V75: float=90.0
+var cam_size: float=DEFAULT_CAMERA_SIZE_V75
 const MIN_BATTLE_ZOOM: float=1.5
 const MAX_BATTLE_ZOOM: float=1050.0
 var pinch_points: Dictionary={}
@@ -668,7 +669,7 @@ func _reset_camera() -> void:
     pinch_distance=0.0
     tap_index_v67=-1
     tap_cancelled_v67=false
-    cam_size=175.0
+    cam_size=DEFAULT_CAMERA_SIZE_V75
     if battle_camera!=null:
         battle_camera.position=Vector3(0,670,520)
         battle_camera.look_at(Vector3.ZERO,Vector3.UP)
@@ -678,8 +679,21 @@ func _ready() -> void:
     var column:=VBoxContainer.new()
     column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(column)
-    var bar:=HFlowContainer.new()
-    column.add_child(bar)
+    # Single horizontal toolbar: wrapping into 2-3 lines shrank the actual
+    # 3D viewport and made 5.2m warriors smaller than a few display pixels.
+    var bar_frame:=Control.new()
+    bar_frame.name="BattleTopToolbarV75"
+    bar_frame.custom_minimum_size=Vector2(0,46)
+    bar_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    column.add_child(bar_frame)
+    var bar_scroll:=ScrollContainer.new()
+    bar_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
+    bar_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+    bar_frame.add_child(bar_scroll)
+    bar_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    var bar:=HBoxContainer.new()
+    bar.add_theme_constant_override("separation",4)
+    bar_scroll.add_child(bar)
     bar.add_child(_button("Tagasi linna",func():return_requested.emit()))
     bar.add_child(_button("+1 s",func():battle_tick_requested.emit(1.0)))
     bar.add_child(_button("+10 s",func():battle_tick_requested.emit(10.0)))
@@ -703,8 +717,19 @@ func _ready() -> void:
     bar.add_child(_button("Suumi +",func():_zoom(0.70)))
     bar.add_child(_button("Suumi −",func():_zoom(1.40)))
     bar.add_child(_button("Väga lähedale",func():_zoom(0.15)))
-    var tactical:=HFlowContainer.new()
-    column.add_child(tactical)
+    var tactical_frame:=Control.new()
+    tactical_frame.name="BattleOrderToolbarV75"
+    tactical_frame.custom_minimum_size=Vector2(0,46)
+    tactical_frame.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    column.add_child(tactical_frame)
+    var tactical_scroll:=ScrollContainer.new()
+    tactical_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
+    tactical_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+    tactical_frame.add_child(tactical_scroll)
+    tactical_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    var tactical:=HBoxContainer.new()
+    tactical.add_theme_constant_override("separation",4)
+    tactical_scroll.add_child(tactical)
     order_picker=OptionButton.new()
     order_picker.custom_minimum_size=Vector2(160,44)
     tactical.add_child(order_picker)
@@ -744,7 +769,12 @@ func _ready() -> void:
     add_child(auto_timer)
     status_label=Label.new()
     status_label.name="BattleStatusV55"
-    status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    # The long 9-squad status is available in a tooltip. Never let it push
+    # the 3D battlefield off screen as it grows with combat events.
+    status_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+    status_label.clip_text=true
+    status_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
+    status_label.custom_minimum_size=Vector2(0,24)
     status_label.add_theme_font_size_override("font_size",13)
     column.add_child(status_label)
     result_label=Label.new()
@@ -1018,6 +1048,7 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
         if target_squad!=-999999:
             lines.append("Väesalk ründab: #%d" % target_squad)
     status_label.text=" | ".join(lines)
+    status_label.tooltip_text=status_label.text
     var used: Dictionary={}
     var total: int=0
     for fighter in current_battle.get("fighters",[]):

@@ -57,8 +57,8 @@ func _run() -> void:
         " viewport=",battle.viewport.size," window=",root.size,
         " camera_size=",battle.battle_camera.size,
         " actor_count=",battle.actors_root.get_child_count())
-    if army.is_empty():
-        fail("Battle image is unavailable")
+    if army.is_empty() or difference<700:
+        fail("Actual battle has too few visible soldier pixels: "+str(difference))
         return
 
     ui._show_world()
@@ -82,7 +82,8 @@ func _run() -> void:
     atlas.army_root_v54.show()
     var world_units: Image=await snap(atlas.viewport)
     _save(world_units,"actual-world-viewport")
-    print("SOLDIER_GAME_SCREEN_V75 world pixels=",pixel_delta(world_empty,world_units),
+    var map_pixels: int=pixel_delta(world_empty,world_units)
+    print("SOLDIER_GAME_SCREEN_V75 world pixels=",map_pixels,
         " viewport=",atlas.viewport.size," camera_size=",atlas.camera.size,
         " actors=",atlas.army_root_v54.get_child_count())
 
@@ -96,11 +97,12 @@ func _run() -> void:
     detail.army_detail_root_v54.show()
     var detail_units: Image=await snap(detail.view_port)
     _save(detail_units,"actual-detail-viewport")
-    print("SOLDIER_GAME_SCREEN_V75 detail pixels=",pixel_delta(detail_empty,detail_units),
+    var detail_pixels: int=pixel_delta(detail_empty,detail_units)
+    print("SOLDIER_GAME_SCREEN_V75 detail pixels=",detail_pixels,
         " viewport=",detail.view_port.size,
         " actors=",detail.army_detail_root_v54.get_child_count())
-    if difference<1:
-        fail("A real 96-actor battle emits no visible soldier pixels")
+    if map_pixels<100 or detail_pixels<80:
+        fail("An army disappears on a real atlas/detail map: world="+str(map_pixels)+" detail="+str(detail_pixels))
         return
     print("SOLDIER_GAME_SCREEN_V75 SUCCESS: real scene images and soldier pixel deltas captured")
     quit(0)

@@ -37,6 +37,35 @@ static func bounds_of(node: Node3D) -> Dictionary:
     _measure(node,Transform3D.IDENTITY,data)
     return data
 
+## V75: a missing dynamic GLB must never silently erase an entire army.
+## Bright, simple Godot geometry is shown until the exact asset is available.
+static func fallback_actor(kind: String,height: float) -> Node3D:
+    if not FILES.has(kind):return null
+    var root:=Node3D.new()
+    root.name="VisibleMissingAsset_"+kind
+    root.set_meta("source_glb","native_fallback")
+    root.set_meta("model_fallback_v75",true)
+    var color:=StandardMaterial3D.new()
+    color.albedo_color=Color("#ffd46a")
+    color.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    var torso:=MeshInstance3D.new()
+    var body:=CapsuleMesh.new()
+    body.radius=height*0.13
+    body.height=height*0.72
+    torso.mesh=body
+    torso.position.y=height*0.38
+    torso.material_override=color
+    root.add_child(torso)
+    var head:=MeshInstance3D.new()
+    var skull:=SphereMesh.new()
+    skull.radius=height*0.11
+    skull.height=height*0.22
+    head.mesh=skull
+    head.position.y=height*0.86
+    head.material_override=color
+    root.add_child(head)
+    return root
+
 static func instance(kind: String,height: float=2.7,
         prefer_latest: bool=false, prefer_rigged: bool=false) -> Node3D:
     if prefer_rigged and kind!="scout":
@@ -69,21 +98,22 @@ static func instance(kind: String,height: float=2.7,
         var latest: Node3D=WebV299.unit_instance(kind,height)
         if latest!=null:return latest
     var path: String=String(FILES.get(kind,""))
-    if path=="" or not ResourceLoader.exists(path):return null
+    if path=="" or not ResourceLoader.exists(path):
+        return fallback_actor(kind,height)
     var resource: Resource=load(path)
-    if not resource is PackedScene:return null
+    if not resource is PackedScene:return fallback_actor(kind,height)
     var model: Node3D=(resource as PackedScene).instantiate() as Node3D
-    if model==null:return null
+    if model==null:return fallback_actor(kind,height)
     var bounds: Dictionary=bounds_of(model)
     if int(bounds["meshes"])==0:
         model.free()
-        return null
+        return fallback_actor(kind,height)
     var bottom: Vector3=bounds["min"]
     var top: Vector3=bounds["max"]
     var raw_height: float=top.y-bottom.y
     if raw_height<=0.0001 or not is_finite(raw_height):
         model.free()
-        return null
+        return fallback_actor(kind,height)
     var factor: float=height/raw_height
     var group:=Node3D.new()
     group.name="OriginalWeb_"+kind

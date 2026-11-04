@@ -340,6 +340,20 @@ func set_armies_v54(armies: Array) -> void:
         army_root_v54.add_child(unit)
         model.name="OriginalStoneAge_"+kind
         unit.add_child(model)
+        # Bright footprint distinguishes an army from forests at overview zoom.
+        var flag:=MeshInstance3D.new()
+        flag.name="ArmyFootprintV75"
+        var disc:=CylinderMesh.new()
+        disc.top_radius=1.7
+        disc.bottom_radius=1.7
+        disc.height=0.12
+        flag.mesh=disc
+        flag.position.y=0.10
+        var flag_color:=StandardMaterial3D.new()
+        flag_color.albedo_color=Color("#5af5ff")
+        flag_color.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+        flag.material_override=flag_color
+        unit.add_child(flag)
         WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
         unit.position=scout_point_for(army)
         var path: Array=army.get("path",[])
@@ -347,6 +361,7 @@ func set_armies_v54(armies: Array) -> void:
             var next: Dictionary=path[0]
             unit.rotation.y=atan2(float(next["c"])-float(c),float(next["r"])-float(r))
         shown+=1
+    _refresh_army_visibility_v75()
 
 func set_raider_v56(enemy: Dictionary) -> void:
     if hostile_actor_v56==null:return
@@ -363,11 +378,35 @@ func set_raider_v56(enemy: Dictionary) -> void:
         hostile_actor_v56.rotation.y=atan2(float(next["c"])-float(enemy["c"]),
             float(next["r"])-float(enemy["r"]))
 
+## V75: keep a visible 3D military pawn at full-map zoom while preserving
+## the saved world coordinate. Only the imported visual child is scaled.
+func _army_display_height_v75(original: float) -> float:
+    if viewport==null:return original
+    var pixels: float=maxf(1.0,float(viewport.size.y))
+    return clampf(zoom*18.0/pixels,original,9.0)
+
+func _refresh_army_visibility_v75() -> void:
+    if scout_actor!=null:
+        var scout: Node3D=scout_actor.get_node_or_null("OriginalWebScoutV53") as Node3D
+        if scout!=null:
+            scout.scale=Vector3.ONE*(_army_display_height_v75(2.7)/2.7)
+    if hostile_actor_v56!=null and hostile_actor_v56.get_child_count()>0:
+        var raider: Node3D=hostile_actor_v56.get_child(0) as Node3D
+        if raider!=null:
+            raider.scale=Vector3.ONE*(_army_display_height_v75(2.9)/2.9)
+    if army_root_v54!=null:
+        for soldier in army_root_v54.get_children():
+            if soldier.get_child_count()==0:continue
+            var actor: Node3D=soldier.get_child(0) as Node3D
+            if actor!=null:
+                actor.scale=Vector3.ONE*(_army_display_height_v75(2.7)/2.7)
+
 func _update_camera() -> void:
     if camera==null:return
     camera.size=zoom
     camera.position=Vector3(camera_target.x,240.0,camera_target.y+135.0)
     camera.look_at(Vector3(camera_target.x,0,camera_target.y),Vector3.UP)
+    _refresh_army_visibility_v75()
 
 func fit_to_view() -> void:
     camera_target=Vector2(World.COLS*0.5,World.ROWS*0.5)
