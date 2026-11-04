@@ -1036,7 +1036,7 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                 int(fighter["id"]),int(man.get("index",0))]
             var holder: Node3D=actors_root.get_node_or_null(key) as Node3D
             if holder==null:
-                var model: Node3D=Units.instance(kind,5.2)
+                var model: Node3D=Units.instance(kind,5.2,false,true)
                 if model==null:continue
                 holder=Node3D.new()
                 holder.name=key

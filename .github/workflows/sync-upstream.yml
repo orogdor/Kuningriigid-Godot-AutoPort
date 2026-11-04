@@ -101,6 +101,12 @@ jobs:
         run: |
           UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
           python3 tools/import-web-v299.py --source ../upstream --out game/assets/web72 --commit "$UPSTREAM_SHA"
+      - name: Rig V262 TRELLIS meshes to V148 skeleton and animations
+        working-directory: port
+        shell: bash
+        run: |
+          UPSTREAM_SHA="$(git -C ../upstream rev-parse HEAD)"
+          python3 tools/rig-trellis-v73.py --legacy game/assets/web53 --trellis game/assets/web72/unit --out game/assets/web73 --commit "$UPSTREAM_SHA"
       - name: Validate Godot 4 import and headless launch
         working-directory: port
         shell: bash
@@ -126,6 +132,7 @@ jobs:
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/map_nav_v40.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_scout_v52.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/web_models_v72.gd
+          timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/trellis_rig_v73.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/web_units_v53.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/military_v54.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_v55.gd

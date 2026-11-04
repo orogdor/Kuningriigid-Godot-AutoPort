@@ -180,6 +180,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/import-web-v299.py --source upstream --out game/assets/web72 --commit "${{ steps.source.outputs.sha }}"
+      - name: Rig latest TRELLIS geometry onto animated Godot source skeleton
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/rig-trellis-v73.py --legacy game/assets/web53 --trellis game/assets/web72/unit --out game/assets/web73 --commit "${{ steps.source.outputs.sha }}"
       - name: Complete and verify every source GLB import before release tests
         shell: bash
         run: |
@@ -192,7 +197,7 @@ jobs:
               echo "::error::Incomplete Godot glTF import: $source"
               exit 1
             fi
-          done < <(find game/assets/web50 game/assets/web53 game/assets/web72 -name '*.glb' -print0)
+          done < <(find game/assets/web50 game/assets/web53 game/assets/web72 game/assets/web73 -name '*.glb' -print0)
 
       - name: Compare 200 JavaScript city turns per scenario against native Godot
         shell: bash
@@ -271,6 +276,7 @@ jobs:
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_sync_v70.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_squad_v71.gd
           timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/web_models_v72.gd
+          timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/trellis_rig_v73.gd
 
       - name: Stamp APK and GitHub Release with actual AutoPort version
         id: stamp

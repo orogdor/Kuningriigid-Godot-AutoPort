@@ -36,7 +36,34 @@ static func bounds_of(node: Node3D) -> Dictionary:
     _measure(node,Transform3D.IDENTITY,data)
     return data
 
-static func instance(kind: String,height: float=2.7,prefer_latest: bool=false) -> Node3D:
+static func instance(kind: String,height: float=2.7,
+        prefer_latest: bool=false, prefer_rigged: bool=false) -> Node3D:
+    if prefer_rigged and kind!="scout":
+        var rig_path: String="res://assets/web73/"+kind+".glb"
+        if ResourceLoader.exists(rig_path):
+            var resource: Resource=load(rig_path)
+            if resource is PackedScene:
+                var model: Node3D=(resource as PackedScene).instantiate() as Node3D
+                if model!=null:
+                    var bounds: Dictionary=bounds_of(model)
+                    if int(bounds["meshes"])>0:
+                        var bottom: Vector3=bounds["min"]
+                        var top: Vector3=bounds["max"]
+                        var h: float=top.y-bottom.y
+                        if h>0.0001 and is_finite(h):
+                            var factor: float=height/h
+                            var group:=Node3D.new()
+                            group.name="RiggedTRELLIS_"+kind
+                            group.set_meta("source_glb",rig_path)
+                            group.set_meta("rigged_trellis_v73",true)
+                            group.add_child(model)
+                            model.scale=Vector3.ONE*factor
+                            model.position=Vector3(
+                                -(bottom.x+top.x)*factor*0.5,
+                                -bottom.y*factor,
+                                -(bottom.z+top.z)*factor*0.5)
+                            return group
+                    model.free()
     if prefer_latest and kind!="scout":
         var latest: Node3D=WebV299.unit_instance(kind,height)
         if latest!=null:return latest
