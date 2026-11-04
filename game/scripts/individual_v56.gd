@@ -253,12 +253,19 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float,
         man["shots"]=int(man["shots"])+1
         man["cool"]=1.6 if kind=="slinger" else 1.35
         man["attack_anim"]=0.36
+        # V70: exact, monotonic combat event. Rendering can trigger the
+        # imported GLB clip once even when two ticks arrive in one frame.
+        # This counter does not participate in damage/cooldown calculations.
+        if int(b.get("version",56))>=70:
+            man["strike_seq_v70"]=int(man.get("strike_seq_v70",0))+1
         if kind=="slinger":
             man["ammo"]=int(man["ammo"])-1
             if int(b.get("version",56))>=58 or not hits:continue
         victim["hp"]=maxf(0.0,float(victim["hp"])-power)
         if int(b.get("version",56))>=61:
             victim["hit_anim_v61"]=0.36
+        if int(b.get("version",56))>=70:
+            victim["hit_seq_v70"]=int(victim.get("hit_seq_v70",0))+1
 
 static func _aggregate(fighter: Dictionary) -> void:
     var total: float=0.0
