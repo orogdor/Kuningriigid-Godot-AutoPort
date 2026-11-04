@@ -129,6 +129,10 @@ jobs:
             xvfb-run -a /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
               --path game --rendering-method gl_compatibility \
               --script res://tests/soldier_pixels_v75.gd
+          LIBGL_ALWAYS_SOFTWARE=1 timeout --signal=TERM --kill-after=5s 240s \
+            xvfb-run -a /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
+              --path game --rendering-method gl_compatibility \
+              --script res://tests/soldier_game_screen_v75.gd
       - name: Save soldier pixel screenshots
         if: always()
         uses: actions/upload-artifact@v4
