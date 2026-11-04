@@ -227,7 +227,54 @@ func _toggle_move_mode() -> void:
     if move_toggle!=null:
         move_toggle.text="Puuduta sihtpunkti" if move_mode_enabled else "Liigu kaardil"
 
+func _zoom_pan(delta: Vector2) -> void:
+    if battle_camera==null or battle_canvas_container==null:return
+    var relative: float=cam_size/maxf(1.0,battle_canvas_container.size.y)
+    var right: Vector3=battle_camera.global_transform.basis.x
+    var up: Vector3=battle_camera.global_transform.basis.y
+    var motion: Vector3=(-right*delta.x+up*delta.y)*relative
+    battle_camera.position+=Vector3(motion.x,0.0,motion.z)
+
+func _pinch_length() -> float:
+    if pinch_points.size()<2:return 0.0
+    var active: Array=pinch_points.values()
+    return (active[0] as Vector2).distance_to(active[1] as Vector2)
+
+func _battle_camera_input(event: InputEvent) -> bool:
+    if event is InputEventMouseButton and event.pressed:
+        if event.button_index==MOUSE_BUTTON_WHEEL_UP:
+            _zoom(0.82)
+            return true
+        if event.button_index==MOUSE_BUTTON_WHEEL_DOWN:
+            _zoom(1.22)
+            return true
+    if event is InputEventMouseMotion and \
+            (event.button_mask & MOUSE_BUTTON_MASK_RIGHT)!=0:
+        _zoom_pan(event.relative)
+        return true
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            pinch_points[event.index]=event.position
+        else:
+            pinch_points.erase(event.index)
+        pinch_distance=_pinch_length()
+        return not move_mode_enabled and not individual_move_mode
+    if event is InputEventScreenDrag:
+        if pinch_points.has(event.index):
+            pinch_points[event.index]=event.position
+        if pinch_points.size()>=2:
+            var next_distance: float=_pinch_length()
+            if pinch_distance>10.0 and next_distance>10.0:
+                _zoom(pinch_distance/next_distance)
+            pinch_distance=next_distance
+            return true
+        if not move_mode_enabled and not individual_move_mode:
+            _zoom_pan(event.relative)
+            return true
+    return false
+
 func _on_battle_canvas_input(event: InputEvent) -> void:
+    if _battle_camera_input(event):return
     if (not move_mode_enabled and not individual_move_mode) or \
             id_list.is_empty() or int(current_battle.get("version",0))<59:return
     var pos: Vector2
@@ -299,6 +346,8 @@ func _restart_demo() -> void:
     battle_demo_retry_requested.emit()
 
 func _reset_camera() -> void:
+    pinch_points.clear()
+    pinch_distance=0.0
     cam_size=175.0
     if battle_camera!=null:
         battle_camera.position=Vector3(0,670,520)
@@ -327,8 +376,8 @@ func _ready() -> void:
     demo_retry_button.disabled=true
     bar.add_child(demo_retry_button)
     bar.add_child(_button("Kogu lahing",_reset_camera))
-    bar.add_child(_button("Suumi +",func():_zoom(0.75)))
-    bar.add_child(_button("Suumi −",func():_zoom(1.33)))
+    bar.add_child(_button("Suumi +",func():_zoom(0.70)))
+    bar.add_child(_button("Suumi −",func():_zoom(1.40)))
     var tactical:=HFlowContainer.new()
     column.add_child(tactical)
     order_picker=OptionButton.new()
