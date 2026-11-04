@@ -344,8 +344,8 @@ func set_armies_v54(armies: Array) -> void:
         var flag:=MeshInstance3D.new()
         flag.name="ArmyFootprintV75"
         var disc:=CylinderMesh.new()
-        disc.top_radius=1.7
-        disc.bottom_radius=1.7
+        disc.top_radius=3.9
+        disc.bottom_radius=3.9
         disc.height=0.12
         flag.mesh=disc
         flag.position.y=0.10
@@ -383,7 +383,9 @@ func set_raider_v56(enemy: Dictionary) -> void:
 func _army_display_height_v75(original: float) -> float:
     if viewport==null:return original
     var pixels: float=maxf(1.0,float(viewport.size.y))
-    return clampf(zoom*18.0/pixels,original,9.0)
+    # Full-map overview must show the character rather than a 4px speck.
+    # 36 screen px tall at default zoom; never change the world/saved point.
+    return clampf(zoom*36.0/pixels,original,18.0)
 
 func _refresh_army_visibility_v75() -> void:
     if scout_actor!=null:
