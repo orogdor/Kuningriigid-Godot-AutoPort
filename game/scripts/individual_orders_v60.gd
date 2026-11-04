@@ -35,6 +35,8 @@ static func issue(battle: Dictionary,squad_id: int,index: int,
     var man: Dictionary=soldier(battle,squad_id,index)
     if man.is_empty():
         return "Sõdur puudub, on langenud või pole sinu üksus."
+    # A new personal move order replaces any V68 focused attack.
+    man.erase("attack_target_v68")
     man[KEY]={"x":destination.x,"z":destination.y}
     man[STATUS]="move"
     man["nav_route"]=[]
@@ -44,6 +46,7 @@ static func issue(battle: Dictionary,squad_id: int,index: int,
 static func clear(man: Dictionary) -> void:
     man.erase(KEY)
     man.erase(STATUS)
+    man.erase("attack_target_v68")
     man["nav_route"]=[]
     man["nav_target"]={}
 
