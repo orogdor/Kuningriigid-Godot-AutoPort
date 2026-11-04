@@ -109,6 +109,23 @@ static func _play_original_animation(model: Node3D,
         player.play(clip,0.10,1.0)
     return true
 
+## V69: play the actual glTF death clip once on the original Skeleton3D.
+## This is purely visual; simulation casualties already happened upstream.
+static func play_death(model: Node3D) -> bool:
+    if model==null:return false
+    var info: Dictionary=_imported_animator(model)
+    if info.is_empty():return false
+    var clips: Dictionary=info.get("clips",{})
+    if not clips.has("death"):return false
+    var player: AnimationPlayer=info.get("player",null)
+    if player==null or not is_instance_valid(player):return false
+    var clip: String=String(clips["death"])
+    var animation: Animation=player.get_animation(clip)
+    if animation==null:return false
+    animation.loop_mode=Animation.LOOP_NONE
+    player.play(clip,0.08,1.0)
+    return true
+
 static func _rig_bones(model: Node3D) -> Array:
     if model.has_meta("rig_bones_v65"):
         return model.get_meta("rig_bones_v65")
