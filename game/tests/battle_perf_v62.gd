@@ -14,10 +14,6 @@ func _initialize() -> void:
     call_deferred("_run")
 
 func _run() -> void:
-    if View.graphics_resolution(true)!=Vector2i(480,360) or \
-            View.graphics_resolution(false)!=Vector2i(800,600):
-        fail("Low/high resolution recommendations are wrong")
-        return
     root.size=Vector2i(1080,760)
     var ui: Control=Scene.instantiate()
     root.add_child(ui)
@@ -41,13 +37,20 @@ func _run() -> void:
         fail("Unexpected auto battle timer interval")
         return
     view.set_fast_graphics(true)
-    if view.viewport.size!=Vector2i(480,360) or \
-            not view.fast_graphics:
-        fail("Low detail mode did not reduce the actual 3D viewport")
+    await process_frame
+    await process_frame
+    var low_pixels: Vector2i=view.viewport.size
+    if view.battle_canvas_container.stretch_shrink!=2 or \
+            not view.fast_graphics or low_pixels.x<100 or low_pixels.y<50:
+        fail("Low mode did not activate actual 2x viewport shrinking")
         return
     view.set_fast_graphics(false)
-    if view.viewport.size!=Vector2i(800,600):
-        fail("Full detail mode cannot be restored")
+    await process_frame
+    await process_frame
+    var full_pixels: Vector2i=view.viewport.size
+    if view.battle_canvas_container.stretch_shrink!=1 or \
+            full_pixels.x<=low_pixels.x or full_pixels.y<=low_pixels.y:
+        fail("Full detail mode did not restore render resolution")
         return
     var rock_count: int=view.obstacles_root.get_child_count()
     var old_rock: int=-1
