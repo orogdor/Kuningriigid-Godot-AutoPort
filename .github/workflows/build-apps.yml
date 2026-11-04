@@ -170,6 +170,25 @@ jobs:
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
 
+      # --editor --quit can exit while GLB scene imports are still queued.
+      # Godot's --import mode explicitly waits for every import to finish.
+      # Without it the release workflow can fail deep in detail_v21 with
+      # "Preload file ...glb has no resource loaders", even though sync CI
+      # and the same game code passed all parity checks.
+      - name: Complete and verify every source GLB import before release tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --import
+          for source in game/assets/web50/*.glb game/assets/web53/*.glb; do
+            test -s "$source"
+            model="$(basename "$source")"
+            if ! find game/.godot/imported -maxdepth 1 -name "$model-*.scn" -size +0c -print -quit | grep -q .; then
+              echo "::error::Incomplete Godot glTF import: $source"
+              exit 1
+            fi
+          done
+
       - name: Compare 200 JavaScript city turns per scenario against native Godot
         shell: bash
         run: |
@@ -181,7 +200,7 @@ jobs:
           cmp /tmp/checked-city-definitions.json game/data/generated/city_buildings.json
           node tools/generate-world-v06-fixtures.mjs --source upstream \
             --out game/tests/world_v06_fixtures.json --commit "${{ steps.source.outputs.sha }}"
-          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --import
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_parity.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/city_v05_ui.gd
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/world_v06_parity.gd
