@@ -46,7 +46,9 @@ func _run() -> void:
         orders.append({"id":id,"x":x,"z":z}))
     var actor: Node3D=view.actors_root.get_node_or_null(
         "TacticalMan_900002_11") as Node3D
-    if actor==null:return fail("Axeman GLB is missing")
+    if actor==null:
+        fail("Axeman GLB is missing")
+        return
     # Prove selection preserves the *rendered* interpolated location,
     # rather than calling set_battle() and snapping to sim coordinates.
     actor.position+=Vector3(0.4,0.0,-0.3)
@@ -66,14 +68,16 @@ func _run() -> void:
             actor.get_instance_id()!=old_instance:
         fail("Mouse selection snapped or recreated a moving soldier")
         return
-    var marker: MeshInstance3D=actor.get_node("TeamMarker")
-    var mat: StandardMaterial3D=marker.material_override
+    var marker: MeshInstance3D=actor.get_node("TeamMarker") as MeshInstance3D
+    var mat: StandardMaterial3D=marker.material_override as StandardMaterial3D
     if mat==null or mat.albedo_color!=Color("#ffe250"):
         fail("Selected soldier does not have a highlighted team marker")
         return
     var second: Node3D=view.actors_root.get_node_or_null(
         "TacticalMan_900003_17") as Node3D
-    if second==null:return fail("Slinger GLB is missing")
+    if second==null:
+        fail("Slinger GLB is missing")
+        return
     var finger_position: Vector2=_point(view,second)
     _touch(view,0,finger_position,true)
     _touch(view,0,finger_position,false)
@@ -87,7 +91,9 @@ func _run() -> void:
         return
     var third: Node3D=view.actors_root.get_node_or_null(
         "TacticalMan_900001_6") as Node3D
-    if third==null:return fail("Spearman GLB is missing")
+    if third==null:
+        fail("Spearman GLB is missing")
+        return
     var from: Vector2=_point(view,third)
     _touch(view,0,from,true)
     var pan:=InputEventScreenDrag.new()
