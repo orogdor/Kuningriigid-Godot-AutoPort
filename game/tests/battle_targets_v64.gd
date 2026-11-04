@@ -45,8 +45,10 @@ func _run() -> void:
     if all_men!=216 or ui.battle_view.actors_root.get_child_count()!=216:
         fail("Large battle did not instantiate all 216 independent source GLBs")
         return
-    if not ui.battle_view.auto_play_enabled or not ui.battle_view.fast_graphics:
-        fail("Large combat is not live or does not use mobile-safe initial graphics")
+    var should_shrink: bool=OS.has_feature("mobile")
+    if not ui.battle_view.auto_play_enabled or \
+            ui.battle_view.fast_graphics!=should_shrink:
+        fail("Large combat must preserve desktop clarity and mobile graphics settings")
         return
     if Battle.start_large_demo(ui.city,world)=="":
         fail("Started a second large test over an active battle")

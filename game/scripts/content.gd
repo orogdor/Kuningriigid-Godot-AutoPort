@@ -256,9 +256,9 @@ func _start_large_demo_battle() -> void:
         return
     _save()
     _open_battle_v55()
-    # 216 genuine GLB characters render at half resolution initially;
-    # players can change quality with the existing tactical setting.
-    battle_view.set_fast_graphics(true)
+    # Preserve sharp soldier pixels on desktop. Half-resolution was making
+    # 216 glTF figures indistinguishable; keep the mobile performance toggle.
+    battle_view.set_fast_graphics(OS.has_feature("mobile"))
 
 func _retry_demo_battle() -> void:
     if world_view==null:return
