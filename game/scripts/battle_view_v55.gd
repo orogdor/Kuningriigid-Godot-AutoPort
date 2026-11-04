@@ -60,11 +60,50 @@ func _toggle_graphics() -> void:
     set_fast_graphics(not fast_graphics)
 
 func _process(delta: float) -> void:
-    if not visible or fps_label==null:return
+    if not visible:return
+    # Render every screen frame, even when the deterministic simulation only
+    # produces a new 0.2 s state every ~0.4 real seconds. Without this the
+    # 56 FPS scene appears to move its 96 soldiers at only 2-3 FPS.
+    _render_soldier_motion_v63(delta)
+    if fps_label==null:return
     fps_refresh+=delta
     if fps_refresh>=1.0:
         fps_refresh=0.0
         fps_label.text="FPS: %d" % int(Engine.get_frames_per_second())
+
+func _render_soldier_motion_v63(delta: float) -> void:
+    if actors_root==null:return
+    for node in actors_root.get_children():
+        if not node.has_meta("interpolation_v63"):continue
+        var state: Dictionary=node.get_meta("interpolation_v63")
+        if state.is_empty() or float(state.get("fraction",1.0))>=1.0:
+            continue
+        var previous: Vector3=node.position
+        var duration: float=maxf(float(state.get("duration",0.4)),0.01)
+        var fraction: float=clampf(float(state.get("fraction",0.0))+\
+            maxf(delta,0.0)/duration,0.0,1.0)
+        var origin: Vector3=state["origin"]
+        var target: Vector3=state["target"]
+        node.position=origin.lerp(target,fraction)
+        node.rotation.y=lerp_angle(float(state["from_heading"]),
+            float(state["to_heading"]),fraction)
+        var actual_distance: float=node.position.distance_to(previous)
+        var phase: float=fposmod(float(state.get("phase",0.0))+\
+            actual_distance*2.8,TAU)
+        state["phase"]=phase
+        state["fraction"]=fraction
+        var model: Node3D=node.get_child(0) as Node3D
+        if model!=null:
+            var person: Dictionary=state["person"].duplicate()
+            person["moving"]=actual_distance>0.00001
+            person["anim_phase"]=phase
+            var sim_time: float=fraction*duration*Battlefield.SCALE
+            person["attack_anim"]=maxf(0.0,
+                float(person.get("attack_anim",0.0))-sim_time)
+            person["hit_anim_v61"]=maxf(0.0,
+                float(person.get("hit_anim_v61",0.0))-sim_time)
+            Animation61.apply(model,person,String(state["kind"]))
+        node.set_meta("interpolation_v63",state)
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
     var node:=MeshInstance3D.new()
@@ -498,6 +537,15 @@ func _zoom(factor: float) -> void:
     if battle_camera!=null:battle_camera.size=cam_size
 
 func set_battle(b: Dictionary) -> void:
+    var earlier_elapsed: float=float(current_battle.get("elapsed",-1.0))
+    var later_elapsed: float=float(b.get("elapsed",-1.0))
+    var elapsed_delta: float=later_elapsed-earlier_elapsed
+    # Only animate small automatic simulation advances. The +30 s button,
+    # battle restarts and loading a save must immediately show true positions.
+    var can_interpolate: bool=auto_play_enabled and earlier_elapsed>=0.0 and \
+        elapsed_delta>0.001 and elapsed_delta<1.0 and \
+        int(b.get("version",0))>=61 and String(b.get("result",""))==""
+    var blend_seconds: float=clampf(elapsed_delta/Battlefield.SCALE,0.15,0.6)
     current_battle=b.duplicate(true)
     if status_label==null:return
     if String(current_battle.get("result",""))!="":
@@ -604,16 +652,31 @@ func set_battle(b: Dictionary) -> void:
                         int(man.get("index",-1))==int(chosen["index"])
                     base_material.albedo_color=Color("#ffe250") if is_selected else \
                         (Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56"))
-            holder.position=Vector3(float(man["x"]),0.0,float(man["z"]))
-            holder.rotation.y=float(man.get("heading",
+            var target_position:=Vector3(float(man["x"]),0.0,float(man["z"]))
+            var target_heading: float=float(man.get("heading",
                 PI*0.5 if int(fighter["team"])==0 else -PI*0.5))
-            # Small source-GLB-safe locomotion and attack poses; no extra
-            # geometry objects, no new rig and no per-frame reimport.
             var model_node: Node3D=holder.get_child(0) as Node3D
-            if model_node!=null:
-                if int(current_battle.get("version",0))>=61:
+            if int(current_battle.get("version",0))>=61:
+                var previous: Dictionary=holder.get_meta("interpolation_v63",{})
+                var smooth: bool=can_interpolate and not previous.is_empty() and \
+                    holder.position.distance_to(target_position)<12.0
+                if not smooth:
+                    holder.position=target_position
+                    holder.rotation.y=target_heading
+                holder.set_meta("interpolation_v63",{
+                    "origin":holder.position,"target":target_position,
+                    "from_heading":holder.rotation.y,"to_heading":target_heading,
+                    "fraction":0.0 if smooth else 1.0,
+                    "duration":blend_seconds if smooth else 0.01,
+                    "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
+                        float(man.get("anim_phase",0.0)),
+                    "person":man.duplicate(true),"kind":kind})
+                if not smooth and model_node!=null:
                     Animation61.apply(model_node,man,kind)
-                else:
+            else:
+                holder.position=target_position
+                holder.rotation.y=target_heading
+                if model_node!=null:
                     var phase: float=float(man.get("anim_phase",0.0))
                     var walking: bool=bool(man.get("moving",false))
                     var attacking: float=float(man.get("attack_anim",0.0))
