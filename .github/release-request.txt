@@ -1,13 +1,16 @@
-KUNINGRIIGID GODOT AUTOPORT — 0.62 MOBILE BATTLE PERFORMANCE RELEASE
-Reason: Reported slow Android combat FPS and apparent soldier freeze after about 30 real seconds.
-Validated source: PR #14, merge commit 5d60a1932685cf0cc1ec699f0c0062267ca4e884.
-Required tests: GitHub Actions 41812858282 SUCCESS (battle_perf_v62, battle_demo_v61,
-battle_nav_v57, projectiles_v58, battle_orders_v59, individual_orders_v60,
-plus legacy economy and 3D/UI regressions).
-Changes: correct auto timer wall seconds, true Godot SubViewportContainer
-stretch_shrink mobile rendering, show FPS, eliminate repeated static obstacle
-re-creation, throttle automatic full-city saving, save immediately on pause,
-and display explicit victory/retreat/defeat status plus replay.
-Release request: publish verified Android Content.pck and Windows content/launcher
-only after the validated 0.62 code has merged. Do not replace or debug-sign an APK.
-No claim is made about a specific physical Android phone's FPS; that needs user testing.
+KUNINGRIIGID GODOT AUTOPORT — 0.65 SKELETAL ANIMATION AND CLOSE BATTLE CAMERA RELEASE
+Reason: Android reports ~56 FPS but soldiers visibly stutter, lack skeletal animation and cannot be zoomed into closely.
+Validated change: PR #17, merge commit 3052d9fdca6e381f20492fdf362df56af4906dd9.
+Required tests: GitHub Actions 41836847864 SUCCESS; includes battle_motion_v65,
+battle_targets_v64, battle_visual_v63, battle_perf_v62, battle_demo_v61 and all
+other historic Godot, source-parity, battlefield and economy regression tests.
+Source GLBs inspected directly: spearman, axeman and slinger each contain skins
+and real idle/walk/run/attack/hit/death glTF animations; import animation=true.
+Changes: start source AnimationPlayer clips rather than root-only posing,
+drive visual movement/pose every render frame, bridge short deterministic
+simulation-snapshot gaps without changing the authoritative campaign state,
+enable 10m close zoom, selected-soldier focus, wheel zoom, pinch and pan.
+Release requested: publish validated Android Content.pck and Windows content,
+launcher and engine assets from the merged 0.65 project only.
+Do not publish a debug-signed APK as an automatic Android update.
+Headless tests prove functionality; physical device frame rates remain to be tested.
