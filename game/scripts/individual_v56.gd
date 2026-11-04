@@ -12,6 +12,7 @@ const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Individuals60=preload("res://scripts/individual_orders_v60.gd")
 const Targets64=preload("res://scripts/battle_targets_v64.gd")
 const Attack68=preload("res://scripts/individual_attack_v68.gd")
+const Squad71=preload("res://scripts/squad_attack_v71.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -297,6 +298,11 @@ static func tick(b: Dictionary,dt: float) -> void:
     for fighter in fighters:
         if float(fighter.get("hp",0))<=0:continue
         var foe: Dictionary=_foe(fighter,b)
+        # A focused entire squad advances toward the commanded opponent,
+        # even if another enemy squad happens to be physically closer.
+        if int(b.get("version",0))>=71:
+            var group_target: Dictionary=Squad71.refresh(fighter,b)
+            if not group_target.is_empty():foe=group_target
         _update_anchor(fighter,foe,dt,b)
         _move_men(fighter,dt,b,grid)
     if int(b.get("version",56))>=58:

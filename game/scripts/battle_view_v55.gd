@@ -10,6 +10,7 @@ signal battle_individual_move_requested(id: int,index: int,x: float,z: float)
 signal battle_individual_return_requested(id: int,index: int)
 signal battle_individual_attack_requested(id: int,index: int,
     enemy_squad: int,enemy_index: int)
+signal battle_squad_attack_requested(id: int,enemy_squad: int)
 signal battle_demo_retry_requested
 signal battle_auto_paused
 
@@ -35,6 +36,8 @@ var individual_move_toggle: Button
 var individual_move_mode: bool=false
 var individual_attack_mode_v68: bool=false
 var attack_toggle_v68: Button
+var squad_attack_mode_v71: bool=false
+var squad_attack_toggle_v71: Button
 var auto_timer: Timer
 var auto_button: Button
 var demo_retry_button: Button
@@ -319,7 +322,7 @@ func _selected_attack_target_v68() -> Dictionary:
     return {}
 
 func _select_enemy_at_v68(screen_pos: Vector2) -> bool:
-    if not individual_attack_mode_v68 or \
+    if (not individual_attack_mode_v68 and not squad_attack_mode_v71) or \
             int(current_battle.get("version",0))<68 or \
             battle_camera==null or actors_root==null or \
             battle_canvas_container==null or viewport==null:
@@ -346,13 +349,21 @@ func _select_enemy_at_v68(screen_pos: Vector2) -> bool:
         threshold=distance
         winner=actor
     if winner==null:return false
-    _toggle_individual_attack_v68()
-    battle_individual_attack_requested.emit(int(chosen["squad"]),
-        int(chosen["index"]),int(winner.get_meta("squad_v67",-1)),
-        int(winner.get_meta("person_v67",-1)))
+    if squad_attack_mode_v71:
+        _toggle_squad_attack_v71()
+        battle_squad_attack_requested.emit(int(chosen["squad"]),
+            int(winner.get_meta("squad_v67",-1)))
+    else:
+        _toggle_individual_attack_v68()
+        battle_individual_attack_requested.emit(int(chosen["squad"]),
+            int(chosen["index"]),int(winner.get_meta("squad_v67",-1)),
+            int(winner.get_meta("person_v67",-1)))
     return true
 
 func _toggle_individual_attack_v68() -> void:
+    squad_attack_mode_v71=false
+    if squad_attack_toggle_v71!=null:
+        squad_attack_toggle_v71.text="Ründa väesalgaga"
     if int(current_battle.get("version",0))<68 or \
             String(current_battle.get("result",""))!="" or \
             _chosen_man().is_empty():
@@ -367,10 +378,38 @@ func _toggle_individual_attack_v68() -> void:
         attack_toggle_v68.text="Puuduta vastast" if individual_attack_mode_v68 else \
             "Ründa valitud vastast"
 
+func _selected_squad_target_v71() -> int:
+    if int(current_battle.get("version",0))<71:return -999999
+    var chosen: Dictionary=_chosen_man()
+    if chosen.is_empty():return -999999
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("id",-1))==int(chosen["squad"]) and \
+                int(fighter.get("team",-1))==0:
+            return int(fighter.get("squad_target_v71",-999999))
+    return -999999
+
+func _toggle_squad_attack_v71() -> void:
+    var can_order: bool=int(current_battle.get("version",0))>=71 and \
+        String(current_battle.get("result",""))=="" and \
+        not _chosen_man().is_empty()
+    squad_attack_mode_v71=can_order and not squad_attack_mode_v71
+    individual_attack_mode_v68=false
+    individual_move_mode=false
+    move_mode_enabled=false
+    if attack_toggle_v68!=null:
+        attack_toggle_v68.text="Ründa valitud vastast"
+    if individual_move_toggle!=null:
+        individual_move_toggle.text="Sõdur liigub"
+    if move_toggle!=null:move_toggle.text="Liigu kaardil"
+    if squad_attack_toggle_v71!=null:
+        squad_attack_toggle_v71.text="Puuduta vaenlase väesalka" if \
+            squad_attack_mode_v71 else "Ründa väesalgaga"
+
 func _refresh_selection_markers_v67() -> void:
     if actors_root==null:return
     var selection: Dictionary=_chosen_man()
     var focused: Dictionary=_selected_attack_target_v68()
+    var focused_squad: int=_selected_squad_target_v71()
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
         if actor==null:continue
@@ -382,9 +421,11 @@ func _refresh_selection_markers_v67() -> void:
         var chosen: bool=team==0 and not selection.is_empty() and \
             int(actor.get_meta("squad_v67",-1))==int(selection["squad"]) and \
             int(actor.get_meta("person_v67",-1))==int(selection["index"])
-        var pinned: bool=team==1 and not focused.is_empty() and \
+        var pinned: bool=team==1 and ((
+            not focused.is_empty() and \
             int(actor.get_meta("squad_v67",-1))==int(focused.get("squad",-1)) and \
-            int(actor.get_meta("person_v67",-1))==int(focused.get("index",-1))
+            int(actor.get_meta("person_v67",-1))==int(focused.get("index",-1))) or \
+            int(actor.get_meta("squad_v67",-1))==focused_squad)
         mat.albedo_color=Color("#ffe250") if chosen else \
             (Color("#ff9b32") if pinned else \
             (Color("#65caff") if team==0 else Color("#ed6b56")))
@@ -418,12 +459,16 @@ func _refresh_individual_picker() -> void:
         individual_picker.select(selected_position)
 
 func _on_person_changed(_index: int) -> void:
+    squad_attack_mode_v71=false
+    if squad_attack_toggle_v71!=null:squad_attack_toggle_v71.text="Ründa väesalgaga"
     individual_attack_mode_v68=false
     if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     _stop_following()
     if not current_battle.is_empty():set_battle(current_battle)
 
 func _toggle_individual_move() -> void:
+    squad_attack_mode_v71=false
+    if squad_attack_toggle_v71!=null:squad_attack_toggle_v71.text="Ründa väesalgaga"
     individual_attack_mode_v68=false
     if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     if int(current_battle.get("version",0))<60 or _chosen_man().is_empty():
@@ -459,6 +504,8 @@ func _focus_individual() -> void:
             return
 
 func _toggle_move_mode() -> void:
+    squad_attack_mode_v71=false
+    if squad_attack_toggle_v71!=null:squad_attack_toggle_v71.text="Ründa väesalgaga"
     individual_attack_mode_v68=false
     if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     if int(current_battle.get("version",0))<59 or id_list.is_empty():
@@ -512,7 +559,7 @@ func _battle_camera_input(event: InputEvent) -> bool:
                 event.position.distance_to(tap_start_v67)<=18.0
             pinch_points.erase(event.index)
             if tapped:
-                if individual_attack_mode_v68:
+                if individual_attack_mode_v68 or squad_attack_mode_v71:
                     _select_enemy_at_v68(event.position)
                 else:
                     _select_soldier_at_v67(event.position)
@@ -541,7 +588,7 @@ func _on_battle_canvas_input(event: InputEvent) -> void:
     if not move_mode_enabled and not individual_move_mode:
         if event is InputEventMouseButton and event.pressed and \
                 event.button_index==MOUSE_BUTTON_LEFT:
-            if individual_attack_mode_v68:
+            if individual_attack_mode_v68 or squad_attack_mode_v71:
                 _select_enemy_at_v68(event.position)
             else:
                 _select_soldier_at_v67(event.position)
@@ -676,6 +723,9 @@ func _ready() -> void:
     attack_toggle_v68=_button("Ründa valitud vastast",_toggle_individual_attack_v68)
     attack_toggle_v68.name="AttackTargetV68"
     tactical.add_child(attack_toggle_v68)
+    squad_attack_toggle_v71=_button("Ründa väesalgaga",_toggle_squad_attack_v71)
+    squad_attack_toggle_v71.name="SquadAttackV71"
+    tactical.add_child(squad_attack_toggle_v71)
     tactical.add_child(_button("Suumi sõdurile",_focus_individual))
     follow_button=_button("Jälgi sõdurit",_follow_selected_soldier)
     tactical.add_child(follow_button)
@@ -964,6 +1014,9 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
         if not pinned.is_empty():
             lines.append("Sihitud vastane: #%d:%d" % [
                 int(pinned["squad"]),int(pinned["index"])+1])
+        var target_squad: int=_selected_squad_target_v71()
+        if target_squad!=-999999:
+            lines.append("Väesalk ründab: #%d" % target_squad)
     status_label.text=" | ".join(lines)
     var used: Dictionary={}
     var total: int=0
