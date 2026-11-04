@@ -171,6 +171,9 @@ static func _synced_action_v70(model: Node3D,man: Dictionary) -> bool:
         var speed: float=clampf(animation.length/
             ACTION_REAL_SECONDS_V70,0.25,5.0)
         player.play(clip,0.06,speed)
+        # Godot may resume the same named clip rather than restart it.
+        # Explicitly seek to its first frame for a *new* attack event.
+        player.seek(0.0,false)
         previous["action"]=action
         model.set_meta("combat_anim_v70",previous)
         return true
