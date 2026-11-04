@@ -45,7 +45,7 @@ var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
 var cam_size: float=175.0
-const MIN_BATTLE_ZOOM: float=10.0
+const MIN_BATTLE_ZOOM: float=1.5
 const MAX_BATTLE_ZOOM: float=1050.0
 var pinch_points: Dictionary={}
 var pinch_distance: float=0.0
@@ -75,7 +75,7 @@ func _process(delta: float) -> void:
 
 func _render_soldier_motion_v65(delta: float) -> void:
     if actors_root==null:return
-    var frame: float=clampf(delta,0.0,0.5)
+    var frame: float=clampf(delta,0.0,0.1)
     for node in actors_root.get_children():
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
@@ -95,10 +95,13 @@ func _render_soldier_motion_v65(delta: float) -> void:
         if fraction>1.0 and moving and auto_play_enabled:
             var velocity: Vector3=state.get("velocity",Vector3.ZERO)
             destination+=velocity*minf((fraction-1.0)*duration,0.20)
-        var before: Vector3=node.position
-        node.position=destination
-        node.rotation.y=lerp_angle(float(state["from_heading"]),
-            float(state["to_heading"]),minf(fraction,1.0))
+        # Smooth corrections after each deterministic simulation update.
+        # Prevents the visible soldier from jumping backwards when the
+        # previous frame used extrapolated movement.
+        var follow: float=1.0-exp(-frame*20.0)
+        node.position=node.position.lerp(destination,follow)
+        node.rotation.y=lerp_angle(node.rotation.y,
+            float(state["to_heading"]),follow)
         state["fraction"]=fraction
         var phase: float=float(state.get("phase",0.0))
         phase=fposmod(phase+frame*(Animation65.WALK_PHASE_SPEED if moving else 1.2),TAU)
@@ -213,7 +216,7 @@ func _focus_individual() -> void:
             var z: float=float(man["z"])
             battle_camera.position=Vector3(x,670.0,z+520.0)
             battle_camera.look_at(Vector3(x,0,z),Vector3.UP)
-            cam_size=18.0
+            cam_size=3.0
             battle_camera.size=cam_size
             return
 
@@ -378,6 +381,7 @@ func _ready() -> void:
     bar.add_child(_button("Kogu lahing",_reset_camera))
     bar.add_child(_button("Suumi +",func():_zoom(0.70)))
     bar.add_child(_button("Suumi −",func():_zoom(1.40)))
+    bar.add_child(_button("Väga lähedale",func():_zoom(0.15)))
     var tactical:=HFlowContainer.new()
     column.add_child(tactical)
     order_picker=OptionButton.new()
