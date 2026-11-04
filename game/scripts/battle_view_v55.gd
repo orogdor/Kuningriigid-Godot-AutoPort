@@ -15,6 +15,7 @@ const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Animation61=preload("res://scripts/battle_animation_v61.gd")
+const Animation65=preload("res://scripts/battle_animation_v65.gd")
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
@@ -44,6 +45,10 @@ var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
 var cam_size: float=175.0
+const MIN_BATTLE_ZOOM: float=10.0
+const MAX_BATTLE_ZOOM: float=1050.0
+var pinch_points: Dictionary={}
+var pinch_distance: float=0.0
 
 func set_fast_graphics(enable: bool) -> void:
     fast_graphics=enable
@@ -61,48 +66,59 @@ func _toggle_graphics() -> void:
 
 func _process(delta: float) -> void:
     if not visible:return
-    # Render every screen frame, even when the deterministic simulation only
-    # produces a new 0.2 s state every ~0.4 real seconds. Without this the
-    # 56 FPS scene appears to move its 96 soldiers at only 2-3 FPS.
-    _render_soldier_motion_v63(delta)
+    _render_soldier_motion_v65(delta)
     if fps_label==null:return
     fps_refresh+=delta
     if fps_refresh>=1.0:
         fps_refresh=0.0
         fps_label.text="FPS: %d" % int(Engine.get_frames_per_second())
 
-func _render_soldier_motion_v63(delta: float) -> void:
+func _render_soldier_motion_v65(delta: float) -> void:
     if actors_root==null:return
+    var frame: float=clampf(delta,0.0,0.5)
     for node in actors_root.get_children():
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
-        if state.is_empty() or float(state.get("fraction",1.0))>=1.0:
-            continue
-        var previous: Vector3=node.position
+        if state.is_empty():continue
         var duration: float=maxf(float(state.get("duration",0.4)),0.01)
         var fraction: float=clampf(float(state.get("fraction",0.0))+\
-            maxf(delta,0.0)/duration,0.0,1.0)
+            frame/duration,0.0,1.50)
         var origin: Vector3=state["origin"]
         var target: Vector3=state["target"]
-        node.position=origin.lerp(target,fraction)
+        # The tactical engine advances only 0.2 sim seconds per 0.4 real
+        # seconds. Blend between real snapshots, then predict at most 0.2
+        # extra real seconds of visually-only motion. V63 stopped its
+        # animation exactly at fraction=1, leaving a visible freeze before
+        # the next snapshot even when the viewport ran at 56+ FPS.
+        var destination: Vector3=origin.lerp(target,minf(fraction,1.0))
+        var moving: bool=bool(state.get("move_active",false))
+        if fraction>1.0 and moving and auto_play_enabled:
+            var velocity: Vector3=state.get("velocity",Vector3.ZERO)
+            destination+=velocity*minf((fraction-1.0)*duration,0.20)
+        var before: Vector3=node.position
+        node.position=destination
         node.rotation.y=lerp_angle(float(state["from_heading"]),
-            float(state["to_heading"]),fraction)
-        var actual_distance: float=node.position.distance_to(previous)
-        var phase: float=fposmod(float(state.get("phase",0.0))+\
-            actual_distance*2.8,TAU)
-        state["phase"]=phase
+            float(state["to_heading"]),minf(fraction,1.0))
         state["fraction"]=fraction
+        var phase: float=float(state.get("phase",0.0))
+        phase=fposmod(phase+frame*(Animation65.WALK_PHASE_SPEED if moving else 1.2),TAU)
+        state["phase"]=phase
+        var attack_clock: float=maxf(0.0,
+            float(state.get("attack_clock",0.0))-frame*Battlefield.SCALE)
+        var hit_clock: float=maxf(0.0,
+            float(state.get("hit_clock",0.0))-frame*Battlefield.SCALE)
+        state["attack_clock"]=attack_clock
+        state["hit_clock"]=hit_clock
+        # Motion and combat poses run each rendered frame, independent of
+        # both the 0.25s timer and 0.2s deterministic simulation step.
         var model: Node3D=node.get_child(0) as Node3D
         if model!=null:
             var person: Dictionary=state["person"].duplicate()
-            person["moving"]=actual_distance>0.00001
+            person["moving"]=moving and (auto_play_enabled or fraction<1.0)
             person["anim_phase"]=phase
-            var sim_time: float=fraction*duration*Battlefield.SCALE
-            person["attack_anim"]=maxf(0.0,
-                float(person.get("attack_anim",0.0))-sim_time)
-            person["hit_anim_v61"]=maxf(0.0,
-                float(person.get("hit_anim_v61",0.0))-sim_time)
-            Animation61.apply(model,person,String(state["kind"]))
+            person["attack_anim"]=attack_clock
+            person["hit_anim_v61"]=hit_clock
+            Animation65.apply(model,person,String(state["kind"]))
         node.set_meta("interpolation_v63",state)
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
@@ -197,7 +213,7 @@ func _focus_individual() -> void:
             var z: float=float(man["z"])
             battle_camera.position=Vector3(x,670.0,z+520.0)
             battle_camera.look_at(Vector3(x,0,z),Vector3.UP)
-            cam_size=120.0
+            cam_size=18.0
             battle_camera.size=cam_size
             return
 
@@ -211,7 +227,54 @@ func _toggle_move_mode() -> void:
     if move_toggle!=null:
         move_toggle.text="Puuduta sihtpunkti" if move_mode_enabled else "Liigu kaardil"
 
+func _zoom_pan(delta: Vector2) -> void:
+    if battle_camera==null or battle_canvas_container==null:return
+    var relative: float=cam_size/maxf(1.0,battle_canvas_container.size.y)
+    var right: Vector3=battle_camera.global_transform.basis.x
+    var up: Vector3=battle_camera.global_transform.basis.y
+    var motion: Vector3=(-right*delta.x+up*delta.y)*relative
+    battle_camera.position+=Vector3(motion.x,0.0,motion.z)
+
+func _pinch_length() -> float:
+    if pinch_points.size()<2:return 0.0
+    var active: Array=pinch_points.values()
+    return (active[0] as Vector2).distance_to(active[1] as Vector2)
+
+func _battle_camera_input(event: InputEvent) -> bool:
+    if event is InputEventMouseButton and event.pressed:
+        if event.button_index==MOUSE_BUTTON_WHEEL_UP:
+            _zoom(0.82)
+            return true
+        if event.button_index==MOUSE_BUTTON_WHEEL_DOWN:
+            _zoom(1.22)
+            return true
+    if event is InputEventMouseMotion and \
+            (event.button_mask & MOUSE_BUTTON_MASK_RIGHT)!=0:
+        _zoom_pan(event.relative)
+        return true
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            pinch_points[event.index]=event.position
+        else:
+            pinch_points.erase(event.index)
+        pinch_distance=_pinch_length()
+        return not move_mode_enabled and not individual_move_mode
+    if event is InputEventScreenDrag:
+        if pinch_points.has(event.index):
+            pinch_points[event.index]=event.position
+        if pinch_points.size()>=2:
+            var next_distance: float=_pinch_length()
+            if pinch_distance>10.0 and next_distance>10.0:
+                _zoom(pinch_distance/next_distance)
+            pinch_distance=next_distance
+            return true
+        if not move_mode_enabled and not individual_move_mode:
+            _zoom_pan(event.relative)
+            return true
+    return false
+
 func _on_battle_canvas_input(event: InputEvent) -> void:
+    if _battle_camera_input(event):return
     if (not move_mode_enabled and not individual_move_mode) or \
             id_list.is_empty() or int(current_battle.get("version",0))<59:return
     var pos: Vector2
@@ -283,6 +346,8 @@ func _restart_demo() -> void:
     battle_demo_retry_requested.emit()
 
 func _reset_camera() -> void:
+    pinch_points.clear()
+    pinch_distance=0.0
     cam_size=175.0
     if battle_camera!=null:
         battle_camera.position=Vector3(0,670,520)
@@ -311,8 +376,8 @@ func _ready() -> void:
     demo_retry_button.disabled=true
     bar.add_child(demo_retry_button)
     bar.add_child(_button("Kogu lahing",_reset_camera))
-    bar.add_child(_button("Suumi +",func():_zoom(0.75)))
-    bar.add_child(_button("Suumi −",func():_zoom(1.33)))
+    bar.add_child(_button("Suumi +",func():_zoom(0.70)))
+    bar.add_child(_button("Suumi −",func():_zoom(1.40)))
     var tactical:=HFlowContainer.new()
     column.add_child(tactical)
     order_picker=OptionButton.new()
@@ -533,7 +598,7 @@ func _refresh_move_markers() -> void:
         node.free()
 
 func _zoom(factor: float) -> void:
-    cam_size=clampf(cam_size*factor,120.0,1050.0)
+    cam_size=clampf(cam_size*factor,MIN_BATTLE_ZOOM,MAX_BATTLE_ZOOM)
     if battle_camera!=null:battle_camera.size=cam_size
 
 func set_battle(b: Dictionary) -> void:
@@ -665,16 +730,29 @@ func set_battle(b: Dictionary) -> void:
                 if not smooth:
                     holder.position=target_position
                     holder.rotation.y=target_heading
+                var velocity: Vector3=Vector3.ZERO
+                if smooth:
+                    velocity=(target_position-previous.get("target",holder.position))/\
+                        blend_seconds
                 holder.set_meta("interpolation_v63",{
                     "origin":holder.position,"target":target_position,
                     "from_heading":holder.rotation.y,"to_heading":target_heading,
                     "fraction":0.0 if smooth else 1.0,
                     "duration":blend_seconds if smooth else 0.01,
+                    "velocity":velocity,
+                    "move_active":bool(man.get("moving",false)) or \
+                        velocity.length_squared()>0.01,
                     "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
                         float(man.get("anim_phase",0.0)),
+                    "attack_clock":maxf(float(man.get("attack_anim",0.0)),
+                        float(previous.get("attack_clock",0.0))) if smooth else \
+                        float(man.get("attack_anim",0.0)),
+                    "hit_clock":maxf(float(man.get("hit_anim_v61",0.0)),
+                        float(previous.get("hit_clock",0.0))) if smooth else \
+                        float(man.get("hit_anim_v61",0.0)),
                     "person":man.duplicate(true),"kind":kind})
                 if not smooth and model_node!=null:
-                    Animation61.apply(model_node,man,kind)
+                    Animation65.apply(model_node,man,kind)
             else:
                 holder.position=target_position
                 holder.rotation.y=target_heading
