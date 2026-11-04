@@ -347,7 +347,7 @@ func _open_satellite() -> void:
 
 func _show_city() -> void:
     if battle_view!=null:
-        battle_view.set_auto_battle(false)
+        if battle_view.visible:battle_view.set_auto_battle(false)
         battle_view.hide()
     detail_town="capital"
     if world_view != null:world_view.hide()
@@ -369,14 +369,18 @@ func _switch_detail_seamlessly(c: int,r: int,local_focus: Vector3,zoom: float) -
         detail_view.controller.restore_detail_focus(local_focus,zoom)
 
 func _show_world() -> void:
-    if battle_view!=null:battle_view.hide()
+    if battle_view!=null:
+        if battle_view.visible:battle_view.set_auto_battle(false)
+        battle_view.hide()
     _sync_trade_map()
     if city_scroll != null:city_scroll.hide()
     if detail_view != null:detail_view.hide()
     if world_view != null:world_view.show()
 
 func _show_detail(c: int, r: int) -> void:
-    if battle_view!=null:battle_view.hide()
+    if battle_view!=null:
+        if battle_view.visible:battle_view.set_auto_battle(false)
+        battle_view.hide()
     if world_view == null or detail_view == null or world_view.world.is_empty():
         return
     var capital: bool=false
