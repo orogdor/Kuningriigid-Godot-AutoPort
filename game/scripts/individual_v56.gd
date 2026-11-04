@@ -7,6 +7,7 @@ extends RefCounted
 ## than the original Three.js V91 individual-battle engine.
 const Mil=preload("res://scripts/military_v54.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
+const Stones58=preload("res://scripts/projectiles_v58.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -167,7 +168,8 @@ static func _move_men(fighter: Dictionary,dt: float,
             return bool(m.get("escaped",false))):
         fighter["mode"]="retreated"
 
-static func _target_man(m: Dictionary,opponents: Array,reach: float) -> Dictionary:
+static func _target_man(m: Dictionary,opponents: Array,reach: float,
+        arena: Dictionary={}) -> Dictionary:
     var best: Dictionary={}
     var best_dist: float=reach
     var p:=Vector2(float(m["x"]),float(m["z"]))
@@ -176,6 +178,8 @@ static func _target_man(m: Dictionary,opponents: Array,reach: float) -> Dictiona
             var q:=Vector2(float(enemy["x"]),float(enemy["z"]))
             var dist: float=p.distance_to(q)
             if dist<best_dist:
+                if not arena.is_empty() and not Stones58.clear_line(p,q,arena):
+                    continue
                 best_dist=dist
                 best=enemy
     return best
@@ -193,19 +197,26 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float) -> void:
     var power: float=float(stats["damage"])*float(Mil.GRADES[grade]["strength"])*0.27
     var reach: float=float(stats["range"]) if kind=="slinger" else \
         (2.0*BODY_RADIUS+(1.05 if kind=="spearman" else 0.38))
+    var terrain: Dictionary=Nav57.ensure(b) if int(b.get("version",56))>=58 else {}
     for man in living(fighter):
         man["cool"]=maxf(0.0,float(man["cool"])-dt)
         man["attack_anim"]=maxf(0.0,float(man.get("attack_anim",0.0))-dt)
         if float(man["cool"])>0:continue # independent per-soldier cooldown
-        var victim: Dictionary=_target_man(man,opponent,reach)
+        var victim: Dictionary=_target_man(man,opponent,reach,terrain)
         if victim.is_empty():continue
         if kind=="slinger" and int(man["ammo"])<=0:continue
+        var hits: bool=true
+        if kind=="slinger":
+            hits=posmod((int(man["shots"])+1)*17+int(man["index"])*7,10)<7
+            if int(b.get("version",56))>=58 and not Stones58.fire(b,man,
+                    victim,int(fighter["team"]),power,hits):
+                continue # Cover or projectile cap: do not waste ammunition.
         man["shots"]=int(man["shots"])+1
         man["cool"]=1.6 if kind=="slinger" else 1.35
         man["attack_anim"]=0.36
         if kind=="slinger":
             man["ammo"]=int(man["ammo"])-1
-            if posmod(int(man["shots"])*17+int(man["index"])*7,10)>=7:continue
+            if int(b.get("version",56))>=58 or not hits:continue
         victim["hp"]=maxf(0.0,float(victim["hp"])-power)
 
 static func _aggregate(fighter: Dictionary) -> void:
@@ -231,6 +242,8 @@ static func tick(b: Dictionary,dt: float) -> void:
         var foe: Dictionary=_foe(fighter,b)
         _update_anchor(fighter,foe,dt,b)
         _move_men(fighter,dt,b,grid)
+    if int(b.get("version",56))>=58:
+        Stones58.step(b,dt) # Existing stones land before fresh shots launch.
     for fighter in fighters:
         _attack(b,fighter,dt)
     for fighter in fighters:
