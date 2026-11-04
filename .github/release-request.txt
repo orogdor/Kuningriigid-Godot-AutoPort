@@ -1,7 +1,8 @@
-KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.71 WHOLE-SQUAD TARGETED ATTACK RELEASE
-Reason: Port missing a practical mobile battle order for selecting one enemy squad and commanding a whole friendly 24-soldier squad to attack it.
-Validated: PR #23 merged as 462a2ec6fb89a212088807c15f3391b3f4b23d60.
-Required tests: GitHub Actions 41895827396 SUCCESS (source rule parity, all 200-turn economy scenarios, 216 real GLB soldiers, target distribution, retarget on death, individual override and rejoin, saved group orders, source and mobile UI).
-New content version: 0.71. Stable 0.70 animations, real GLB bones, obstacle-aware navigation, projectile damage, save format and engine compatibility retained.
-Release: publish a new Android Kuningriigid-Content.pck, Windows Kuningriigid-Windows-Content.pck, launcher executable, engine and checksum manifest. Build only a signed Android ARM64 APK if existing permanent keystore available.
-Keep the Android/PCK smoke test, native Windows launcher update test, and 216-person regression as release gates. Do not claim physical Android FPS results from headless tests.
+KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.73 TRELLIS.2 ANIMATED SOLDIERS RELEASE
+Reason: Replace temporary Stone Age tactical warrior visuals with the actual V262 TRELLIS.2 axeman, spearman, and slinger meshes, skinned to the original V148 14-joint skeleton with original idle/walk/run/attack/hit/death animations and spearman brace.
+Validated: PR #25 merged as 63f32cbb253f8a22167eeba03bb11e2f644e02f2.
+Required tests: GitHub Actions 41907776989 SUCCESS, including source rule parity, 200-turn economy regressions, real Godot 4.4 glTF import, V73 216-soldier tactical rig and animation test, V70 synchronized hit/strike, V71 squad targeting, combat death, saved events and mobile UI.
+Models: three merged rigged textured GLBs generated in CI (game/assets/web73) from the exact pinned upstream V262 source and original V148 animated rig; no per-soldier rig generation in the mobile runtime.
+New content version: 0.73.
+Release: publish Android Kuningriigid-Content.pck, Windows Kuningriigid-Windows-Content.pck, launcher executable, engine and checksum manifest. Build signed ARM64 APK only when persistent keystore is configured.
+Keep PCK mount tests and Windows install/update smoke tests. Do not claim physical Android animation quality/FPS until tested on device.
