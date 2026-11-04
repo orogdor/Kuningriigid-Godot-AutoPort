@@ -1,8 +1,9 @@
 extends RefCounted
 ## Godot AutoPort 0.65: frame-driven, source-GLB-safe tactical actions.
-## True arm/leg articulation is used when a model contains Skeleton3D bones.
-## Unrigged original GLBs retain their exact geometry and textures and get a
-## visible whole-body locomotion, attack and recoil animation instead.
+## The original source soldiers carry REAL Skeleton3D + glTF animations:
+## idle, walk, run, attack, hit, death (+ spearman brace). Prefer the imported
+## AnimationPlayer and its original clips; keep a non-destructive procedural
+## whole-model fallback only for genuinely unanimated future GLBs.
 const STRIKE_SECONDS: float=0.36
 const HIT_SECONDS: float=0.36
 const WALK_PHASE_SPEED: float=7.5
@@ -49,6 +50,53 @@ static func pose(man: Dictionary,kind: String) -> Dictionary:
         "walking":walking,"attacking":strike>0.05,
         "hit":hit>0.0}
 
+static func _imported_animator(model: Node3D) -> Dictionary:
+    if model.has_meta("source_animator_v65"):
+        return model.get_meta("source_animator_v65")
+    var result: Dictionary={}
+    for candidate in model.find_children("*","AnimationPlayer",true,false):
+        var player: AnimationPlayer=candidate as AnimationPlayer
+        if player==null:continue
+        var names: Dictionary={}
+        for item in player.get_animation_list():
+            var imported_name: String=String(item)
+            var simple: String=imported_name.get_file().to_lower()
+            if ["idle","walk","run","attack","hit","death","brace"].has(simple):
+                names[simple]=imported_name
+        if names.has("walk") and names.has("attack"):
+            result={"player":player,"clips":names}
+            break
+    model.set_meta("source_animator_v65",result)
+    return result
+
+static func available_clips(model: Node3D) -> Dictionary:
+    return _imported_animator(model).get("clips",{})
+
+static func _play_original_animation(model: Node3D,
+        state: Dictionary) -> bool:
+    var info: Dictionary=_imported_animator(model)
+    if info.is_empty():return false
+    var player: AnimationPlayer=info["player"]
+    if not is_instance_valid(player):return false
+    var clips: Dictionary=info["clips"]
+    var target: String="walk" if bool(state["walking"]) else "idle"
+    if bool(state["hit"]) and clips.has("hit"):
+        target="hit"
+    elif bool(state["attacking"]) and clips.has("attack"):
+        target="attack"
+    if not clips.has(target):return false
+    var clip: String=String(clips[target])
+    var changed: bool=player.current_animation!=clip
+    if changed or (not player.is_playing() and \
+            ["walk","idle"].has(target)):
+        var animation: Animation=player.get_animation(clip)
+        if animation!=null and ["walk","idle","run"].has(target):
+            animation.loop_mode=Animation.LOOP_LINEAR
+        # Crossfade is modest: play the real skeletal clip from the
+        # imported GLB instead of posing the whole model as one stiff block.
+        player.play(clip,0.10,1.0)
+    return true
+
 static func _rig_bones(model: Node3D) -> Array:
     if model.has_meta("rig_bones_v65"):
         return model.get_meta("rig_bones_v65")
@@ -60,9 +108,11 @@ static func _rig_bones(model: Node3D) -> Array:
             var name: String=String(skeleton.get_bone_name(i)).to_lower()
             var side: int=0
             if name.contains("left") or name.begins_with("l_") or \
-                    name.begins_with("l."):side=-1
+                    name.begins_with("l.") or name.ends_with("_l") or \
+                    name.ends_with(".l"):side=-1
             elif name.contains("right") or name.begins_with("r_") or \
-                    name.begins_with("r."):side=1
+                    name.begins_with("r.") or name.ends_with("_r") or \
+                    name.ends_with(".r"):side=1
             if side==0:continue
             var leg: bool=name.contains("upleg") or name.contains("thigh") or \
                 name.contains("upperleg") or name.contains("upper_leg")
@@ -77,10 +127,14 @@ static func _rig_bones(model: Node3D) -> Array:
 static func apply(model: Node3D,man: Dictionary,kind: String) -> void:
     if model==null:return
     var state: Dictionary=pose(man,kind)
-    model.position=state["offset"]
-    model.rotation=state["rotation"]
-    # Existing GLBs are used as-is. Only rotate actual bones if present;
-    # never attach fake limbs or replace textured source meshes with cubes.
+    var has_original: bool=_play_original_animation(model,state)
+    # The imported glTF already contains limb animation. Keep a subtle
+    # complementary torso displacement, without overriding its keyed bones.
+    model.position=(state["offset"] as Vector3)*(0.38 if has_original else 1.0)
+    model.rotation=(state["rotation"] as Vector3)*(0.32 if has_original else 1.0)
+    if has_original:return
+    # Fallback for a future unrigged model; never overwrite actual
+    # imported GLB AnimationPlayer poses with procedural bone rotations.
     var bones: Array=_rig_bones(model)
     for item in bones:
         var skeleton: Skeleton3D=item["skeleton"]
