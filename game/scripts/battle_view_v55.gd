@@ -45,13 +45,13 @@ var id_list: Array[int]=[]
 var current_battle: Dictionary={}
 var cam_size: float=175.0
 
-static func graphics_resolution(fast: bool) -> Vector2i:
-    return Vector2i(480,360) if fast else Vector2i(800,600)
-
 func set_fast_graphics(enable: bool) -> void:
     fast_graphics=enable
-    if viewport!=null:
-        viewport.size=graphics_resolution(fast_graphics)
+    # Godot SubViewportContainer owns the viewport's size when stretch=true.
+    # stretch_shrink renders at half width and height on Android/iOS while
+    # still scaling the image to fit the full tactical view.
+    if battle_canvas_container!=null:
+        battle_canvas_container.stretch_shrink=2 if fast_graphics else 1
     if graphics_button!=null:
         graphics_button.text="Pildikvaliteet: säästlik" if fast_graphics else \
             "Pildikvaliteet: terav"
