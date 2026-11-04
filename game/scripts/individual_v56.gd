@@ -8,6 +8,7 @@ extends RefCounted
 const Mil=preload("res://scripts/military_v54.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Stones58=preload("res://scripts/projectiles_v58.gd")
+const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -95,6 +96,9 @@ static func _update_anchor(fighter: Dictionary,target: Dictionary,dt: float,
     var formation: String=String(fighter.get("formation","line"))
     if formation=="hold":speed*=0.8
     elif formation=="spear_wall":speed*=0.35
+    if mode=="move" and int(battle.get("version",56))>=59:
+        Orders59.advance(fighter,battle,dt)
+        return
     if mode=="retreat":
         var goal_x: float=-LEAVE_X if int(fighter["team"])==0 else LEAVE_X
         if int(battle.get("version",56))>=57:

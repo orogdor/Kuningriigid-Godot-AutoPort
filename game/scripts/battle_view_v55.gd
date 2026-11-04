@@ -5,6 +5,7 @@ extends Control
 signal return_requested
 signal battle_command_requested(id: int,order: String)
 signal battle_tick_requested(seconds: float)
+signal battle_move_requested(id: int,x: float,z: float)
 
 const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
@@ -15,6 +16,10 @@ var scene_root: Node3D
 var actors_root: Node3D
 var obstacles_root: Node3D
 var projectiles_root: Node3D
+var move_markers_root: Node3D
+var battle_canvas_container: SubViewportContainer
+var move_toggle: Button
+var move_mode_enabled: bool=false
 var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
@@ -46,6 +51,43 @@ func _issue(cmd: String) -> void:
     if index>=0 and index<id_list.size():
         battle_command_requested.emit(id_list[index],cmd)
 
+func _toggle_move_mode() -> void:
+    if int(current_battle.get("version",0))<59 or id_list.is_empty():
+        move_mode_enabled=false
+    else:
+        move_mode_enabled=not move_mode_enabled
+    if move_toggle!=null:
+        move_toggle.text="Puuduta sihtpunkti" if move_mode_enabled else "Liigu kaardil"
+
+func _on_battle_canvas_input(event: InputEvent) -> void:
+    if not move_mode_enabled or id_list.is_empty() or \
+            int(current_battle.get("version",0))<59:return
+    var pos: Vector2
+    if event is InputEventMouseButton:
+        if not event.pressed or event.button_index!=MOUSE_BUTTON_LEFT:return
+        pos=event.position
+    elif event is InputEventScreenTouch:
+        if not event.pressed:return
+        pos=event.position
+    else:return
+    if battle_camera==null or battle_canvas_container==null:return
+    if battle_canvas_container.size.x<1.0 or battle_canvas_container.size.y<1.0:
+        return
+    var screen_point: Vector2=pos*Vector2(
+        float(viewport.size.x)/battle_canvas_container.size.x,
+        float(viewport.size.y)/battle_canvas_container.size.y)
+    var origin: Vector3=battle_camera.project_ray_origin(screen_point)
+    var ray: Vector3=battle_camera.project_ray_normal(screen_point)
+    if absf(ray.y)<0.00001:return
+    var distance: float=-origin.y/ray.y
+    if distance<=0.0:return
+    var ground: Vector3=origin+ray*distance
+    var index: int=order_picker.selected
+    if index<0 or index>=id_list.size():return
+    battle_move_requested.emit(id_list[index],ground.x,ground.z)
+    move_mode_enabled=false
+    if move_toggle!=null:move_toggle.text="Liigu kaardil"
+
 func _ready() -> void:
     var column:=VBoxContainer.new()
     column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -63,6 +105,8 @@ func _ready() -> void:
     order_picker=OptionButton.new()
     order_picker.custom_minimum_size=Vector2(160,44)
     tactical.add_child(order_picker)
+    move_toggle=_button("Liigu kaardil",_toggle_move_mode)
+    tactical.add_child(move_toggle)
     for option in [
         ["Ründa","attack"],["Hoia positsiooni","hold"],
         ["Odade vastuvõtt","spear_wall"],["Hajurivi","loose"],
@@ -76,6 +120,9 @@ func _ready() -> void:
     status_label.add_theme_font_size_override("font_size",13)
     column.add_child(status_label)
     var container:=SubViewportContainer.new()
+    battle_canvas_container=container
+    container.gui_input.connect(_on_battle_canvas_input)
+    container.custom_minimum_size=Vector2(240,180)
     container.stretch=true
     container.size_flags_vertical=Control.SIZE_EXPAND_FILL
     column.add_child(container)
@@ -131,6 +178,9 @@ func _ready() -> void:
     projectiles_root=Node3D.new()
     projectiles_root.name="StoneFlightsV58"
     scene_root.add_child(projectiles_root)
+    move_markers_root=Node3D.new()
+    move_markers_root.name="MoveDestinationsV59"
+    scene_root.add_child(move_markers_root)
 
 func _refresh_obstacles() -> void:
     for node in obstacles_root.get_children():
@@ -188,6 +238,35 @@ func _refresh_projectiles() -> void:
         projectiles_root.remove_child(node)
         node.free()
 
+func _refresh_move_markers() -> void:
+    var needed: Dictionary={}
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("team",-1))!=0 or \
+                String(fighter.get("mode",""))!="move":continue
+        var target: Variant=fighter.get("move_target_v59",null)
+        if not target is Dictionary or target.is_empty():continue
+        var key: String="Waypoint_%d" % int(fighter["id"])
+        needed[key]=true
+        var marker: MeshInstance3D=move_markers_root.get_node_or_null(key) as MeshInstance3D
+        if marker==null:
+            marker=MeshInstance3D.new()
+            marker.name=key
+            var mesh:=CylinderMesh.new()
+            mesh.top_radius=1.5
+            mesh.bottom_radius=1.5
+            mesh.height=0.12
+            marker.mesh=mesh
+            var mat:=StandardMaterial3D.new()
+            mat.albedo_color=Color("#f1d24d")
+            mat.roughness=1.0
+            marker.material_override=mat
+            move_markers_root.add_child(marker)
+        marker.position=Vector3(float(target["x"]),0.12,float(target["z"]))
+    for node in move_markers_root.get_children():
+        if needed.has(String(node.name)):continue
+        move_markers_root.remove_child(node)
+        node.free()
+
 func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,120.0,1050.0)
     if battle_camera!=null:battle_camera.size=cam_size
@@ -197,6 +276,7 @@ func set_battle(b: Dictionary) -> void:
     if status_label==null:return
     _refresh_obstacles()
     _refresh_projectiles()
+    _refresh_move_markers()
     var existing_id: int=-1
     if order_picker.selected>=0 and order_picker.selected<id_list.size():
         existing_id=id_list[order_picker.selected]

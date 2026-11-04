@@ -7,6 +7,7 @@ const Mil=preload("res://scripts/military_v54.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
 const Men56=preload("res://scripts/individual_v56.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
+const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Raider56=preload("res://scripts/raider_v56.gd")
 const KEY: String="skirmish_v55"
 const SCALE: float=0.5 # battle-pacing-v93.js
@@ -91,7 +92,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":58,"seed":int(world["seed"]),
+    military[KEY]={"version":59,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -155,9 +156,19 @@ static func command(state: Dictionary,world: Dictionary,id: int,kind: String) ->
             fighter["formation"]=kind
             if kind=="hold":fighter["mode"]="hold"
         else:return "Tundmatu lahingukäsk."
+        if String(fighter.get("mode",""))!="move":Orders59.cancel(fighter)
         _message(b,"%s: %s" % [String(fighter["kind"]),kind])
         return ""
     return "Väesalka ei leitud."
+
+static func move(state: Dictionary,world: Dictionary,id: int,
+        destination: Vector2) -> String:
+    var battle: Dictionary=current(state,world)
+    if battle.is_empty() or String(battle.get("result",""))!="":
+        return "Aktiivset lahingut ei ole."
+    var result: String=Orders59.issue(battle,id,destination)
+    if result=="":_message(battle,"Väesalk #%d liigub sihtpunkti." % id)
+    return result
 
 static func _nearest(from: Dictionary,foes: Array) -> Dictionary:
     var best: Dictionary={}
