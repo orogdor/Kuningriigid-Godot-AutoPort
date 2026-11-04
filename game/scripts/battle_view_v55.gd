@@ -6,6 +6,8 @@ signal return_requested
 signal battle_command_requested(id: int,order: String)
 signal battle_tick_requested(seconds: float)
 signal battle_move_requested(id: int,x: float,z: float)
+signal battle_individual_move_requested(id: int,index: int,x: float,z: float)
+signal battle_individual_return_requested(id: int,index: int)
 
 const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
@@ -20,6 +22,10 @@ var move_markers_root: Node3D
 var battle_canvas_container: SubViewportContainer
 var move_toggle: Button
 var move_mode_enabled: bool=false
+var individual_picker: OptionButton
+var man_indices: Array[int]=[]
+var individual_move_toggle: Button
+var individual_move_mode: bool=false
 var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
@@ -51,17 +57,90 @@ func _issue(cmd: String) -> void:
     if index>=0 and index<id_list.size():
         battle_command_requested.emit(id_list[index],cmd)
 
+func _chosen_man() -> Dictionary:
+    if individual_picker==null or order_picker==null:return {}
+    var squad: int=order_picker.selected
+    var person: int=individual_picker.selected
+    if squad<0 or squad>=id_list.size() or \
+            person<0 or person>=man_indices.size():return {}
+    return {"squad":id_list[squad],"index":man_indices[person]}
+
+func _refresh_individual_picker() -> void:
+    if individual_picker==null or order_picker==null:return
+    var previous: int=-1
+    var selected: int=individual_picker.selected
+    if selected>=0 and selected<man_indices.size():
+        previous=man_indices[selected]
+    man_indices.clear()
+    individual_picker.clear()
+    var squad_pos: int=order_picker.selected
+    if squad_pos<0 or squad_pos>=id_list.size():return
+    var current_id: int=id_list[squad_pos]
+    var selected_position: int=0
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("id",-1))!=current_id or \
+                int(fighter.get("team",-1))!=0:continue
+        for man in fighter.get("men",[]):
+            if float(man.get("hp",0))<=0 or bool(man.get("escaped",false)):
+                continue
+            var index: int=int(man.get("index",-1))
+            if index<0:continue
+            if index==previous:selected_position=man_indices.size()
+            man_indices.append(index)
+            individual_picker.add_item("#%d • %.1f HP" % [
+                index+1,float(man.get("hp",0.0))])
+        break
+    if not man_indices.is_empty():
+        individual_picker.select(selected_position)
+
+func _on_person_changed(_index: int) -> void:
+    if not current_battle.is_empty():set_battle(current_battle)
+
+func _toggle_individual_move() -> void:
+    if int(current_battle.get("version",0))<60 or _chosen_man().is_empty():
+        individual_move_mode=false
+    else:
+        individual_move_mode=not individual_move_mode
+    move_mode_enabled=false
+    if move_toggle!=null:move_toggle.text="Liigu kaardil"
+    if individual_move_toggle!=null:
+        individual_move_toggle.text="Puuduta sõduri sihti" if individual_move_mode else "Sõdur liigub"
+
+func _individual_rejoin() -> void:
+    var chosen: Dictionary=_chosen_man()
+    if chosen.is_empty() or int(current_battle.get("version",0))<60:return
+    individual_move_mode=false
+    if individual_move_toggle!=null:individual_move_toggle.text="Sõdur liigub"
+    battle_individual_return_requested.emit(int(chosen["squad"]),int(chosen["index"]))
+
+func _focus_individual() -> void:
+    var chosen: Dictionary=_chosen_man()
+    if chosen.is_empty() or battle_camera==null:return
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("id",-1))!=int(chosen["squad"]):continue
+        for man in fighter.get("men",[]):
+            if int(man.get("index",-1))!=int(chosen["index"]):continue
+            var x: float=float(man["x"])
+            var z: float=float(man["z"])
+            battle_camera.position=Vector3(x,670.0,z+520.0)
+            battle_camera.look_at(Vector3(x,0,z),Vector3.UP)
+            cam_size=120.0
+            battle_camera.size=cam_size
+            return
+
 func _toggle_move_mode() -> void:
     if int(current_battle.get("version",0))<59 or id_list.is_empty():
         move_mode_enabled=false
     else:
         move_mode_enabled=not move_mode_enabled
+    individual_move_mode=false
+    if individual_move_toggle!=null:individual_move_toggle.text="Sõdur liigub"
     if move_toggle!=null:
         move_toggle.text="Puuduta sihtpunkti" if move_mode_enabled else "Liigu kaardil"
 
 func _on_battle_canvas_input(event: InputEvent) -> void:
-    if not move_mode_enabled or id_list.is_empty() or \
-            int(current_battle.get("version",0))<59:return
+    if (not move_mode_enabled and not individual_move_mode) or \
+            id_list.is_empty() or int(current_battle.get("version",0))<59:return
     var pos: Vector2
     if event is InputEventMouseButton:
         if not event.pressed or event.button_index!=MOUSE_BUTTON_LEFT:return
@@ -82,6 +161,14 @@ func _on_battle_canvas_input(event: InputEvent) -> void:
     var distance: float=-origin.y/ray.y
     if distance<=0.0:return
     var ground: Vector3=origin+ray*distance
+    if individual_move_mode:
+        var chosen: Dictionary=_chosen_man()
+        if chosen.is_empty():return
+        individual_move_mode=false
+        if individual_move_toggle!=null:individual_move_toggle.text="Sõdur liigub"
+        battle_individual_move_requested.emit(int(chosen["squad"]),
+            int(chosen["index"]),ground.x,ground.z)
+        return
     var index: int=order_picker.selected
     if index<0 or index>=id_list.size():return
     battle_move_requested.emit(id_list[index],ground.x,ground.z)
@@ -105,8 +192,19 @@ func _ready() -> void:
     order_picker=OptionButton.new()
     order_picker.custom_minimum_size=Vector2(160,44)
     tactical.add_child(order_picker)
+    order_picker.item_selected.connect(func(_index: int):
+        _refresh_individual_picker()
+        set_battle(current_battle))
+    individual_picker=OptionButton.new()
+    individual_picker.custom_minimum_size=Vector2(130,44)
+    individual_picker.item_selected.connect(_on_person_changed)
+    tactical.add_child(individual_picker)
     move_toggle=_button("Liigu kaardil",_toggle_move_mode)
     tactical.add_child(move_toggle)
+    individual_move_toggle=_button("Sõdur liigub",_toggle_individual_move)
+    tactical.add_child(individual_move_toggle)
+    tactical.add_child(_button("Tagasi rivvi",_individual_rejoin))
+    tactical.add_child(_button("Suumi sõdurile",_focus_individual))
     for option in [
         ["Ründa","attack"],["Hoia positsiooni","hold"],
         ["Odade vastuvõtt","spear_wall"],["Hajurivi","loose"],
@@ -292,6 +390,7 @@ func set_battle(b: Dictionary) -> void:
             id,String(fighter["kind"]),float(fighter["hp"])])
         if id==existing_id:selected_index=id_list.size()-1
     if not id_list.is_empty():order_picker.select(selected_index)
+    _refresh_individual_picker()
     var label: String="Kampaanialahing • iga sõdur liigub ja võitleb eraldi." if \
         bool(current_battle.get("campaign_v56",false)) else \
         "Kiviaja proovilahing • 24 individuaalset sõdurit väesalgas, päris kaotused."
@@ -304,6 +403,10 @@ func set_battle(b: Dictionary) -> void:
             "Sinu" if int(fighter["team"])==0 else "Vastane",
             String(fighter["kind"]),float(fighter["hp"]),float(fighter["max_hp"]),
             String(fighter.get("mode","")),int(fighter.get("menAlive",0))])
+    var chosen: Dictionary=_chosen_man()
+    if not chosen.is_empty():
+        lines.append("Valitud sõdur: #%d:%d" % [
+            int(chosen["squad"]),int(chosen["index"])+1])
     status_label.text=" | ".join(lines)
     var used: Dictionary={}
     var total: int=0
@@ -342,6 +445,16 @@ func set_battle(b: Dictionary) -> void:
                 mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
                 marker.material_override=mat
                 holder.add_child(marker)
+            var team_marker: MeshInstance3D=holder.get_node_or_null("TeamMarker") as MeshInstance3D
+            if team_marker!=null:
+                var base_material: StandardMaterial3D=team_marker.material_override as StandardMaterial3D
+                if base_material!=null:
+                    var is_selected: bool=not chosen.is_empty() and \
+                        int(fighter["team"])==0 and \
+                        int(fighter["id"])==int(chosen["squad"]) and \
+                        int(man.get("index",-1))==int(chosen["index"])
+                    base_material.albedo_color=Color("#ffe250") if is_selected else \
+                        (Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56"))
             holder.position=Vector3(float(man["x"]),0.0,float(man["z"]))
             holder.rotation.y=float(man.get("heading",
                 PI*0.5 if int(fighter["team"])==0 else -PI*0.5))
