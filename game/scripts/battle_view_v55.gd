@@ -49,6 +49,9 @@ const MIN_BATTLE_ZOOM: float=1.5
 const MAX_BATTLE_ZOOM: float=1050.0
 var pinch_points: Dictionary={}
 var pinch_distance: float=0.0
+var follow_actor_key: String=""
+var follow_origin: Vector3=Vector3.ZERO
+var follow_button: Button
 
 func set_fast_graphics(enable: bool) -> void:
     fast_graphics=enable
@@ -67,6 +70,7 @@ func _toggle_graphics() -> void:
 func _process(delta: float) -> void:
     if not visible:return
     _render_soldier_motion_v65(delta)
+    _follow_soldier_frame()
     if fps_label==null:return
     fps_refresh+=delta
     if fps_refresh>=1.0:
@@ -123,6 +127,44 @@ func _render_soldier_motion_v65(delta: float) -> void:
             person["hit_anim_v61"]=hit_clock
             Animation65.apply(model,person,String(state["kind"]))
         node.set_meta("interpolation_v63",state)
+
+func _follow_soldier_frame() -> void:
+    if follow_actor_key=="" or battle_camera==null or actors_root==null:
+        return
+    var subject: Node3D=actors_root.get_node_or_null(follow_actor_key) as Node3D
+    if subject==null:
+        _stop_following()
+        return
+    var displacement: Vector3=subject.position-follow_origin
+    # Shift camera parallel to the ground; preserve its angle and zoom.
+    battle_camera.position+=Vector3(displacement.x,0.0,displacement.z)
+    follow_origin=subject.position
+
+func _stop_following() -> void:
+    follow_actor_key=""
+    if follow_button!=null:follow_button.text="Jälgi sõdurit"
+
+func _follow_selected_soldier() -> void:
+    if follow_actor_key!="":
+        _stop_following()
+        return
+    var selected: Dictionary=_chosen_man()
+    if selected.is_empty() or actors_root==null:return
+    var key: String="TacticalMan_%d_%d" % [
+        int(selected["squad"]),int(selected["index"])]
+    var node: Node3D=actors_root.get_node_or_null(key) as Node3D
+    if node==null:return
+    _focus_individual()
+    # Use the current interpolated position, not stale simulation coords,
+    # to avoid a jump immediately after engaging follow.
+    var from: Vector3=Vector3(
+        float(selected.get("x",node.position.x)),0.0,
+        float(selected.get("z",node.position.z)))
+    battle_camera.position+=Vector3(
+        node.position.x-from.x,0.0,node.position.z-from.z)
+    follow_actor_key=key
+    follow_origin=node.position
+    if follow_button!=null:follow_button.text="Lõpeta jälgimine"
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
     var node:=MeshInstance3D.new()
@@ -186,6 +228,7 @@ func _refresh_individual_picker() -> void:
         individual_picker.select(selected_position)
 
 func _on_person_changed(_index: int) -> void:
+    _stop_following()
     if not current_battle.is_empty():set_battle(current_battle)
 
 func _toggle_individual_move() -> void:
@@ -206,6 +249,7 @@ func _individual_rejoin() -> void:
     battle_individual_return_requested.emit(int(chosen["squad"]),int(chosen["index"]))
 
 func _focus_individual() -> void:
+    _stop_following()
     var chosen: Dictionary=_chosen_man()
     if chosen.is_empty() or battle_camera==null:return
     for fighter in current_battle.get("fighters",[]):
@@ -232,6 +276,7 @@ func _toggle_move_mode() -> void:
 
 func _zoom_pan(delta: Vector2) -> void:
     if battle_camera==null or battle_canvas_container==null:return
+    _stop_following()
     var relative: float=cam_size/maxf(1.0,battle_canvas_container.size.y)
     var right: Vector3=battle_camera.global_transform.basis.x
     var up: Vector3=battle_camera.global_transform.basis.y
@@ -349,6 +394,7 @@ func _restart_demo() -> void:
     battle_demo_retry_requested.emit()
 
 func _reset_camera() -> void:
+    _stop_following()
     pinch_points.clear()
     pinch_distance=0.0
     cam_size=175.0
@@ -400,6 +446,8 @@ func _ready() -> void:
     tactical.add_child(individual_move_toggle)
     tactical.add_child(_button("Tagasi rivvi",_individual_rejoin))
     tactical.add_child(_button("Suumi sõdurile",_focus_individual))
+    follow_button=_button("Jälgi sõdurit",_follow_selected_soldier)
+    tactical.add_child(follow_button)
     for option in [
         ["Ründa","attack"],["Hoia positsiooni","hold"],
         ["Odade vastuvõtt","spear_wall"],["Hajurivi","loose"],
