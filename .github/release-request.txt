@@ -1,8 +1,5 @@
-KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.73 TRELLIS.2 ANIMATED SOLDIERS RELEASE
-Reason: Replace temporary Stone Age tactical warrior visuals with the actual V262 TRELLIS.2 axeman, spearman, and slinger meshes, skinned to the original V148 14-joint skeleton with original idle/walk/run/attack/hit/death animations and spearman brace.
-Validated: PR #25 merged as 63f32cbb253f8a22167eeba03bb11e2f644e02f2.
-Required tests: GitHub Actions 41907776989 SUCCESS, including source rule parity, 200-turn economy regressions, real Godot 4.4 glTF import, V73 216-soldier tactical rig and animation test, V70 synchronized hit/strike, V71 squad targeting, combat death, saved events and mobile UI.
-Models: three merged rigged textured GLBs generated in CI (game/assets/web73) from the exact pinned upstream V262 source and original V148 animated rig; no per-soldier rig generation in the mobile runtime.
-New content version: 0.73.
-Release: publish Android Kuningriigid-Content.pck, Windows Kuningriigid-Windows-Content.pck, launcher executable, engine and checksum manifest. Build signed ARM64 APK only when persistent keystore is configured.
-Keep PCK mount tests and Windows install/update smoke tests. Do not claim physical Android animation quality/FPS until tested on device.
+KUNINGRIIGID GODOT AUTOPORT — 0.75 SOLDIER VISIBILITY HOTFIX RELEASE
+Reason: Users see no legible soldiers in the 0.74 Windows application. Release the tested view correction with 90m tactical camera, non-wrapping command bars, full-resolution Windows battles, larger high-contrast atlas army visuals, town rally positions outside the opaque main hall, and safe fallback when a soldier GLB resource is unavailable.
+Fix: PR #27 merged as 385e10704e756b6235904dd8426e447033058e31.
+Rendered checks: actual Godot 4.4.1 Mesa offscreen screenshots and nonzero screen-pixel differences for 96-fighter tactical battle, world atlas, and city detail plus 3 original V148 and 3 V262 TRELLIS meshes, raw and rigged, succeeded in GitHub Actions 41923422749.
+Release gate: build-apps workflow must load both exported Android Content.pck and Windows Content.pck in an empty project and check that axeman/spearman/slinger GLBs are loadable and skinned with Skeleton3D. Do not publish if the exported PCK is missing those resources.
