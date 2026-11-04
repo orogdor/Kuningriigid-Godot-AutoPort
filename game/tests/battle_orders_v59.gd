@@ -93,9 +93,16 @@ func _run() -> void:
     var touch:=InputEventScreenTouch.new()
     touch.pressed=true
     touch.position=pos*scale
+    var ray_origin: Vector3=view.battle_camera.project_ray_origin(pos)
+    var ray_dir: Vector3=view.battle_camera.project_ray_normal(pos)
+    print("V59_TOUCH_DEBUG armed=%s selected=%s ids=%s canvas=%s viewport=%s pos=%s event_pos=%s ray_origin=%s ray=%s" % [
+        str(view.move_mode_enabled),str(view.order_picker.selected),
+        str(view.id_list),str(view.battle_canvas_container.size),
+        str(view.viewport.size),str(pos),str(touch.position),str(ray_origin),str(ray_dir)])
     view._on_battle_canvas_input(touch)
     if issued.size()!=1 or issued[0]["id"]!=7:
-        fail("Touch did not emit selected friendly squad's move order")
+        fail("Touch did not emit selected friendly squad's move order (count=%d armed=%s selected=%d)" % [
+            issued.size(),str(view.move_mode_enabled),view.order_picker.selected])
         return
     var emitted:=Vector2(float(issued[0]["x"]),float(issued[0]["z"]))
     if emitted.distance_to(Vector2(40,35))>2.0:
