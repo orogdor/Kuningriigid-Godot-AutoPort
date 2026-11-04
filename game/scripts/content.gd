@@ -49,6 +49,7 @@ var trade_label: Label
 var satellite_label: Label
 var military_status: Label
 var military_grade: OptionButton
+var demo_start_button: Button
 var research_status: Label
 var research_options: OptionButton
 var research_start: Button
@@ -244,8 +245,8 @@ func _start_skirmish(selected_id: int=-1) -> void:
     if chosen.is_empty() and not military.get("armies",[]).is_empty():
         chosen=military["armies"][0]
     if chosen.is_empty():
-        event_message="Värba enne lahingut vähemalt üks kiviaja sõdur."
-        _refresh()
+        # World-map "Proovilahing" works even in a new city without troops.
+        _start_demo_battle()
         return
     var ids: Array=[]
     for army in military["armies"]:
@@ -494,7 +495,9 @@ func _setup_ui() -> void:
     var army_controls:=HFlowContainer.new()
     body.add_child(army_controls)
     army_controls.add_child(_button("Ehita sõdalaste laager",_build_military_camp))
-    army_controls.add_child(_button("Proovilahing kohe (tasuta)",_start_demo_battle))
+    demo_start_button=_button("Proovilahing kohe (tasuta)",_start_demo_battle)
+    demo_start_button.name="FreeDemoBattleV61"
+    army_controls.add_child(demo_start_button)
     army_controls.add_child(_button("Harjutuslahing päris vägedega",_start_skirmish))
     army_controls.add_child(_button("Ava pooleliolev lahing",_open_battle_v55))
     military_grade=OptionButton.new()
