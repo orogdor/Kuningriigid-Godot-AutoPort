@@ -30,8 +30,15 @@ func _run() -> void:
             bool(military["camp"].get("ready",false)):
         fail("Free demo requires an empty usable fresh city")
         return
-    # The actual city button handler, not a synthetic battle fixture.
-    ui._start_demo_battle()
+    # Press the actual world-map "Proovilahing" button in a city with NO
+    # troops; this was previously a silent no-op and must now start a demo.
+    var world_button: Button=ui.world_view.find_child(
+        "ArmySkirmishV55",true,false) as Button
+    if world_button==null or ui.demo_start_button==null or \
+            ui.demo_start_button.disabled:
+        fail("Real city/world map practice-battle buttons are missing")
+        return
+    world_button.pressed.emit()
     var b: Dictionary=Battle.current(ui.city,world)
     if b.is_empty() or not Battle.active(ui.city,world) or \
             not bool(b.get("demo_v61",false)) or int(b.get("version",0))!=61:
@@ -131,6 +138,12 @@ func _run() -> void:
             not ui.battle_view.visible or not ui.battle_view.auto_play_enabled:
         fail("Replay button did not start a new playable demo")
         return
+    # City button also opens the existing demo rather than overwriting it,
+    # and is wired to the same one-click handler used on a fresh city.
+    ui.demo_start_button.pressed.emit()
+    if Battle.current(ui.city,world)!=next or not Battle.active(ui.city,world):
+        fail("City demo button unexpectedly replaced the active battle")
+        return
     ui.battle_view.set_auto_battle(false)
-    print("BATTLE_DEMO_V61 SUCCESS: one-click free city demo, 96 real GLBs, auto play/pause, player orders, 3D zoom, save/restore, distinct strikes, decisive victory, no campaign damage, restart")
+    print("BATTLE_DEMO_V61 SUCCESS: clickable world-map + city demo controls, 96 real GLBs, auto play/pause, player orders, 3D zoom, save/restore, distinct strikes, decisive victory, no campaign damage, restart")
     quit(0)
