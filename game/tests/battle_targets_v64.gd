@@ -124,7 +124,7 @@ func _run() -> void:
             JSON.stringify(optimized.get("projectiles_v58",[])):
         fail("Indexed combat changed slingstone trajectory or ammunition")
         return
-    var probe: Dictionary={"x":-38.0,"z":0.0}
+    var probe: Dictionary={"x":38.0,"z":-18.0}
     var counts: Dictionary={"candidate_checks":0}
     Targets.nearest(target_index,probe,0,1.73,terrain,counts)
     if int(counts["candidate_checks"])>=96:
