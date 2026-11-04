@@ -45,6 +45,11 @@ func _run() -> void:
     if armed!=96 or playback!=96:
         fail("Original 96 skeletal source animations were not started")
         return
+    view._refresh_skeletal_status()
+    if view.skeletal_status_label==null or \
+            view.skeletal_status_label.text!="Animatsioon: 96/96":
+        fail("Actual source GLB AnimationPlayer playback diagnostic is wrong")
+        return
 
     # Default full battlefield, mouse wheel, tenfold close zoom and limits.
     view._zoom(0.001)
