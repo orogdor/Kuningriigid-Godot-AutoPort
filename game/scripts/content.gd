@@ -116,6 +116,8 @@ func _ready() -> void:
     battle_view.return_requested.connect(_show_city)
     battle_view.battle_command_requested.connect(_battle_command)
     battle_view.battle_move_requested.connect(_battle_move)
+    battle_view.battle_individual_move_requested.connect(_battle_individual_move)
+    battle_view.battle_individual_return_requested.connect(_battle_individual_rejoin)
     battle_view.battle_tick_requested.connect(_battle_tick)
     battle_view.hide()
     city_scroll.hide()
@@ -264,6 +266,18 @@ func _battle_command(id: int,command: String) -> void:
 
 func _battle_move(id: int,x: float,z: float) -> void:
     var result: String=Battle55.move(city,world_view.world,id,Vector2(x,z))
+    if result!="":event_message=result
+    battle_view.set_battle(Battle55.current(city,world_view.world))
+    _save()
+
+func _battle_individual_move(id: int,index: int,x: float,z: float) -> void:
+    var result: String=Battle55.move_individual(city,world_view.world,id,index,Vector2(x,z))
+    if result!="":event_message=result
+    battle_view.set_battle(Battle55.current(city,world_view.world))
+    _save()
+
+func _battle_individual_rejoin(id: int,index: int) -> void:
+    var result: String=Battle55.rejoin_individual(city,world_view.world,id,index)
     if result!="":event_message=result
     battle_view.set_battle(Battle55.current(city,world_view.world))
     _save()

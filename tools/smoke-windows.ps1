@@ -108,22 +108,36 @@ if ($p.ExitCode -ne 0) { throw "Installed Godot project import failed with exit 
 $p = Start-Process -FilePath $engine -ArgumentList @("--headless", "--path", $game, "--quit-after", "3") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Installed Godot content failed with exit code $($p.ExitCode)" }
 
-# Do not pin the launcher smoke test to AutoPort 0.17: this used to
-# falsely fail every modern release even after a successful installed boot.
+# Dynamic in-game captions come from release.json through BuildInfo58.
+# Do not require a hardcoded "GODOT 0.xx" literal in the city script.
 $contentScript = Get-Content (Join-Path $game "scripts/content.gd") -Raw
 $projectScript = Get-Content (Join-Path $game "project.godot") -Raw
-if ($contentScript -notmatch 'GODOT 0\.(\d+)') {
-    throw "Installed city version identifier is missing from scripts/content.gd"
+$buildInfoPath = Join-Path $game "scripts/build_info_v58.gd"
+if ($projectScript -notmatch 'AutoPort 0\.(\d+)') {
+    throw "Installed project.godot has no current AutoPort version"
 }
 $installedMinor = [int]$Matches[1]
 if ($installedMinor -lt 33 -or $contentScript -notmatch 'Linnamajandus') {
     throw "Installed AutoPort release content is incomplete: found 0.$installedMinor, expected 0.33+"
 }
-if ($projectScript -notmatch "AutoPort 0\.$installedMinor") {
-    throw "Installed project.godot version does not match scripts/content.gd (0.$installedMinor)"
+if (-not (Test-Path $buildInfoPath)) {
+    throw "Missing dynamic game version reader: scripts/build_info_v58.gd"
+}
+$buildInfo = Get-Content $buildInfoPath -Raw
+if ($contentScript -notmatch 'BuildInfo58\.content_caption\(\)' -or
+    $buildInfo -notmatch 'func release_version\(' -or
+    $buildInfo -notmatch 'return "GODOT "\+release_version\(\)') {
+    throw "City does not display the mounted release's dynamic version"
 }
 if ($releaseTag -and -not $releaseTag.StartsWith("v0.$installedMinor.")) {
     throw "Installed 0.$installedMinor is not the requested test release $releaseTag"
+}
+$releaseIdentity = Join-Path $game "data/generated/release.json"
+if (Test-Path $releaseIdentity) {
+    $releaseMeta = Get-Content $releaseIdentity -Raw | ConvertFrom-Json
+    if ($releaseTag -and "v$($releaseMeta.version)" -ne $releaseTag) {
+        throw "Installed content metadata $($releaseMeta.version) does not match $releaseTag"
+    }
 }
 foreach ($part in @("scripts/world_trade_routes_v17.gd", "scripts/two_city_trade_v15.gd", "scripts/freight_v14.gd", "scripts/construction_scheduler_v13.gd", "scripts/construction_v12.gd", "scripts/construction_v11.gd", "scripts/spatial_paths_v09.gd", "scripts/detail_terrain_v10.gd", "scripts/spatial_economy_v08.gd", "scripts/detail_view_v07.gd")) {
     if (-not (Test-Path (Join-Path $game $part))) {

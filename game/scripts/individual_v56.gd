@@ -9,6 +9,7 @@ const Mil=preload("res://scripts/military_v54.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Stones58=preload("res://scripts/projectiles_v58.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
+const Individuals60=preload("res://scripts/individual_orders_v60.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -146,6 +147,11 @@ static func _move_men(fighter: Dictionary,dt: float,
             return pa.dot(forward)>pb.dot(forward))
     for m in walkers:
         if float(m["hp"])<=0 or bool(m.get("escaped",false)):continue
+        # V60 independent orders override only this person's formation slot.
+        # Other soldiers still use the existing V57 collision grid.
+        if int(battle.get("version",56))>=60 and \
+                Individuals60.advance(m,fighter,battle,dt,grid):
+            continue
         var slot: Vector2=formation_slot(fighter,int(m["index"]),men.size())
         var goal:=Vector2(float(fighter["x"])+slot.x,float(fighter["z"])+slot.y)
         if int(battle.get("version",56))>=57:
