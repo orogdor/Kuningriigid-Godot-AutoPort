@@ -93,7 +93,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":60,"seed":int(world["seed"]),
+    military[KEY]={"version":61,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -102,6 +102,43 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
     Men56.initialize(military[KEY])
     Nav57.ensure(military[KEY])
     _message(military[KEY],"Harjutusvastasega kokkupõrge. Kaotused on päris, saaki ei jagata.")
+    return ""
+
+## One-click non-destructive battle, independent of research, barracks, pay,
+## population, or strategic army ownership. Actual soldiers are used only in
+## the tactical state and never carried into the campaign ledger.
+static func start_demo(state: Dictionary,world: Dictionary) -> String:
+    var military: Dictionary=Mil.ensure(state,world)
+    if military.is_empty():return "Maailmakaart ei ole veel valmis."
+    if active(state,world):
+        return "Lõpeta olemasolev lahing enne uut proovilahingut."
+    var troops: Array=[]
+    var formation_kinds: Array=["spearman","axeman","slinger"]
+    for i in range(formation_kinds.size()):
+        var kind: String=String(formation_kinds[i])
+        var hp: float=float(Mil.TROOPS[kind]["hp"])
+        troops.append({"id":900001+i,"source_id":900001+i,
+            "team":0,"kind":kind,"grade":"standard",
+            "hp":hp,"max_hp":hp,
+            "x":-49.0 if kind=="slinger" else -34.0,
+            "z":float(i-1)*7.0,"mode":"attack","formation":"line",
+            "cool":0.0,"shots":0,"ammo":18 if kind=="slinger" else -1})
+    var foe_hp: float=float(Mil.TROOPS["spearman"]["hp"])
+    troops.append({"id":-900001,"source_id":-900001,
+        "team":1,"kind":"spearman","grade":"standard",
+        "hp":foe_hp,"max_hp":foe_hp,
+        "x":34.0,"z":0.0,"mode":"attack","formation":"line",
+        "cool":0.0,"shots":0,"ammo":-1})
+    military[KEY]={"version":61,"seed":int(world["seed"]),
+        "demo_v61":true,"fighters":troops,"source_ids":[],
+        "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
+        "log":[],"battlefield":{"columns":3,"rows":3,"ring":1,
+            "tileWidth":225.0,"tileDepth":195.0}}
+    Men56.initialize(military[KEY])
+    Nav57.ensure(military[KEY])
+    _message(military[KEY],
+        "Tasuta proovilahing: kolm oma väesalka ja üks vastane. " + \
+        "Kaotused ei mõjuta päris armeed ega ressursse.")
     return ""
 
 static func start_campaign(state: Dictionary,world: Dictionary,ids: Array) -> String:
@@ -261,6 +298,11 @@ static func _tick_unit(b: Dictionary,fighter: Dictionary,dt: float) -> void:
 
 static func _finish(state: Dictionary,world: Dictionary,b: Dictionary) -> void:
     if bool(b.get("resolved",false)):return
+    if bool(b.get("demo_v61",false)):
+        # The disposable tactical demo must not touch campaign armies,
+        # resources, research progress, raider settlements or statistics.
+        b["resolved"]=true
+        return
     var m: Dictionary=Mil.ensure(state,world)
     var survivors: Array=[]
     for army in m["armies"]:
