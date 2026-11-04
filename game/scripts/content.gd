@@ -317,19 +317,19 @@ func _open_battle_v55() -> void:
 func _battle_command(id: int,command: String) -> void:
     var result: String=Battle55.command(city,world_view.world,id,command)
     if result!="":event_message=result
-    battle_view.set_battle(Battle55.current(city,world_view.world))
+    battle_view.set_battle(Battle55.current(city,world_view.world),true)
     _save()
 
 func _battle_move(id: int,x: float,z: float) -> void:
     var result: String=Battle55.move(city,world_view.world,id,Vector2(x,z))
     if result!="":event_message=result
-    battle_view.set_battle(Battle55.current(city,world_view.world))
+    battle_view.set_battle(Battle55.current(city,world_view.world),true)
     _save()
 
 func _battle_individual_move(id: int,index: int,x: float,z: float) -> void:
     var result: String=Battle55.move_individual(city,world_view.world,id,index,Vector2(x,z))
     if result!="":event_message=result
-    battle_view.set_battle(Battle55.current(city,world_view.world))
+    battle_view.set_battle(Battle55.current(city,world_view.world),true)
     _save()
 
 func _battle_individual_attack(id: int,index: int,
@@ -337,13 +337,13 @@ func _battle_individual_attack(id: int,index: int,
     var result: String=Battle55.attack_individual(city,world_view.world,
         id,index,enemy_squad,enemy_index)
     if result!="":event_message=result
-    battle_view.set_battle(Battle55.current(city,world_view.world))
+    battle_view.set_battle(Battle55.current(city,world_view.world),true)
     _save()
 
 func _battle_individual_rejoin(id: int,index: int) -> void:
     var result: String=Battle55.rejoin_individual(city,world_view.world,id,index)
     if result!="":event_message=result
-    battle_view.set_battle(Battle55.current(city,world_view.world))
+    battle_view.set_battle(Battle55.current(city,world_view.world),true)
     _save()
 
 func _battle_tick(seconds: float) -> void:
