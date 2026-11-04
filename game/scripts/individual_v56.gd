@@ -10,6 +10,7 @@ const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Stones58=preload("res://scripts/projectiles_v58.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Individuals60=preload("res://scripts/individual_orders_v60.gd")
+const Targets64=preload("res://scripts/battle_targets_v64.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -194,15 +195,21 @@ static func _target_man(m: Dictionary,opponents: Array,reach: float,
                 best=enemy
     return best
 
-static func _attack(b: Dictionary,fighter: Dictionary,dt: float) -> void:
+static func _attack(b: Dictionary,fighter: Dictionary,dt: float,
+        target_index: Dictionary={}) -> void:
     if String(fighter.get("mode","hold")) in ["retreat","retreated"]:return
     var kind: String=String(fighter["kind"])
     var stats: Dictionary=Mil.TROOPS[kind]
+    var indexed: bool=int(b.get("version",56))>=64
     var opponent: Array=[]
-    for enemy in b["fighters"]:
-        if int(enemy["team"])!=int(fighter["team"]) and not living(enemy).is_empty():
-            opponent.append(enemy)
-    if opponent.is_empty():return
+    if indexed:
+        var enemy_grid: Dictionary=target_index.get(1-int(fighter["team"]),{})
+        if enemy_grid.is_empty():return
+    else:
+        for enemy in b["fighters"]:
+            if int(enemy["team"])!=int(fighter["team"]) and not living(enemy).is_empty():
+                opponent.append(enemy)
+        if opponent.is_empty():return
     var grade: String=String(fighter.get("grade","standard"))
     var power: float=float(stats["damage"])*float(Mil.GRADES[grade]["strength"])*0.27
     var reach: float=float(stats["range"]) if kind=="slinger" else \
@@ -212,7 +219,9 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float) -> void:
         man["cool"]=maxf(0.0,float(man["cool"])-dt)
         man["attack_anim"]=maxf(0.0,float(man.get("attack_anim",0.0))-dt)
         if float(man["cool"])>0:continue # independent per-soldier cooldown
-        var victim: Dictionary=_target_man(man,opponent,reach,terrain)
+        var victim: Dictionary=Targets64.nearest(target_index,man,
+            int(fighter["team"]),reach,terrain) if indexed else \
+            _target_man(man,opponent,reach,terrain)
         if victim.is_empty():continue
         if kind=="slinger" and int(man["ammo"])<=0:continue
         var hits: bool=true
@@ -261,7 +270,13 @@ static func tick(b: Dictionary,dt: float) -> void:
         _move_men(fighter,dt,b,grid)
     if int(b.get("version",56))>=58:
         Stones58.step(b,dt) # Existing stones land before fresh shots launch.
+    # The source engine's individually addressable attacks can be expensive
+    # with >100 fighters. Index at every simulation step *after* movement
+    # and projectile landings, never save this ephemeral lookup dictionary.
+    var targets: Dictionary={}
+    if int(b.get("version",56))>=64:
+        targets=Targets64.build(b)
     for fighter in fighters:
-        _attack(b,fighter,dt)
+        _attack(b,fighter,dt,targets)
     for fighter in fighters:
         _aggregate(fighter)

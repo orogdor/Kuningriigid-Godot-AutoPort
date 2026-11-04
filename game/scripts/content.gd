@@ -51,6 +51,7 @@ var satellite_label: Label
 var military_status: Label
 var military_grade: OptionButton
 var demo_start_button: Button
+var large_demo_start_button: Button
 var research_status: Label
 var research_options: OptionButton
 var research_start: Button
@@ -124,7 +125,7 @@ func _ready() -> void:
     battle_view.battle_individual_return_requested.connect(_battle_individual_rejoin)
     battle_view.battle_tick_requested.connect(_battle_tick)
     battle_view.battle_auto_paused.connect(_save)
-    battle_view.battle_demo_retry_requested.connect(_start_demo_battle)
+    battle_view.battle_demo_retry_requested.connect(_retry_demo_battle)
     battle_view.hide()
     city_scroll.hide()
     if Battle55.active(city,world_view.world):
@@ -237,6 +238,33 @@ func _start_demo_battle() -> void:
         return
     _save()
     _open_battle_v55()
+
+func _start_large_demo_battle() -> void:
+    if world_view==null or world_view.world.is_empty():
+        event_message="Maailmakaart pole veel valmis."
+        _refresh()
+        return
+    if Battle55.active(city,world_view.world):
+        _open_battle_v55()
+        return
+    var result: String=Battle55.start_large_demo(city,world_view.world)
+    if result!="":
+        event_message=result
+        _refresh()
+        return
+    _save()
+    _open_battle_v55()
+    # 216 genuine GLB characters render at half resolution initially;
+    # players can change quality with the existing tactical setting.
+    battle_view.set_fast_graphics(true)
+
+func _retry_demo_battle() -> void:
+    if world_view==null:return
+    var previous: Dictionary=Battle55.current(city,world_view.world)
+    if bool(previous.get("large_demo_v64",false)):
+        _start_large_demo_battle()
+    else:
+        _start_demo_battle()
 
 func _start_skirmish(selected_id: int=-1) -> void:
     if world_view==null or world_view.world.is_empty():return
@@ -524,6 +552,9 @@ func _setup_ui() -> void:
     demo_start_button=_button("Proovilahing kohe (tasuta)",_start_demo_battle)
     demo_start_button.name="FreeDemoBattleV61"
     army_controls.add_child(demo_start_button)
+    large_demo_start_button=_button("Suur proovilahing (216 sõdurit)",_start_large_demo_battle)
+    large_demo_start_button.name="LargeDemoBattleV64"
+    army_controls.add_child(large_demo_start_button)
     army_controls.add_child(_button("Harjutuslahing päris vägedega",_start_skirmish))
     army_controls.add_child(_button("Ava pooleliolev lahing",_open_battle_v55))
     military_grade=OptionButton.new()
