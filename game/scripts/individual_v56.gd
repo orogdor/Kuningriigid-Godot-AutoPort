@@ -45,13 +45,17 @@ static func initialize(b: Dictionary) -> void:
             var hp: float=minf(man_hp,available)
             available=maxf(0.0,available-hp)
             var slot: Vector2=formation_slot(fighter,i,count)
-            men.append({"id":"%d:%d" % [int(fighter["id"]),i],"index":i,
-                "x":float(fighter["x"])+slot.x,
+            var person: Dictionary={"id":"%d:%d" % [int(fighter["id"]),i],
+                "index":i,"x":float(fighter["x"])+slot.x,
                 "z":float(fighter["z"])+slot.y,
                 "hp":hp,"max_hp":man_hp,"cool":float(posmod(i,4))*0.11,
                 "shots":0,"ammo":12 if kind=="slinger" else -1,
                 "escaped":false,"heading":0.0,"moving":false,
-                "anim_phase":0.0,"attack_anim":0.0})
+                "anim_phase":0.0,"attack_anim":0.0}
+        if int(b.get("version",56))>=70:
+            person["strike_seq_v70"]=0
+            person["hit_seq_v70"]=0
+        men.append(person)
         fighter["men"]=men
         fighter["menAlive"]=men.filter(func(m):return float(m["hp"])>0).size()
         fighter["max_hp"]=max_hp
