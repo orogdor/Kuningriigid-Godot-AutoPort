@@ -54,12 +54,11 @@ static func nearest(index: Dictionary,attacker: Dictionary,
                 var rank: int=int(entry["rank"])
                 # The old engine tests dist < reach and chooses the first
                 # soldier on exact distance ties.
-                if d2>=distance2+0.00000001:continue
-                if not nearest_man.is_empty() and \
-                        d2>distance2-0.00000001:continue
-                if not nearest_man.is_empty() and \
-                        absf(d2-distance2)<=0.00000001 and rank>=earliest:
-                    continue
+                if nearest_man.is_empty():
+                    if d2>=reach*reach:continue
+                else:
+                    if d2>distance2 or (d2==distance2 and rank>=earliest):
+                        continue
                 if not terrain.is_empty() and not Stones58.clear_line(p,q,terrain):
                     continue
                 nearest_man=enemy
