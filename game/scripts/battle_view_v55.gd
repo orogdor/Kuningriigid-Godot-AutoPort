@@ -8,10 +8,12 @@ signal battle_tick_requested(seconds: float)
 
 const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
+const Nav57=preload("res://scripts/battle_nav_v57.gd")
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
 var actors_root: Node3D
+var obstacles_root: Node3D
 var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
@@ -119,9 +121,40 @@ func _ready() -> void:
     for z in [-Battlefield.HALF_Z,Battlefield.HALF_Z]:
         _box(scene_root,"RetreatLineZ_"+str(z),
             Vector3(675.0,0.5,1.8),Vector3(0,0,z),red)
+    obstacles_root=Node3D.new()
+    obstacles_root.name="BattleObstaclesV57"
+    scene_root.add_child(obstacles_root)
     actors_root=Node3D.new()
     actors_root.name="TacticalActorsV55"
     scene_root.add_child(actors_root)
+
+func _refresh_obstacles() -> void:
+    for node in obstacles_root.get_children():
+        obstacles_root.remove_child(node)
+        node.free()
+    var terrain: Dictionary=current_battle.get("terrain_v57",{})
+    if terrain.is_empty():return
+    for i in range(terrain.get("obstacles",[]).size()):
+        var rock: Dictionary=terrain["obstacles"][i]
+        var holder:=Node3D.new()
+        holder.name="StoneBoulder_%d" % i
+        holder.position=Vector3(float(rock["x"]),0,float(rock["z"]))
+        obstacles_root.add_child(holder)
+        var stone:=MeshInstance3D.new()
+        stone.name="BoulderMesh"
+        var mesh:=SphereMesh.new()
+        mesh.radius=float(rock["r"])
+        mesh.height=float(rock.get("height",2.0))
+        mesh.radial_segments=10
+        mesh.rings=5
+        stone.mesh=mesh
+        stone.position.y=float(rock.get("height",2.0))*0.4
+        stone.rotation_degrees.y=float(posmod(i*71,180))
+        var stone_material:=StandardMaterial3D.new()
+        stone_material.albedo_color=Color("#5b5b55").lightened(float(i)*0.035)
+        stone_material.roughness=1.0
+        stone.material_override=stone_material
+        holder.add_child(stone)
 
 func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,120.0,1050.0)
@@ -130,6 +163,7 @@ func _zoom(factor: float) -> void:
 func set_battle(b: Dictionary) -> void:
     current_battle=b.duplicate(true)
     if status_label==null:return
+    _refresh_obstacles()
     var existing_id: int=-1
     if order_picker.selected>=0 and order_picker.selected<id_list.size():
         existing_id=id_list[order_picker.selected]
@@ -198,6 +232,16 @@ func set_battle(b: Dictionary) -> void:
             holder.position=Vector3(float(man["x"]),0.0,float(man["z"]))
             holder.rotation.y=float(man.get("heading",
                 PI*0.5 if int(fighter["team"])==0 else -PI*0.5))
+            # Small source-GLB-safe locomotion and attack poses; no extra
+            # geometry objects, no new rig and no per-frame reimport.
+            var model_node: Node3D=holder.get_child(0) as Node3D
+            if model_node!=null:
+                var phase: float=float(man.get("anim_phase",0.0))
+                var walking: bool=bool(man.get("moving",false))
+                var attacking: float=float(man.get("attack_anim",0.0))
+                model_node.position.y=absf(sin(phase))*0.12 if walking else 0.0
+                model_node.rotation.x=-0.27*sin(attacking/0.36*PI) if attacking>0.0 else 0.0
+                model_node.rotation.z=0.065*sin(phase) if walking else 0.0
             used[key]=true
             total+=1
     for node in actors_root.get_children():
