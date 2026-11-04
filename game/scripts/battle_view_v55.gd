@@ -9,6 +9,7 @@ signal battle_move_requested(id: int,x: float,z: float)
 signal battle_individual_move_requested(id: int,index: int,x: float,z: float)
 signal battle_individual_return_requested(id: int,index: int)
 signal battle_demo_retry_requested
+signal battle_auto_paused
 
 const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
@@ -33,10 +34,37 @@ var auto_button: Button
 var demo_retry_button: Button
 var auto_play_enabled: bool=false
 var status_label: Label
+var result_label: Label
+var fps_label: Label
+var fps_refresh: float=0.0
+var graphics_button: Button
+var fast_graphics: bool=false
+var obstacle_signature: String="__uninitialized__"
 var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
 var cam_size: float=175.0
+
+func set_fast_graphics(enable: bool) -> void:
+    fast_graphics=enable
+    # Godot SubViewportContainer owns the viewport's size when stretch=true.
+    # stretch_shrink renders at half width and height on Android/iOS while
+    # still scaling the image to fit the full tactical view.
+    if battle_canvas_container!=null:
+        battle_canvas_container.stretch_shrink=2 if fast_graphics else 1
+    if graphics_button!=null:
+        graphics_button.text="Pildikvaliteet: säästlik" if fast_graphics else \
+            "Pildikvaliteet: terav"
+
+func _toggle_graphics() -> void:
+    set_fast_graphics(not fast_graphics)
+
+func _process(delta: float) -> void:
+    if not visible or fps_label==null:return
+    fps_refresh+=delta
+    if fps_refresh>=1.0:
+        fps_refresh=0.0
+        fps_label.text="FPS: %d" % int(Engine.get_frames_per_second())
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
     var node:=MeshInstance3D.new()
@@ -182,6 +210,7 @@ func _on_battle_canvas_input(event: InputEvent) -> void:
     if move_toggle!=null:move_toggle.text="Liigu kaardil"
 
 func set_auto_battle(enable: bool) -> void:
+    var was_running: bool=auto_play_enabled
     auto_play_enabled=enable and \
         String(current_battle.get("result",""))=="" and \
         not current_battle.is_empty()
@@ -192,6 +221,9 @@ func set_auto_battle(enable: bool) -> void:
             auto_timer.stop()
     if auto_button!=null:
         auto_button.text="⏸ Peata võitlus" if auto_play_enabled else "▶ Jätka võitlust"
+    if was_running and not auto_play_enabled and \
+            String(current_battle.get("result",""))=="":
+        battle_auto_paused.emit()
 
 func _toggle_auto_battle() -> void:
     set_auto_battle(not auto_play_enabled)
@@ -201,9 +233,9 @@ func _automatic_battle_step() -> void:
             String(current_battle.get("result",""))!="":
         set_auto_battle(false)
         return
-    # The same command/simulation/save pipeline as manual +1 s.
-    # Repeated small advances keep strike/recoil animations visible.
-    battle_tick_requested.emit(1.0)
+    # Real-time playback: do not run four simulated seconds every second.
+    # V61 ran 1.0 s at 0.25 s intervals and could finish the demo in 30 s.
+    battle_tick_requested.emit(auto_timer.wait_time)
 
 func _restart_demo() -> void:
     if not bool(current_battle.get("demo_v61",false)) or \
@@ -230,6 +262,12 @@ func _ready() -> void:
     bar.add_child(_button("+30 s",func():battle_tick_requested.emit(30.0)))
     auto_button=_button("▶ Jätka võitlust",_toggle_auto_battle)
     bar.add_child(auto_button)
+    graphics_button=_button("Pildikvaliteet",_toggle_graphics)
+    bar.add_child(graphics_button)
+    fps_label=Label.new()
+    fps_label.name="BattleFpsV62"
+    fps_label.text="FPS: —"
+    bar.add_child(fps_label)
     demo_retry_button=_button("Proovilahing uuesti",_restart_demo)
     demo_retry_button.disabled=true
     bar.add_child(demo_retry_button)
@@ -272,6 +310,12 @@ func _ready() -> void:
     status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     status_label.add_theme_font_size_override("font_size",13)
     column.add_child(status_label)
+    result_label=Label.new()
+    result_label.name="BattleResultV62"
+    result_label.add_theme_font_size_override("font_size",20)
+    result_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+    result_label.hide()
+    column.add_child(result_label)
     var container:=SubViewportContainer.new()
     battle_canvas_container=container
     container.gui_input.connect(_on_battle_canvas_input)
@@ -282,8 +326,8 @@ func _ready() -> void:
     viewport=SubViewport.new()
     viewport.name="TacticalViewV55"
     viewport.own_world_3d=true
-    viewport.size=Vector2i(800,600)
-    viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+    set_fast_graphics(OS.get_name()=="Android" or OS.get_name()=="iOS")
+    viewport.render_target_update_mode=SubViewport.UPDATE_WHEN_VISIBLE
     container.add_child(viewport)
     scene_root=Node3D.new()
     scene_root.name="BattlefieldV55"
@@ -336,6 +380,10 @@ func _ready() -> void:
     scene_root.add_child(move_markers_root)
 
 func _refresh_obstacles() -> void:
+    var fingerprint: String=JSON.stringify(
+        current_battle.get("terrain_v57",{}).get("obstacles",[]))
+    if fingerprint==obstacle_signature:return
+    obstacle_signature=fingerprint
     for node in obstacles_root.get_children():
         obstacles_root.remove_child(node)
         node.free()
@@ -458,6 +506,16 @@ func set_battle(b: Dictionary) -> void:
         demo_retry_button.disabled=not (
             bool(current_battle.get("demo_v61",false)) and
             String(current_battle.get("result",""))!="")
+    if result_label!=null:
+        var finished: String=String(current_battle.get("result",""))
+        result_label.visible=finished!=""
+        if finished!="":
+            var outcome: String="VÕIT" if finished=="victory" else \
+                ("TAGANEMINE" if finished=="retreat" else "KAOTUS")
+            var restart: String=" Vajuta „Proovilahing uuesti“." if \
+                bool(current_battle.get("demo_v61",false)) else \
+                " Naase linna või maailmakaardile."
+            result_label.text="Lahing on lõppenud — "+outcome+"."+restart
     _refresh_obstacles()
     _refresh_projectiles()
     _refresh_move_markers()
