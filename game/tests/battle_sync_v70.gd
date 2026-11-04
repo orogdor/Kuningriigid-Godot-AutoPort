@@ -29,7 +29,7 @@ func _run() -> void:
     var view: Control=ui.battle_view
     view.auto_timer.stop()
     var b: Dictionary=Battle.current(ui.city,world)
-    if int(b.get("version",0))!=70 or not b.get("large_demo_v64",false):
+    if int(b.get("version",0))<70 or not b.get("large_demo_v64",false):
         fail("Large 216-person tactical stress scenario is not V70")
         return
     if view.actors_root.get_child_count()!=216:
