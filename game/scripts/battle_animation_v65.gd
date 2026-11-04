@@ -126,6 +126,63 @@ static func play_death(model: Node3D) -> bool:
     player.play(clip,0.08,1.0)
     return true
 
+## V70: real combat generates increasing strike/hit counters at the
+## deterministic damage step. Start each imported action clip exactly once,
+## on the next render snapshot, on both involved soldiers. The animation
+## player is deliberately NOT restarted by each 56-FPS render call.
+const ACTION_REAL_SECONDS_V70: float=0.72 # 0.36 sim s at 0.5 battle speed
+
+static func _synced_action_v70(model: Node3D,man: Dictionary) -> bool:
+    var info: Dictionary=_imported_animator(model)
+    if info.is_empty():return false
+    var player: AnimationPlayer=info.get("player",null)
+    if player==null or not is_instance_valid(player):return false
+    var clips: Dictionary=info.get("clips",{})
+    var strike: int=int(man.get("strike_seq_v70",0))
+    var hit: int=int(man.get("hit_seq_v70",0))
+    var previous: Dictionary=model.get_meta("combat_anim_v70",{})
+    if previous.is_empty():
+        # A loaded saved battle may already contain hundreds of old
+        # events; they must not all replay as a new animation on load.
+        model.set_meta("combat_anim_v70",
+            {"strike":strike,"hit":hit,"action":""})
+        return false
+    if strike<int(previous.get("strike",0)) or hit<int(previous.get("hit",0)):
+        # New demo/replay reused an old 3D model and reset the counters.
+        model.set_meta("combat_anim_v70",
+            {"strike":strike,"hit":hit,"action":""})
+        return false
+    var hit_now: bool=hit>int(previous.get("hit",0))
+    var strike_now: bool=strike>int(previous.get("strike",0))
+    previous["strike"]=strike
+    previous["hit"]=hit
+    if hit_now or strike_now:
+        # The same person can hit and be hit in one sim step. Hit recoil
+        # has priority, while the attack counter is still acknowledged.
+        var action: String="hit" if hit_now else "attack"
+        if not clips.has(action):
+            previous["action"]=""
+            model.set_meta("combat_anim_v70",previous)
+            return false
+        var clip: String=String(clips[action])
+        var animation: Animation=player.get_animation(clip)
+        if animation==null:return false
+        animation.loop_mode=Animation.LOOP_NONE
+        var speed: float=clampf(animation.length/
+            ACTION_REAL_SECONDS_V70,0.25,5.0)
+        player.play(clip,0.06,speed)
+        previous["action"]=action
+        model.set_meta("combat_anim_v70",previous)
+        return true
+    var action: String=String(previous.get("action",""))
+    if action!="" and clips.has(action) and player.is_playing() and \
+            player.current_animation==String(clips[action]):
+        model.set_meta("combat_anim_v70",previous)
+        return true
+    previous["action"]=""
+    model.set_meta("combat_anim_v70",previous)
+    return false
+
 static func _rig_bones(model: Node3D) -> Array:
     if model.has_meta("rig_bones_v65"):
         return model.get_meta("rig_bones_v65")
@@ -156,7 +213,20 @@ static func _rig_bones(model: Node3D) -> Array:
 static func apply(model: Node3D,man: Dictionary,kind: String) -> void:
     if model==null:return
     var state: Dictionary=pose(man,kind)
-    var has_original: bool=_play_original_animation(model,state)
+    var synchronized: bool=man.has("strike_seq_v70") and \
+        man.has("hit_seq_v70")
+    var has_original: bool=false
+    if synchronized:
+        has_original=_synced_action_v70(model,man)
+        if not has_original:
+            # A new attack or hit is triggered by an event counter, never
+            # by a repeatedly decremented animation timer.
+            var locomotion: Dictionary=state.duplicate()
+            locomotion["attacking"]=false
+            locomotion["hit"]=false
+            has_original=_play_original_animation(model,locomotion)
+    else:
+        has_original=_play_original_animation(model,state)
     # The imported glTF already contains limb animation. Keep a subtle
     # complementary torso displacement, without overriding its keyed bones.
     model.position=(state["offset"] as Vector3)*(0.38 if has_original else 1.0)
