@@ -9,6 +9,7 @@ const Men56=preload("res://scripts/individual_v56.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Individuals60=preload("res://scripts/individual_orders_v60.gd")
+const Attack68=preload("res://scripts/individual_attack_v68.gd")
 const Raider56=preload("res://scripts/raider_v56.gd")
 const KEY: String="skirmish_v55"
 const SCALE: float=0.5 # battle-pacing-v93.js
@@ -93,7 +94,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":64,"seed":int(world["seed"]),
+    military[KEY]={"version":68,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -129,7 +130,7 @@ static func start_demo(state: Dictionary,world: Dictionary) -> String:
         "hp":foe_hp,"max_hp":foe_hp,
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":61,"seed":int(world["seed"]),
+    military[KEY]={"version":68,"seed":int(world["seed"]),
         "demo_v61":true,"fighters":troops,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
         "log":[],"battlefield":{"columns":3,"rows":3,"ring":1,
@@ -166,7 +167,7 @@ static func start_large_demo(state: Dictionary,world: Dictionary) -> String:
                 "mode":"attack","formation":"line",
                 "cool":0.0,"shots":0,
                 "ammo":18 if kind=="slinger" else -1})
-    military[KEY]={"version":64,"seed":int(world["seed"]),
+    military[KEY]={"version":68,"seed":int(world["seed"]),
         "demo_v61":true,"large_demo_v64":true,
         "fighters":fighters,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
@@ -269,6 +270,19 @@ static func rejoin_individual(state: Dictionary,world: Dictionary,
     var result: String=Individuals60.rejoin(battle,squad_id,index)
     if result=="":
         _message(battle,"Sõdur #%d:%d naaseb rivvi." % [squad_id,index])
+    return result
+
+## Focus a specific hostile 3D man while preserving normal combat damage,
+## collision, cover, slinger ammunition and JSON battle persistence.
+static func attack_individual(state: Dictionary,world: Dictionary,
+        squad_id: int,index: int,enemy_squad: int,enemy_index: int) -> String:
+    var battle: Dictionary=current(state,world)
+    if battle.is_empty():return "Aktiivset lahingut ei ole."
+    var result: String=Attack68.issue(battle,squad_id,index,
+        enemy_squad,enemy_index)
+    if result=="":
+        _message(battle,"Sõdur #%d:%d ründab vastast #%d:%d." % [
+            squad_id,index,enemy_squad,enemy_index])
     return result
 
 static func _nearest(from: Dictionary,foes: Array) -> Dictionary:
