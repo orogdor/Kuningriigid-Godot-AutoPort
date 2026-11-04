@@ -583,11 +583,13 @@ func set_battle(b: Dictionary) -> void:
         if id==existing_id:selected_index=id_list.size()-1
     if not id_list.is_empty():order_picker.select(selected_index)
     _refresh_individual_picker()
-    var label: String="Tasuta proovilahing • kolm sõbralikku väesalka, üks vastane; kaotused ei muuda kampaaniat." if \
+    var label: String="Suur tasuta proovilahing • 5 oma ja 4 vastase väesalka, kokku 216 sõdurit." if \
+        bool(current_battle.get("large_demo_v64",false)) else \
+        ("Tasuta proovilahing • kolm sõbralikku väesalka, üks vastane; kaotused ei muuda kampaaniat." if \
         bool(current_battle.get("demo_v61",false)) else \
         ("Kampaanialahing • iga sõdur liigub ja võitleb eraldi." if \
             bool(current_battle.get("campaign_v56",false)) else \
-            "Harjutuslahing päris sõduritega • kaotused on püsivad.")
+            "Harjutuslahing päris sõduritega • kaotused on püsivad."))
     var lines: Array[String]=[label]
     lines.append("Lahinguaeg %.1f s • tulemus: %s" % [
         float(current_battle.get("elapsed",0)),
@@ -618,7 +620,7 @@ func set_battle(b: Dictionary) -> void:
         for man in men:
             if float(man.get("hp",0))<=0 or bool(man.get("escaped",false)):
                 continue
-            if total>=192:break
+            if total>=216:break
             var key: String="TacticalMan_%d_%d" % [
                 int(fighter["id"]),int(man.get("index",0))]
             var holder: Node3D=actors_root.get_node_or_null(key) as Node3D
