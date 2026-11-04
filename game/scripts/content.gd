@@ -119,6 +119,7 @@ func _ready() -> void:
     battle_view.battle_individual_move_requested.connect(_battle_individual_move)
     battle_view.battle_individual_return_requested.connect(_battle_individual_rejoin)
     battle_view.battle_tick_requested.connect(_battle_tick)
+    battle_view.battle_demo_retry_requested.connect(_start_demo_battle)
     battle_view.hide()
     city_scroll.hide()
     if Battle55.active(city,world_view.world):
@@ -214,6 +215,24 @@ func _army_rally(id: int) -> void:
     _save()
     _refresh()
 
+## Free and self-contained smoke battle for testing the 3D combat engine.
+func _start_demo_battle() -> void:
+    if world_view==null or world_view.world.is_empty():
+        event_message="Maailmakaart pole veel valmis."
+        _refresh()
+        return
+    if Battle55.active(city,world_view.world):
+        # Never destroy an existing real campaign fight.
+        _open_battle_v55()
+        return
+    var result: String=Battle55.start_demo(city,world_view.world)
+    if result!="":
+        event_message=result
+        _refresh()
+        return
+    _save()
+    _open_battle_v55()
+
 func _start_skirmish(selected_id: int=-1) -> void:
     if world_view==null or world_view.world.is_empty():return
     if Battle55.active(city,world_view.world):
@@ -257,6 +276,8 @@ func _open_battle_v55() -> void:
     world_view.hide()
     detail_view.hide()
     battle_view.show()
+    battle_view.set_auto_battle(bool(battle.get("demo_v61",false)) and
+        String(battle.get("result",""))=="")
 
 func _battle_command(id: int,command: String) -> void:
     var result: String=Battle55.command(city,world_view.world,id,command)
@@ -302,7 +323,9 @@ func _open_satellite() -> void:
     _show_detail(int(location["c"]),int(location["r"]))
 
 func _show_city() -> void:
-    if battle_view!=null:battle_view.hide()
+    if battle_view!=null:
+        battle_view.set_auto_battle(false)
+        battle_view.hide()
     detail_town="capital"
     if world_view != null:world_view.hide()
     if detail_view != null:detail_view.hide()
@@ -471,7 +494,8 @@ func _setup_ui() -> void:
     var army_controls:=HFlowContainer.new()
     body.add_child(army_controls)
     army_controls.add_child(_button("Ehita sõdalaste laager",_build_military_camp))
-    army_controls.add_child(_button("Alusta proovilahingut",_start_skirmish))
+    army_controls.add_child(_button("Proovilahing kohe (tasuta)",_start_demo_battle))
+    army_controls.add_child(_button("Harjutuslahing päris vägedega",_start_skirmish))
     army_controls.add_child(_button("Ava pooleliolev lahing",_open_battle_v55))
     military_grade=OptionButton.new()
     for label in ["Mobiliseeritud","Standard","Eliit"]:
@@ -482,7 +506,7 @@ func _setup_ui() -> void:
         army_controls.add_child(_button("Värba "+String(Military54.TROOPS[kind]["name"]),
             _recruit_military.bind(kind)))
     var troop_hint:=Label.new()
-    troop_hint.text="Vajalik teadus: sõjapidamine. Igas väesalgas on 24 eraldi sõdurit, kellel on oma tervis ja asukoht. Vaenulik väesalk marsib maailmakaardil ning kohtumine avab kampaanialahingu. Proovilahing on endiselt eraldi."
+    troop_hint.text="Tasuta proovilahing avaneb kohe ilma vägede värbamise ja teaduseta ning ei kuluta ressursse. Käivita automaatlahing või anna käske ise. Päris vägede harjutuslahingus on kaotused püsivad ning selleks on vaja sõjapidamise teadust ja laagrit."
     troop_hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     body.add_child(troop_hint)
     body.add_child(HSeparator.new())
