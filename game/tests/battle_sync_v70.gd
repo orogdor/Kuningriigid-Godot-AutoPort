@@ -192,6 +192,41 @@ func _run() -> void:
     if view.actors_root.get_child_count()!=216:
         fail("Combat animations caused any of 216 soldier nodes to disappear")
         return
+
+    # Scale test: force 120 attack + 96 hit visual events into ONE snapshot.
+    # This intentionally changes no HP or battle outcome; it checks the
+    # real imported glTF AnimationPlayers on all 216 simultaneous actors.
+    var stress: Dictionary=JSON.parse_string(JSON.stringify(fresh))
+    for fighter in stress["fighters"]:
+        for man in fighter["men"]:
+            if int(fighter["team"])==0:
+                man["strike_seq_v70"]=int(man.get("strike_seq_v70",0))+1
+            else:
+                man["hit_seq_v70"]=int(man.get("hit_seq_v70",0))+1
+    view.set_battle(stress)
+    var attackers: int=0
+    var defenders: int=0
+    for soldier in view.actors_root.get_children():
+        var source: Node3D=soldier.get_child(0) as Node3D
+        var clips: Dictionary=Anim.available_clips(source)
+        var anim: Dictionary=source.get_meta("source_animator_v65",{})
+        var player: AnimationPlayer=anim.get("player",null)
+        var attacking: bool=int(soldier.get_meta("team_v67",-1))==0
+        var expected: String=String(clips["attack" if attacking else "hit"])
+        if player==null or not player.is_playing() or \
+                player.current_animation!=expected:
+            fail("One of the 216 imported GLB soldiers missed its action event")
+            return
+        if attacking:attackers+=1
+        else:defenders+=1
+    if attackers!=120 or defenders!=96:
+        fail("216 simultaneous GLB actions did not split into 120/96 teams")
+        return
+    view._render_soldier_motion_v65(1.0/60.0)
+    if view.actors_root.get_child_count()!=216 or \
+            JSON.stringify(modern["fighters"])=="":
+        fail("216 simultaneous action clips broke the battle renderer")
+        return
     view.set_auto_battle(false)
     print("BATTLE_SYNC_V70 SUCCESS: 216 GLBs, exact simultaneous hit/attack, source Skeleton3D clips with correct pacing, no frame replay, fresh attack event, slinger impact event, unchanged V69 damage")
     quit(0)
