@@ -4,7 +4,7 @@ extends SceneTree
 const Models=preload("res://scripts/web_models_v72.gd")
 const Units=preload("res://scripts/web_units_v53.gd")
 const Art=preload("res://scripts/web_graphics_v50.gd")
-const Animation=preload("res://scripts/battle_animation_v65.gd")
+const CombatAnimation=preload("res://scripts/battle_animation_v65.gd")
 const Scene=preload("res://content.tscn")
 
 func fail(message: String) -> void:
@@ -48,7 +48,7 @@ func _check() -> void:
         if old==null or String(old.get_meta("source_glb","")).find("web53")<0:
             fail("animated V148 combat fallback was removed: "+kind)
             return
-        if Animation.available_clips(old).is_empty():
+        if CombatAnimation.available_clips(old).is_empty():
             fail("old rigged combat animation unavailable: "+kind)
             return
         old.free()
