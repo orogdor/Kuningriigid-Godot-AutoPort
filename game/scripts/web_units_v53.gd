@@ -1,5 +1,6 @@
 extends RefCounted
 const WebV299=preload("res://scripts/web_models_v72.gd")
+const BattleAnims=preload("res://scripts/battle_animation_v65.gd")
 ## AutoPort v0.53: original, unmodified Three.js stone-age GLBs.
 ## Source models-v148/glb/{scout,spearman,axeman,slinger}.glb
 ## Asset files are generated/reproducibly committed by sync-upstream.yml.
@@ -93,3 +94,27 @@ static func instance(kind: String,height: float=2.7,
     model.position=Vector3(-(bottom.x+top.x)*factor*0.5,
         -bottom.y*factor,-(bottom.z+top.z)*factor*0.5)
     return group
+
+## V74: play actual imported glTF skeleton clips on the *visible* V262
+## world/detail actors. Atlas army units previously used static V262 geometry.
+## This affects animation only: route/path/HP/time remain simulation-owned.
+static func animate_world(model: Node3D, is_traveling: bool) -> bool:
+    if model==null or not bool(model.get_meta("rigged_trellis_v73",false)):
+        return false
+    var clips: Dictionary=BattleAnims.available_clips(model)
+    if clips.is_empty():return false
+    var state: Dictionary=model.get_meta("source_animator_v65",{})
+    var player: AnimationPlayer=state.get("player",null)
+    if player==null or not is_instance_valid(player):return false
+    var desired: String="walk" if is_traveling else "idle"
+    if not clips.has(desired) and desired=="walk" and clips.has("run"):
+        desired="run"
+    if not clips.has(desired):return false
+    var clip: String=String(clips[desired])
+    var animation: Animation=player.get_animation(clip)
+    if animation==null:return false
+    animation.loop_mode=Animation.LOOP_LINEAR
+    if player.current_animation!=clip or not player.is_playing():
+        player.play(clip,0.14,1.0)
+    model.set_meta("world_animation_v74",desired)
+    return true
