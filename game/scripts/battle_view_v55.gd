@@ -37,6 +37,7 @@ var auto_play_enabled: bool=false
 var status_label: Label
 var result_label: Label
 var fps_label: Label
+var skeletal_status_label: Label
 var fps_refresh: float=0.0
 var graphics_button: Button
 var fast_graphics: bool=false
@@ -76,6 +77,24 @@ func _process(delta: float) -> void:
     if fps_refresh>=1.0:
         fps_refresh=0.0
         fps_label.text="FPS: %d" % int(Engine.get_frames_per_second())
+        _refresh_skeletal_status()
+
+func _refresh_skeletal_status() -> void:
+    if skeletal_status_label==null or actors_root==null:return
+    var animated: int=0
+    var total: int=0
+    for soldier in actors_root.get_children():
+        total+=1
+        if soldier.get_child_count()==0:continue
+        var model: Node3D=soldier.get_child(0) as Node3D
+        if model==null:continue
+        var info: Dictionary=model.get_meta("source_animator_v65",{})
+        var player: AnimationPlayer=info.get("player",null)
+        if player!=null and is_instance_valid(player) and player.is_playing():
+            animated+=1
+    # Shows actual AnimationPlayer playback, not a simulated swing counter.
+    # Useful for diagnosing missing animations on a particular Android GPU.
+    skeletal_status_label.text="Animatsioon: %d/%d" % [animated,total]
 
 func _render_soldier_motion_v65(delta: float) -> void:
     if actors_root==null:return
@@ -421,6 +440,10 @@ func _ready() -> void:
     fps_label.name="BattleFpsV62"
     fps_label.text="FPS: —"
     bar.add_child(fps_label)
+    skeletal_status_label=Label.new()
+    skeletal_status_label.name="BattleSkeletalStatusV66"
+    skeletal_status_label.text="Animatsioon: —"
+    bar.add_child(skeletal_status_label)
     demo_retry_button=_button("Proovilahing uuesti",_restart_demo)
     demo_retry_button.disabled=true
     bar.add_child(demo_retry_button)
