@@ -259,6 +259,12 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --editor --quit
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
 
+      - name: Verify synchronized GLB hit/strike clips for all 216 battlefield models
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=5s 180s /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --script res://tests/battle_sync_v70.gd
+
       - name: Stamp APK and GitHub Release with actual AutoPort version
         id: stamp
         shell: bash
