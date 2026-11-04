@@ -360,6 +360,31 @@ func _refresh_move_markers() -> void:
             marker.material_override=mat
             move_markers_root.add_child(marker)
         marker.position=Vector3(float(target["x"]),0.12,float(target["z"]))
+    # Independent soldier orders use a smaller warm-coloured target marker.
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("team",-1))!=0:continue
+        for man in fighter.get("men",[]):
+            if float(man.get("hp",0.0))<=0.0:continue
+            var personal: Variant=man.get("individual_target_v60",null)
+            if not personal is Dictionary or personal.is_empty():continue
+            var key: String="PersonalWaypoint_%d_%d" % [
+                int(fighter["id"]),int(man.get("index",-1))]
+            needed[key]=true
+            var point: MeshInstance3D=move_markers_root.get_node_or_null(key) as MeshInstance3D
+            if point==null:
+                point=MeshInstance3D.new()
+                point.name=key
+                var mesh:=CylinderMesh.new()
+                mesh.top_radius=0.7
+                mesh.bottom_radius=0.7
+                mesh.height=0.18
+                point.mesh=mesh
+                var mat:=StandardMaterial3D.new()
+                mat.albedo_color=Color("#f5ab46")
+                mat.roughness=0.9
+                point.material_override=mat
+                move_markers_root.add_child(point)
+            point.position=Vector3(float(personal["x"]),0.2,float(personal["z"]))
     for node in move_markers_root.get_children():
         if needed.has(String(node.name)):continue
         move_markers_root.remove_child(node)
