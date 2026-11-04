@@ -76,7 +76,8 @@ func _render_soldier_motion_v63(delta: float) -> void:
     for node in actors_root.get_children():
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
-        if state.is_empty():continue
+        if state.is_empty() or float(state.get("fraction",1.0))>=1.0:
+            continue
         var previous: Vector3=node.position
         var duration: float=maxf(float(state.get("duration",0.4)),0.01)
         var fraction: float=clampf(float(state.get("fraction",0.0))+\
