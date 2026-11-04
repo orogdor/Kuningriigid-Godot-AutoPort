@@ -1,8 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.70 BATTLE STRIKE/HIT SYNCHRONIZATION RELEASE
-Reason: 0.69 could not publish because Godot imported GLB scenes were not ready; 0.70 fixes the release import gate and synchronizes soldier skeletal attacks/hits to real combat events.
-Validated: PR #22 merged as 20a69f30fe54059bea3163622c00f13f6ea146dc.
-Required tests: GitHub Actions 41883935821 SUCCESS, including 216 original GLB soldier action clips and all historical Godot, 200-turn economy and source-parity regressions.
-Changes: event counters prevent per-frame restart of attack/hit actions; actual damage or projectile impact drives the hit reaction. Imported GLB clips remain non-looping and linked to combat duration.
-Release workflow: complete Godot glTF imports with --import, verify all web50 and web53 models before running tests and exporting platform-specific PCKs.
-Requested: create stable Android Kuningriigid-Content.pck and Windows content, launcher and engine packages; signed APK only if the existing permanent keystore is available.
-No debug-signed APK may be represented as a compatible Android update. Physical Android graphics and FPS remain device-validation items.
+KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.71 WHOLE-SQUAD TARGETED ATTACK RELEASE
+Reason: Port missing a practical mobile battle order for selecting one enemy squad and commanding a whole friendly 24-soldier squad to attack it.
+Validated: PR #23 merged as 462a2ec6fb89a212088807c15f3391b3f4b23d60.
+Required tests: GitHub Actions 41895827396 SUCCESS (source rule parity, all 200-turn economy scenarios, 216 real GLB soldiers, target distribution, retarget on death, individual override and rejoin, saved group orders, source and mobile UI).
+New content version: 0.71. Stable 0.70 animations, real GLB bones, obstacle-aware navigation, projectile damage, save format and engine compatibility retained.
+Release: publish a new Android Kuningriigid-Content.pck, Windows Kuningriigid-Windows-Content.pck, launcher executable, engine and checksum manifest. Build only a signed Android ARM64 APK if existing permanent keystore available.
+Keep the Android/PCK smoke test, native Windows launcher update test, and 216-person regression as release gates. Do not claim physical Android FPS results from headless tests.
