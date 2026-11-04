@@ -11,6 +11,7 @@ const Stones58=preload("res://scripts/projectiles_v58.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Individuals60=preload("res://scripts/individual_orders_v60.gd")
 const Targets64=preload("res://scripts/battle_targets_v64.gd")
+const Attack68=preload("res://scripts/individual_attack_v68.gd")
 const PER_SQUAD: int=24
 const MAX_MEN: int=216
 const BODY_RADIUS: float=0.34
@@ -148,6 +149,11 @@ static func _move_men(fighter: Dictionary,dt: float,
             return pa.dot(forward)>pb.dot(forward))
     for m in walkers:
         if float(m["hp"])<=0 or bool(m.get("escaped",false)):continue
+        # V68 focus-attack orders chase a designated enemy and take
+        # precedence over ordinary V60 move-to-point orders.
+        if int(battle.get("version",56))>=68 and \
+                Attack68.advance(m,fighter,battle,dt,grid):
+            continue
         # V60 independent orders override only this person's formation slot.
         # Other soldiers still use the existing V57 collision grid.
         if int(battle.get("version",56))>=60 and \
@@ -219,9 +225,23 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float,
         man["cool"]=maxf(0.0,float(man["cool"])-dt)
         man["attack_anim"]=maxf(0.0,float(man.get("attack_anim",0.0))-dt)
         if float(man["cool"])>0:continue # independent per-soldier cooldown
-        var victim: Dictionary=Targets64.nearest(target_index,man,
-            int(fighter["team"]),reach,terrain) if indexed else \
-            _target_man(man,opponent,reach,terrain)
+        var victim: Dictionary={}
+        var locked: bool=int(b.get("version",56))>=68 and man.has(Attack68.KEY)
+        if locked:
+            victim=Attack68.target(b,man,int(fighter["team"]))
+            if not victim.is_empty():
+                var from:=Vector2(float(man["x"]),float(man["z"]))
+                var to:=Vector2(float(victim["x"]),float(victim["z"]))
+                # A focused soldier must not damage unrelated enemies while
+                # chasing an assigned target, even if another is nearer.
+                if from.distance_to(to)>=reach or \
+                        (not terrain.is_empty() and \
+                        not Stones58.clear_line(from,to,terrain)):
+                    continue
+        if victim.is_empty():
+            victim=Targets64.nearest(target_index,man,
+                int(fighter["team"]),reach,terrain) if indexed else \
+                _target_man(man,opponent,reach,terrain)
         if victim.is_empty():continue
         if kind=="slinger" and int(man["ammo"])<=0:continue
         var hits: bool=true
