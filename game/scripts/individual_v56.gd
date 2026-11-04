@@ -52,10 +52,10 @@ static func initialize(b: Dictionary) -> void:
                 "shots":0,"ammo":12 if kind=="slinger" else -1,
                 "escaped":false,"heading":0.0,"moving":false,
                 "anim_phase":0.0,"attack_anim":0.0}
-        if int(b.get("version",56))>=70:
-            person["strike_seq_v70"]=0
-            person["hit_seq_v70"]=0
-        men.append(person)
+            if int(b.get("version",56))>=70:
+                person["strike_seq_v70"]=0
+                person["hit_seq_v70"]=0
+            men.append(person)
         fighter["men"]=men
         fighter["menAlive"]=men.filter(func(m):return float(m["hp"])>0).size()
         fighter["max_hp"]=max_hp
