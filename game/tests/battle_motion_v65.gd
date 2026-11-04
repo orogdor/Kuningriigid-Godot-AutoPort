@@ -45,12 +45,17 @@ func _run() -> void:
     if armed!=96 or playback!=96:
         fail("Original 96 skeletal source animations were not started")
         return
+    view._refresh_skeletal_status()
+    if view.skeletal_status_label==null or \
+            view.skeletal_status_label.text!="Animatsioon: 96/96":
+        fail("Actual source GLB AnimationPlayer playback diagnostic is wrong")
+        return
 
     # Default full battlefield, mouse wheel, tenfold close zoom and limits.
     view._zoom(0.001)
-    if absf(view.cam_size-10.0)>0.001 or \
-            absf(view.battle_camera.size-10.0)>0.001:
-        fail("Cannot zoom in to 10m around the source 5.2m soldier")
+    if absf(view.cam_size-1.5)>0.001 or \
+            absf(view.battle_camera.size-1.5)>0.001:
+        fail("Cannot zoom in to 1.5m around the source 5.2m soldier")
         return
     view._zoom(10000.0)
     if absf(view.cam_size-1050.0)>0.001:
@@ -186,5 +191,33 @@ func _run() -> void:
     if moved.position.distance_to(display["target"])>0.001:
         fail("Paused battle refuses to snap back to authoritative positions")
         return
-    print("BATTLE_MOTION_V65 SUCCESS: 96 imported skeletal GLB animations run, 3 distinct attacks + hit recoil, bounded smooth prediction, paused battle authoritative, 10m zoom, wheel, pinch and pan")
+    # V66 camera follows the rendered position of a selected living
+    # soldier, while manual pan and full-battle reset cancel tracking.
+    view._follow_selected_soldier()
+    if view.follow_actor_key=="" or view.follow_button==null:
+        fail("Cannot activate selected-soldier follow camera")
+        return
+    var tracked: Node3D=view.actors_root.get_node_or_null(
+        view.follow_actor_key) as Node3D
+    if tracked==null:
+        fail("Follow camera lost the selected GLB actor")
+        return
+    var prior_camera: Vector3=view.battle_camera.position
+    tracked.position+=Vector3(0.75,0,0.42)
+    view._follow_soldier_frame()
+    var camera_motion: Vector3=view.battle_camera.position-prior_camera
+    if absf(camera_motion.x-0.75)>0.005 or \
+            absf(camera_motion.z-0.42)>0.005:
+        fail("Follow camera does not track actual visible soldier motion")
+        return
+    view._zoom_pan(Vector2(60,20))
+    if view.follow_actor_key!="":
+        fail("Manual pan cannot release follow camera")
+        return
+    view._follow_selected_soldier()
+    view._reset_camera()
+    if view.follow_actor_key!="" or absf(view.cam_size-175.0)>0.001:
+        fail("Whole-battle reset failed to release tracking and full zoom")
+        return
+    print("BATTLE_MOTION_V65 SUCCESS: 96 imported skeletal GLB animations, poses and frame animation, zoom to 1.5m, wheel/pinch, soldier follow, manual pan and reset")
     quit(0)

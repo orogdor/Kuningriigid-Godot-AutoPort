@@ -61,9 +61,17 @@ static func _imported_animator(model: Node3D) -> Dictionary:
         for item in player.get_animation_list():
             var imported_name: String=String(item)
             var simple: String=imported_name.get_file().to_lower()
-            if ["idle","walk","run","attack","hit","death","brace"].has(simple):
-                names[simple]=imported_name
-        if names.has("walk") and names.has("attack"):
+            # glTF animation exporters often name clips as e.g.
+            # Armature|Walk, Take 001 - Run, Walk_Armature or mixamo.com.
+            # Recognize descriptive names without changing source GLBs.
+            simple=simple.replace("|","_").replace("-","_").replace(" ","_")
+            for action in ["idle","walk","run","attack","hit","death","brace"]:
+                if simple==action or simple.begins_with(action+"_") or \
+                        simple.ends_with("_"+action) or \
+                        simple.contains("_"+action+"_"):
+                    if not names.has(action):names[action]=imported_name
+                    break
+        if names.has("walk") or names.has("run") or names.has("idle"):
             result={"player":player,"clips":names}
             break
     model.set_meta("source_animator_v65",result)
@@ -80,6 +88,10 @@ static func _play_original_animation(model: Node3D,
     if not is_instance_valid(player):return false
     var clips: Dictionary=info["clips"]
     var target: String="walk" if bool(state["walking"]) else "idle"
+    if target=="walk" and not clips.has("walk") and clips.has("run"):
+        target="run"
+    if target=="idle" and not clips.has("idle") and clips.has("walk"):
+        target="walk"
     if bool(state["hit"]) and clips.has("hit"):
         target="hit"
     elif bool(state["attacking"]) and clips.has("attack"):
