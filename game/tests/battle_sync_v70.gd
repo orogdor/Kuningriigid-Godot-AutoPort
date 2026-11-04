@@ -88,7 +88,7 @@ func _run() -> void:
     if events!=2 or \
             int(modern["fighters"][0]["men"][0].get("strike_seq_v70",-1))!=1 or \
             int(modern["fighters"][5]["men"][0].get("hit_seq_v70",-1))!=1 or \
-            not JSON.stringify(old.get("projectiles_v58",[]))==\
+            JSON.stringify(old.get("projectiles_v58",[]))!=\
                 JSON.stringify(modern.get("projectiles_v58",[])):
         fail("Actual 216-man strike/hit pair was not recorded exactly once")
         return
@@ -109,10 +109,13 @@ func _run() -> void:
     var enemy_model: Node3D=foe_node.get_child(0) as Node3D
     var ac: Dictionary=Anim.available_clips(model)
     var hc: Dictionary=Anim.available_clips(enemy_model)
-    var ap: AnimationPlayer=model.get_meta("source_animator_v65",{})[
-        "player"]
-    var hp: AnimationPlayer=enemy_model.get_meta("source_animator_v65",{})[
-        "player"]
+    var animator: Dictionary=model.get_meta("source_animator_v65",{})
+    var enemy_animator: Dictionary=enemy_model.get_meta("source_animator_v65",{})
+    var ap: AnimationPlayer=animator.get("player",null)
+    var hp: AnimationPlayer=enemy_animator.get("player",null)
+    if ap==null or hp==null:
+        fail("Original imported glTF AnimationPlayers are missing")
+        return
     if not ap.is_playing() or not hp.is_playing() or \
             ap.current_animation!=String(ac["attack"]) or \
             hp.current_animation!=String(hc["hit"]):
