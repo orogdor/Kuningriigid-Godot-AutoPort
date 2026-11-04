@@ -93,7 +93,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":61,"seed":int(world["seed"]),
+    military[KEY]={"version":64,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -139,6 +139,44 @@ static func start_demo(state: Dictionary,world: Dictionary) -> String:
     _message(military[KEY],
         "Tasuta proovilahing: kolm oma väesalka ja üks vastane. " + \
         "Kaotused ei mõjuta päris armeed ega ressursse.")
+    return ""
+
+## V64 real-scale, free 5-v-4 army combat stress test (9 x 24 = 216).
+## This is also a playable alternative; never touches strategic soldiers.
+static func start_large_demo(state: Dictionary,world: Dictionary) -> String:
+    var military: Dictionary=Mil.ensure(state,world)
+    if military.is_empty():return "Maailmakaart ei ole veel valmis."
+    if active(state,world):
+        return "Lõpeta olemasolev lahing enne uut proovilahingut."
+    var fighters: Array=[]
+    var allied: Array=["spearman","axeman","slinger","spearman","axeman"]
+    var hostile: Array=["spearman","axeman","slinger","spearman"]
+    for team in [0,1]:
+        var kinds: Array=allied if team==0 else hostile
+        for i in range(kinds.size()):
+            var kind: String=String(kinds[i])
+            var hp: float=float(Mil.TROOPS[kind]["hp"])
+            var x: float=-52.0 if kind=="slinger" else -38.0
+            if team==1:x=-x
+            fighters.append({"id":900101+i if team==0 else -900101-i,
+                "source_id":900101+i if team==0 else -900101-i,
+                "team":team,"kind":kind,"grade":"standard",
+                "hp":hp,"max_hp":hp,"x":x,
+                "z":float(i-(kinds.size()-1)*0.5)*11.0,
+                "mode":"attack","formation":"line",
+                "cool":0.0,"shots":0,
+                "ammo":18 if kind=="slinger" else -1})
+    military[KEY]={"version":64,"seed":int(world["seed"]),
+        "demo_v61":true,"large_demo_v64":true,
+        "fighters":fighters,"source_ids":[],
+        "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
+        "log":[],"battlefield":{"columns":3,"rows":3,"ring":1,
+            "tileWidth":225.0,"tileDepth":195.0}}
+    Men56.initialize(military[KEY])
+    Nav57.ensure(military[KEY])
+    _message(military[KEY],
+        "Suur proovilahing: 5 oma ja 4 vastase väesalka, kokku 216 sõdurit. " + \
+        "Tulemused ei mõjuta päris kampaaniat.")
     return ""
 
 static func start_campaign(state: Dictionary,world: Dictionary,ids: Array) -> String:
