@@ -18,6 +18,7 @@ const Battlefield=preload("res://scripts/battle_v55.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Animation61=preload("res://scripts/battle_animation_v61.gd")
 const Animation65=preload("res://scripts/battle_animation_v65.gd")
+const DEATH_VISUAL_SECONDS_V69: float=1.8
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
@@ -78,6 +79,7 @@ func _toggle_graphics() -> void:
 func _process(delta: float) -> void:
     if not visible:return
     _render_soldier_motion_v65(delta)
+    _render_fallen_v69(delta)
     _follow_soldier_frame()
     if fps_label==null:return
     fps_refresh+=delta
@@ -107,6 +109,7 @@ func _render_soldier_motion_v65(delta: float) -> void:
     if actors_root==null:return
     var frame: float=clampf(delta,0.0,0.5)
     for node in actors_root.get_children():
+        if node.has_meta("fallen_since_v69"):continue
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
         if state.is_empty():continue
@@ -153,6 +156,46 @@ func _render_soldier_motion_v65(delta: float) -> void:
             person["hit_anim_v61"]=hit_clock
             Animation65.apply(model,person,String(state["kind"]))
         node.set_meta("interpolation_v63",state)
+
+## The original GLB Skeleton3D has a death clip, but earlier view logic
+## removed the model on the same snapshot in which HP reached zero.
+## A fallen model gets a short, render-only lifetime and is not a real unit.
+## The real battle state, collisions, HP and save format are untouched.
+func _fallen_in_battle_v69(actor: Node3D) -> bool:
+    var squad: int=int(actor.get_meta("squad_v67",-999999))
+    var person: int=int(actor.get_meta("person_v67",-1))
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("id",-1))!=squad:continue
+        if String(fighter.get("mode",""))=="retreated":return false
+        for man in fighter.get("men",[]):
+            if int(man.get("index",-1))!=person:continue
+            return float(man.get("hp",0.0))<=0.0 and \
+                not bool(man.get("escaped",false))
+    return false
+
+func _start_fallen_v69(actor: Node3D) -> void:
+    if actor.has_meta("fallen_since_v69"):return
+    actor.set_meta("fallen_since_v69",0.0)
+    actor.remove_meta("interpolation_v63")
+    var marker: Node3D=actor.get_node_or_null("TeamMarker") as Node3D
+    if marker!=null:marker.hide()
+    if actor.get_child_count()==0:return
+    var model: Node3D=actor.get_child(0) as Node3D
+    if model!=null:
+        actor.set_meta("death_clip_v69",Animation65.play_death(model))
+
+func _render_fallen_v69(delta: float) -> void:
+    if actors_root==null:return
+    for child in actors_root.get_children():
+        var actor: Node3D=child as Node3D
+        if actor==null or not actor.has_meta("fallen_since_v69"):continue
+        var elapsed: float=float(actor.get_meta("fallen_since_v69",0.0))+\
+            maxf(0.0,delta)
+        if elapsed>=DEATH_VISUAL_SECONDS_V69:
+            actors_root.remove_child(actor)
+            actor.free()
+            continue
+        actor.set_meta("fallen_since_v69",elapsed)
 
 func _follow_soldier_frame() -> void:
     if follow_actor_key=="" or battle_camera==null or actors_root==null:
@@ -241,7 +284,8 @@ func _select_soldier_at_v67(screen_pos: Vector2) -> bool:
     var winner: Node3D=null
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
-        if actor==null or int(actor.get_meta("team_v67",-1))!=0:continue
+        if actor==null or actor.has_meta("fallen_since_v69") or \
+                int(actor.get_meta("team_v67",-1))!=0:continue
         var centre: Vector3=actor.global_position+Vector3(0.0,2.5,0.0)
         if battle_camera.is_position_behind(centre):continue
         var px: Vector2=battle_camera.unproject_position(centre)
@@ -291,7 +335,8 @@ func _select_enemy_at_v68(screen_pos: Vector2) -> bool:
     var winner: Node3D=null
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
-        if actor==null or int(actor.get_meta("team_v67",-1))!=1:
+        if actor==null or actor.has_meta("fallen_since_v69") or \
+                int(actor.get_meta("team_v67",-1))!=1:
             continue
         var centre: Vector3=actor.global_position+Vector3(0,2.5,0)
         if battle_camera.is_position_behind(centre):continue
@@ -974,6 +1019,16 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
             var target_heading: float=float(man.get("heading",
                 PI*0.5 if int(fighter["team"])==0 else -PI*0.5))
             var model_node: Node3D=holder.get_child(0) as Node3D
+            # A new battle can reuse the same soldier IDs before the corpse
+            # lifetime expires. Restore the living model without duplicates.
+            if holder.has_meta("fallen_since_v69"):
+                holder.remove_meta("fallen_since_v69")
+                holder.remove_meta("death_clip_v69")
+                if team_marker!=null:team_marker.show()
+                holder.position=target_position
+                holder.rotation.y=target_heading
+                if model_node!=null:
+                    Animation65.apply(model_node,man,kind)
             if int(current_battle.get("version",0))>=61:
                 var previous: Dictionary=holder.get_meta("interpolation_v63",{})
                 if keep_visual and not previous.is_empty():
@@ -1022,7 +1077,14 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
             used[key]=true
             total+=1
     _refresh_selection_markers_v67()
+    var animate_fallen: bool=int(current_battle.get("version",0))>=69 and \
+        earlier_elapsed>=0.0 and elapsed_delta>=0.0 and \
+        elapsed_delta<1.0
     for node in actors_root.get_children():
         if used.has(String(node.name)):continue
+        if node.has_meta("fallen_since_v69"):continue
+        if animate_fallen and _fallen_in_battle_v69(node):
+            _start_fallen_v69(node)
+            continue
         actors_root.remove_child(node)
         node.free()
