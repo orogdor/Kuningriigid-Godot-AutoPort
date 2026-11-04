@@ -75,7 +75,7 @@ func _process(delta: float) -> void:
 
 func _render_soldier_motion_v65(delta: float) -> void:
     if actors_root==null:return
-    var frame: float=clampf(delta,0.0,0.1)
+    var frame: float=clampf(delta,0.0,0.5)
     for node in actors_root.get_children():
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
