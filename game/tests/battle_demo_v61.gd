@@ -41,7 +41,7 @@ func _run() -> void:
     world_button.pressed.emit()
     var b: Dictionary=Battle.current(ui.city,world)
     if b.is_empty() or not Battle.active(ui.city,world) or \
-            not bool(b.get("demo_v61",false)) or int(b.get("version",0))!=61:
+            not bool(b.get("demo_v61",false)) or int(b.get("version",0))<61:
         fail("One-click free city demo did not create an active V61 battle")
         return
     if not ui.battle_view.visible or not ui.battle_view.auto_play_enabled or \

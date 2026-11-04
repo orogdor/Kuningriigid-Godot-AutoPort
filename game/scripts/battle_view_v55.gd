@@ -8,6 +8,8 @@ signal battle_tick_requested(seconds: float)
 signal battle_move_requested(id: int,x: float,z: float)
 signal battle_individual_move_requested(id: int,index: int,x: float,z: float)
 signal battle_individual_return_requested(id: int,index: int)
+signal battle_individual_attack_requested(id: int,index: int,
+    enemy_squad: int,enemy_index: int)
 signal battle_demo_retry_requested
 signal battle_auto_paused
 
@@ -30,6 +32,8 @@ var individual_picker: OptionButton
 var man_indices: Array[int]=[]
 var individual_move_toggle: Button
 var individual_move_mode: bool=false
+var individual_attack_mode_v68: bool=false
+var attack_toggle_v68: Button
 var auto_timer: Timer
 var auto_button: Button
 var demo_retry_button: Button
@@ -259,9 +263,69 @@ func _select_soldier_at_v67(screen_pos: Vector2) -> bool:
     _refresh_selection_markers_v67()
     return true
 
+func _selected_attack_target_v68() -> Dictionary:
+    var chosen: Dictionary=_chosen_man()
+    if chosen.is_empty():return {}
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("id",-1))!=int(chosen["squad"]) or \
+                int(fighter.get("team",-1))!=0:continue
+        for man in fighter.get("men",[]):
+            if int(man.get("index",-1))==int(chosen["index"]):
+                return man.get("attack_target_v68",{})
+    return {}
+
+func _select_enemy_at_v68(screen_pos: Vector2) -> bool:
+    if not individual_attack_mode_v68 or \
+            int(current_battle.get("version",0))<68 or \
+            battle_camera==null or actors_root==null or \
+            battle_canvas_container==null or viewport==null:
+        return false
+    var chosen: Dictionary=_chosen_man()
+    if chosen.is_empty():return false
+    if battle_canvas_container.size.x<1.0 or \
+            battle_canvas_container.size.y<1.0:return false
+    var p: Vector2=screen_pos*Vector2(
+        float(viewport.size.x)/battle_canvas_container.size.x,
+        float(viewport.size.y)/battle_canvas_container.size.y)
+    var threshold: float=pow(maxf(26.0,float(viewport.size.y)*0.04),2.0)
+    var winner: Node3D=null
+    for candidate in actors_root.get_children():
+        var actor: Node3D=candidate as Node3D
+        if actor==null or int(actor.get_meta("team_v67",-1))!=1:
+            continue
+        var centre: Vector3=actor.global_position+Vector3(0,2.5,0)
+        if battle_camera.is_position_behind(centre):continue
+        var distance: float=battle_camera.unproject_position(
+            centre).distance_squared_to(p)
+        if distance>=threshold:continue
+        threshold=distance
+        winner=actor
+    if winner==null:return false
+    _toggle_individual_attack_v68()
+    battle_individual_attack_requested.emit(int(chosen["squad"]),
+        int(chosen["index"]),int(winner.get_meta("squad_v67",-1)),
+        int(winner.get_meta("person_v67",-1)))
+    return true
+
+func _toggle_individual_attack_v68() -> void:
+    if int(current_battle.get("version",0))<68 or \
+            String(current_battle.get("result",""))!="" or \
+            _chosen_man().is_empty():
+        individual_attack_mode_v68=false
+    else:
+        individual_attack_mode_v68=not individual_attack_mode_v68
+    move_mode_enabled=false
+    individual_move_mode=false
+    if move_toggle!=null:move_toggle.text="Liigu kaardil"
+    if individual_move_toggle!=null:individual_move_toggle.text="Sõdur liigub"
+    if attack_toggle_v68!=null:
+        attack_toggle_v68.text="Puuduta vastast" if individual_attack_mode_v68 else \
+            "Ründa valitud vastast"
+
 func _refresh_selection_markers_v67() -> void:
     if actors_root==null:return
     var selection: Dictionary=_chosen_man()
+    var focused: Dictionary=_selected_attack_target_v68()
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
         if actor==null:continue
@@ -273,8 +337,12 @@ func _refresh_selection_markers_v67() -> void:
         var chosen: bool=team==0 and not selection.is_empty() and \
             int(actor.get_meta("squad_v67",-1))==int(selection["squad"]) and \
             int(actor.get_meta("person_v67",-1))==int(selection["index"])
+        var pinned: bool=team==1 and not focused.is_empty() and \
+            int(actor.get_meta("squad_v67",-1))==int(focused.get("squad",-1)) and \
+            int(actor.get_meta("person_v67",-1))==int(focused.get("index",-1))
         mat.albedo_color=Color("#ffe250") if chosen else \
-            (Color("#65caff") if team==0 else Color("#ed6b56"))
+            (Color("#ff9b32") if pinned else \
+            (Color("#65caff") if team==0 else Color("#ed6b56")))
 
 func _refresh_individual_picker() -> void:
     if individual_picker==null or order_picker==null:return
@@ -305,10 +373,14 @@ func _refresh_individual_picker() -> void:
         individual_picker.select(selected_position)
 
 func _on_person_changed(_index: int) -> void:
+    individual_attack_mode_v68=false
+    if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     _stop_following()
     if not current_battle.is_empty():set_battle(current_battle)
 
 func _toggle_individual_move() -> void:
+    individual_attack_mode_v68=false
+    if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     if int(current_battle.get("version",0))<60 or _chosen_man().is_empty():
         individual_move_mode=false
     else:
@@ -342,6 +414,8 @@ func _focus_individual() -> void:
             return
 
 func _toggle_move_mode() -> void:
+    individual_attack_mode_v68=false
+    if attack_toggle_v68!=null:attack_toggle_v68.text="Ründa valitud vastast"
     if int(current_battle.get("version",0))<59 or id_list.is_empty():
         move_mode_enabled=false
     else:
@@ -392,7 +466,11 @@ func _battle_camera_input(event: InputEvent) -> bool:
                 tap_index_v67==event.index and pinch_points.size()==1 and \
                 event.position.distance_to(tap_start_v67)<=18.0
             pinch_points.erase(event.index)
-            if tapped:_select_soldier_at_v67(event.position)
+            if tapped:
+                if individual_attack_mode_v68:
+                    _select_enemy_at_v68(event.position)
+                else:
+                    _select_soldier_at_v67(event.position)
             if event.index==tap_index_v67:tap_index_v67=-1
         pinch_distance=_pinch_length()
         return choosing
@@ -418,7 +496,10 @@ func _on_battle_canvas_input(event: InputEvent) -> void:
     if not move_mode_enabled and not individual_move_mode:
         if event is InputEventMouseButton and event.pressed and \
                 event.button_index==MOUSE_BUTTON_LEFT:
-            _select_soldier_at_v67(event.position)
+            if individual_attack_mode_v68:
+                _select_enemy_at_v68(event.position)
+            else:
+                _select_soldier_at_v67(event.position)
         return
     if id_list.is_empty() or int(current_battle.get("version",0))<59:return
     var pos: Vector2
@@ -547,6 +628,9 @@ func _ready() -> void:
     individual_move_toggle=_button("Sõdur liigub",_toggle_individual_move)
     tactical.add_child(individual_move_toggle)
     tactical.add_child(_button("Tagasi rivvi",_individual_rejoin))
+    attack_toggle_v68=_button("Ründa valitud vastast",_toggle_individual_attack_v68)
+    attack_toggle_v68.name="AttackTargetV68"
+    tactical.add_child(attack_toggle_v68)
     tactical.add_child(_button("Suumi sõdurile",_focus_individual))
     follow_button=_button("Jälgi sõdurit",_follow_selected_soldier)
     tactical.add_child(follow_button)
@@ -755,7 +839,7 @@ func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,MIN_BATTLE_ZOOM,MAX_BATTLE_ZOOM)
     if battle_camera!=null:battle_camera.size=cam_size
 
-func set_battle(b: Dictionary) -> void:
+func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
     var earlier_elapsed: float=float(current_battle.get("elapsed",-1.0))
     var later_elapsed: float=float(b.get("elapsed",-1.0))
     var elapsed_delta: float=later_elapsed-earlier_elapsed
@@ -764,6 +848,12 @@ func set_battle(b: Dictionary) -> void:
     var can_interpolate: bool=auto_play_enabled and earlier_elapsed>=0.0 and \
         elapsed_delta>0.001 and elapsed_delta<1.0 and \
         int(b.get("version",0))>=61 and String(b.get("result",""))==""
+    # User commands can update the persistent saved battle without advancing
+    # the deterministic clock. In that case keep the currently rendered
+    # interpolated soldier transforms instead of snapping the whole army.
+    var keep_visual: bool=preserve_motion and auto_play_enabled and \
+        absf(elapsed_delta)<0.000001 and earlier_elapsed>=0.0 and \
+        String(b.get("result",""))==""
     var blend_seconds: float=clampf(elapsed_delta/Battlefield.SCALE,0.15,0.6)
     current_battle=b.duplicate(true)
     if status_label==null:return
@@ -825,6 +915,10 @@ func set_battle(b: Dictionary) -> void:
     if not chosen.is_empty():
         lines.append("Valitud sõdur: #%d:%d" % [
             int(chosen["squad"]),int(chosen["index"])+1])
+        var pinned: Dictionary=_selected_attack_target_v68()
+        if not pinned.is_empty():
+            lines.append("Sihitud vastane: #%d:%d" % [
+                int(pinned["squad"]),int(pinned["index"])+1])
     status_label.text=" | ".join(lines)
     var used: Dictionary={}
     var total: int=0
@@ -882,34 +976,39 @@ func set_battle(b: Dictionary) -> void:
             var model_node: Node3D=holder.get_child(0) as Node3D
             if int(current_battle.get("version",0))>=61:
                 var previous: Dictionary=holder.get_meta("interpolation_v63",{})
-                var smooth: bool=can_interpolate and not previous.is_empty() and \
-                    holder.position.distance_to(target_position)<12.0
-                if not smooth:
-                    holder.position=target_position
-                    holder.rotation.y=target_heading
-                var velocity: Vector3=Vector3.ZERO
-                if smooth:
-                    velocity=(target_position-previous.get("target",holder.position))/\
-                        blend_seconds
-                holder.set_meta("interpolation_v63",{
-                    "origin":holder.position,"target":target_position,
-                    "from_heading":holder.rotation.y,"to_heading":target_heading,
-                    "fraction":0.0 if smooth else 1.0,
-                    "duration":blend_seconds if smooth else 0.01,
-                    "velocity":velocity,
-                    "move_active":bool(man.get("moving",false)) or \
-                        velocity.length_squared()>0.01,
-                    "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
-                        float(man.get("anim_phase",0.0)),
-                    "attack_clock":maxf(float(man.get("attack_anim",0.0)),
-                        float(previous.get("attack_clock",0.0))) if smooth else \
-                        float(man.get("attack_anim",0.0)),
-                    "hit_clock":maxf(float(man.get("hit_anim_v61",0.0)),
-                        float(previous.get("hit_clock",0.0))) if smooth else \
-                        float(man.get("hit_anim_v61",0.0)),
-                    "person":man.duplicate(true),"kind":kind})
-                if not smooth and model_node!=null:
-                    Animation65.apply(model_node,man,kind)
+                if keep_visual and not previous.is_empty():
+                    previous["person"]=man.duplicate(true)
+                    previous["kind"]=kind
+                    holder.set_meta("interpolation_v63",previous)
+                else:
+                    var smooth: bool=can_interpolate and not previous.is_empty() and \
+                        holder.position.distance_to(target_position)<12.0
+                    if not smooth:
+                        holder.position=target_position
+                        holder.rotation.y=target_heading
+                    var velocity: Vector3=Vector3.ZERO
+                    if smooth:
+                        velocity=(target_position-previous.get("target",holder.position))/\
+                            blend_seconds
+                    holder.set_meta("interpolation_v63",{
+                        "origin":holder.position,"target":target_position,
+                        "from_heading":holder.rotation.y,"to_heading":target_heading,
+                        "fraction":0.0 if smooth else 1.0,
+                        "duration":blend_seconds if smooth else 0.01,
+                        "velocity":velocity,
+                        "move_active":bool(man.get("moving",false)) or \
+                            velocity.length_squared()>0.01,
+                        "phase":float(previous.get("phase",man.get("anim_phase",0.0))) if smooth else \
+                            float(man.get("anim_phase",0.0)),
+                        "attack_clock":maxf(float(man.get("attack_anim",0.0)),
+                            float(previous.get("attack_clock",0.0))) if smooth else \
+                            float(man.get("attack_anim",0.0)),
+                        "hit_clock":maxf(float(man.get("hit_anim_v61",0.0)),
+                            float(previous.get("hit_clock",0.0))) if smooth else \
+                            float(man.get("hit_anim_v61",0.0)),
+                        "person":man.duplicate(true),"kind":kind})
+                    if not smooth and model_node!=null:
+                        Animation65.apply(model_node,man,kind)
             else:
                 holder.position=target_position
                 holder.rotation.y=target_heading
@@ -922,6 +1021,7 @@ func set_battle(b: Dictionary) -> void:
                     model_node.rotation.z=0.065*sin(phase) if walking else 0.0
             used[key]=true
             total+=1
+    _refresh_selection_markers_v67()
     for node in actors_root.get_children():
         if used.has(String(node.name)):continue
         actors_root.remove_child(node)
