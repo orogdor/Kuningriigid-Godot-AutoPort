@@ -31,7 +31,7 @@ func _run() -> void:
         return
     ui.large_demo_start_button.pressed.emit()
     var b: Dictionary=Battle.current(ui.city,world)
-    if b.is_empty() or int(b.get("version",0))!=64 or \
+    if b.is_empty() or int(b.get("version",0))<64 or \
             not bool(b.get("large_demo_v64",false)) or \
             not bool(b.get("demo_v61",false)) or not ui.battle_view.visible:
         fail("City button did not start the playable large V64 battle")
