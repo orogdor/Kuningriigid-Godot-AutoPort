@@ -122,6 +122,7 @@ func _ready() -> void:
     var container:=SubViewportContainer.new()
     battle_canvas_container=container
     container.gui_input.connect(_on_battle_canvas_input)
+    container.custom_minimum_size=Vector2(240,180)
     container.stretch=true
     container.size_flags_vertical=Control.SIZE_EXPAND_FILL
     column.add_child(container)
