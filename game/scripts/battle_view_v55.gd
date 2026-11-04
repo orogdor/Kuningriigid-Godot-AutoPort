@@ -14,6 +14,7 @@ var battle_camera: Camera3D
 var scene_root: Node3D
 var actors_root: Node3D
 var obstacles_root: Node3D
+var projectiles_root: Node3D
 var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
@@ -127,6 +128,9 @@ func _ready() -> void:
     actors_root=Node3D.new()
     actors_root.name="TacticalActorsV55"
     scene_root.add_child(actors_root)
+    projectiles_root=Node3D.new()
+    projectiles_root.name="StoneFlightsV58"
+    scene_root.add_child(projectiles_root)
 
 func _refresh_obstacles() -> void:
     for node in obstacles_root.get_children():
@@ -156,6 +160,34 @@ func _refresh_obstacles() -> void:
         stone.material_override=stone_material
         holder.add_child(stone)
 
+func _refresh_projectiles() -> void:
+    # Reuse marker meshes between updates; one saved projectile is one 3D stone.
+    var active: Dictionary={}
+    for stone in current_battle.get("projectiles_v58",[]):
+        var label: String="Stone_%d" % int(stone.get("id",0))
+        active[label]=true
+        var marker: MeshInstance3D=projectiles_root.get_node_or_null(label) as MeshInstance3D
+        if marker==null:
+            marker=MeshInstance3D.new()
+            marker.name=label
+            var mesh:=SphereMesh.new()
+            mesh.radius=0.18
+            mesh.height=0.36
+            mesh.radial_segments=8
+            mesh.rings=4
+            marker.mesh=mesh
+            var mat:=StandardMaterial3D.new()
+            mat.albedo_color=Color("#68645b")
+            mat.roughness=0.95
+            marker.material_override=mat
+            projectiles_root.add_child(marker)
+        marker.position=Vector3(float(stone["x"]),
+            float(stone.get("height",1.1)),float(stone["z"]))
+    for node in projectiles_root.get_children():
+        if active.has(String(node.name)):continue
+        projectiles_root.remove_child(node)
+        node.free()
+
 func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,120.0,1050.0)
     if battle_camera!=null:battle_camera.size=cam_size
@@ -164,6 +196,7 @@ func set_battle(b: Dictionary) -> void:
     current_battle=b.duplicate(true)
     if status_label==null:return
     _refresh_obstacles()
+    _refresh_projectiles()
     var existing_id: int=-1
     if order_picker.selected>=0 and order_picker.selected<id_list.size():
         existing_id=id_list[order_picker.selected]
