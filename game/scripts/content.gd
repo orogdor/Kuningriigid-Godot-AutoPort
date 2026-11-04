@@ -25,6 +25,7 @@ const BattleView55 = preload("res://scripts/battle_view_v55.gd")
 const Raider56 = preload("res://scripts/raider_v56.gd")
 const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const SAVE_PATH = "user://autoport_city_v05.json"
+const AUTO_BATTLE_SAVE_SECONDS: float=2.0
 const SHOW_TYPES: Array[String] = [
     "lumber","saw","quarry","house","well","farm","mill","bakery",
     "market","warehouse","cellar","vegetable_garden"
@@ -60,6 +61,8 @@ var auto_button: Button
 var capital_ai_button: Button
 var timer: Timer
 var event_message: String = "Alusta kiviaegse linna rajamist."
+var last_auto_battle_save_elapsed: float=0.0
+var auto_battle_save_count: int=0
 
 func _ready() -> void:
     var bundle: Dictionary = City.definitions()
@@ -120,6 +123,7 @@ func _ready() -> void:
     battle_view.battle_individual_move_requested.connect(_battle_individual_move)
     battle_view.battle_individual_return_requested.connect(_battle_individual_rejoin)
     battle_view.battle_tick_requested.connect(_battle_tick)
+    battle_view.battle_auto_paused.connect(_save)
     battle_view.battle_demo_retry_requested.connect(_start_demo_battle)
     battle_view.hide()
     city_scroll.hide()
@@ -272,6 +276,7 @@ func _open_battle_v55() -> void:
     if timer!=null and not timer.is_stopped():
         timer.stop()
         auto_button.text="Auto: väljas"
+    last_auto_battle_save_elapsed=float(battle.get("elapsed",0.0))
     battle_view.set_battle(battle)
     city_scroll.hide()
     world_view.hide()
@@ -305,10 +310,27 @@ func _battle_individual_rejoin(id: int,index: int) -> void:
     _save()
 
 func _battle_tick(seconds: float) -> void:
+    var before: Dictionary=Battle55.current(city,world_view.world)
+    var old_elapsed: float=float(before.get("elapsed",0.0))
     Battle55.tick(city,world_view.world,seconds)
-    battle_view.set_battle(Battle55.current(city,world_view.world))
-    _sync_trade_map()
-    _save()
+    var battle: Dictionary=Battle55.current(city,world_view.world)
+    if battle.is_empty():return
+    var elapsed: float=float(battle.get("elapsed",0.0))
+    var complete: bool=String(battle.get("result",""))!=""
+    var automatic: bool=bool(battle_view.auto_play_enabled)
+    # The deterministic 0.2 s step sometimes spans two short automatic ticks.
+    # Avoid 3D refresh and full city serialisation if nothing advanced.
+    if elapsed==old_elapsed and not complete and automatic:return
+    battle_view.set_battle(battle)
+    if complete or not automatic:
+        _sync_trade_map()
+        last_auto_battle_save_elapsed=elapsed
+        _save()
+    elif elapsed-last_auto_battle_save_elapsed>=AUTO_BATTLE_SAVE_SECONDS:
+        # Periodic autosave, plus immediate save on pause/leave/battle end.
+        last_auto_battle_save_elapsed=elapsed
+        auto_battle_save_count+=1
+        _save()
 
 func _open_satellite() -> void:
     if not Trade.has_outpost(city):
