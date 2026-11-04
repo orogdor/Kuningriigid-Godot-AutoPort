@@ -71,10 +71,12 @@ func _run() -> void:
     root.size=Vector2i(1000,690)
     var view: Control=View.new()
     root.add_child(view)
+    view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     await process_frame
     await process_frame
     if view.battle_canvas_container==null or \
-            view.battle_canvas_container.size.x<50.0:
+            view.battle_canvas_container.size.x<50.0 or \
+            view.battle_canvas_container.size.y<50.0:
         fail("Battlefield tap canvas has no usable size")
         return
     view.set_battle(b)
@@ -93,12 +95,6 @@ func _run() -> void:
     var touch:=InputEventScreenTouch.new()
     touch.pressed=true
     touch.position=pos*scale
-    var ray_origin: Vector3=view.battle_camera.project_ray_origin(pos)
-    var ray_dir: Vector3=view.battle_camera.project_ray_normal(pos)
-    print("V59_TOUCH_DEBUG armed=%s selected=%s ids=%s canvas=%s viewport=%s pos=%s event_pos=%s ray_origin=%s ray=%s" % [
-        str(view.move_mode_enabled),str(view.order_picker.selected),
-        str(view.id_list),str(view.battle_canvas_container.size),
-        str(view.viewport.size),str(pos),str(touch.position),str(ray_origin),str(ray_dir)])
     view._on_battle_canvas_input(touch)
     if issued.size()!=1 or issued[0]["id"]!=7:
         fail("Touch did not emit selected friendly squad's move order (count=%d armed=%s selected=%d)" % [
