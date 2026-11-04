@@ -52,7 +52,8 @@ static func clear(man: Dictionary) -> void:
 
 static func clear_squad(fighter: Dictionary) -> void:
     for man in fighter.get("men",[]):
-        if man is Dictionary and (man.has(KEY) or man.has(STATUS)):
+        if man is Dictionary and (man.has(KEY) or man.has(STATUS) or \
+                man.has("attack_target_v68")):
             clear(man)
 
 static func rejoin(battle: Dictionary,squad_id: int,index: int) -> String:
