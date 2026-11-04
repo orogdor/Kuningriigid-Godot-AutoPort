@@ -119,6 +119,23 @@ jobs:
           chmod +x /tmp/godot/Godot_v4.4.1-stable_linux.x86_64
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --import
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
+      - name: Check real GLB soldier pixels using Mesa renderer
+        working-directory: port
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xvfb-run >/dev/null; then sudo apt-get update && sudo apt-get install -y xvfb xauth; fi
+          LIBGL_ALWAYS_SOFTWARE=1 timeout --signal=TERM --kill-after=5s 180s \
+            xvfb-run -a /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
+              --path game --rendering-method gl_compatibility \
+              --script res://tests/soldier_pixels_v75.gd
+      - name: Save soldier pixel screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soldier-pixels-v75
+          path: port/game/test-output/soldier-*.png
+          if-no-files-found: ignore
       - name: Verify upstream JavaScript gameplay matches native Godot
         working-directory: port
         run: |
