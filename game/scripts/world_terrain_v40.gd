@@ -145,7 +145,7 @@ func _ready() -> void:
     hostile_actor_v56=Node3D.new()
     hostile_actor_v56.name="HostileRaiderV56"
     scene_root.add_child(hostile_actor_v56)
-    var enemy_model: Node3D=WebUnits53.instance("spearman",2.9)
+    var enemy_model: Node3D=WebUnits53.instance("spearman",2.9,true)
     if enemy_model!=null:hostile_actor_v56.add_child(enemy_model)
     var hostile_marker:=MeshInstance3D.new()
     hostile_marker.name="HostileMarker"
@@ -330,7 +330,7 @@ func set_armies_v54(armies: Array) -> void:
         var r: int=int(army.get("r",-1))
         if not bool(World.cell(world,c,r).get("land",false)):continue
         var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,2.7)
+        var model: Node3D=WebUnits53.instance(kind,2.7,true)
         if model==null:continue
         var unit:=Node3D.new()
         unit.name="ArmyActorV54_"+str(int(army.get("id",shown)))
