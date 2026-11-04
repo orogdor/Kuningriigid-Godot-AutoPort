@@ -16,6 +16,15 @@ const MAX_ATLAS_FORESTS: int=190
 const MAX_ATLAS_ROCKS: int=90
 
 static func asset(kind: String) -> PackedScene:
+    # Reuse current V299 LOD meshes when available, keep V50 as offline fallback.
+    var updated: String=""
+    match kind:
+        "oak":updated="res://assets/web72/nature/oak.glb"
+        "pine","forest_cluster":updated="res://assets/web72/nature/pine.glb"
+        "world_village":updated="res://assets/web72/world/peamaja.glb"
+    if updated!="" and ResourceLoader.exists(updated):
+        var resource: Resource=load(updated)
+        if resource is PackedScene:return resource
     match kind:
         "oak":return OAK
         "pine":return PINE

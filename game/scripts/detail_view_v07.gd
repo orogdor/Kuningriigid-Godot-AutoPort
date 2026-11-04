@@ -41,6 +41,7 @@ const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const WebUnits53 = preload("res://scripts/web_units_v53.gd")
+const WebV299=preload("res://scripts/web_models_v72.gd")
 const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
 const Military54 = preload("res://scripts/military_v54.gd")
@@ -833,6 +834,7 @@ func _is_coastal(cell: Dictionary) -> bool:
     return false
 
 func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) -> void:
+    var before_visuals: int=parent.get_child_count()
     var timber:=Color("#805c3e") if completed else Color("#555e61")
     var thatch:=Color("#b49b61") if completed else Color("#6a7272")
     match kind:
@@ -923,6 +925,15 @@ func _building(parent: Node3D, kind: String, place: Vector3, completed: bool) ->
         _:
             _box(parent,place+Vector3(0,2.5,0),Vector3(7,5,7),timber,"WorkshopWalls")
             _roof(parent,place+Vector3(0,6,0),Vector3(9,4,9),thatch)
+    # V72 replaces only the visuals, preserving existing named door/roof
+    # nodes for picking, tests and saved-city compatibility.
+    if completed and parent!=placement_ghost:
+        var replacement: Node3D=WebV299.city_instance(kind,place)
+        if replacement!=null:
+            for i in range(before_visuals,parent.get_child_count()):
+                var old: Node=parent.get_child(i)
+                if old is Node3D:(old as Node3D).visible=false
+            parent.add_child(replacement)
 
 func _construction_site(parent: Node3D, kind: String, place: Vector3, building: Dictionary) -> void:
     var spec: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{}).get(kind,{})
@@ -1675,7 +1686,7 @@ func set_world_armies_v54(armies: Array) -> void:
         # receive duplicate props; switching tiles picks the same saved pose.
         if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:continue
         var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,3.1)
+        var model: Node3D=WebUnits53.instance(kind,3.1,true)
         if model==null:continue
         var group:=Node3D.new()
         group.name="DetailArmyV54_"+str(int(army.get("id",0)))

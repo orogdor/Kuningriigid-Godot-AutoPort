@@ -1,4 +1,5 @@
 extends RefCounted
+const WebV299=preload("res://scripts/web_models_v72.gd")
 ## AutoPort v0.53: original, unmodified Three.js stone-age GLBs.
 ## Source models-v148/glb/{scout,spearman,axeman,slinger}.glb
 ## Asset files are generated/reproducibly committed by sync-upstream.yml.
@@ -35,7 +36,10 @@ static func bounds_of(node: Node3D) -> Dictionary:
     _measure(node,Transform3D.IDENTITY,data)
     return data
 
-static func instance(kind: String,height: float=2.7) -> Node3D:
+static func instance(kind: String,height: float=2.7,prefer_latest: bool=false) -> Node3D:
+    if prefer_latest and kind!="scout":
+        var latest: Node3D=WebV299.unit_instance(kind,height)
+        if latest!=null:return latest
     var path: String=String(FILES.get(kind,""))
     if path=="" or not ResourceLoader.exists(path):return null
     var resource: Resource=load(path)
