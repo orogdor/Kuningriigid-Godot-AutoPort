@@ -4,6 +4,7 @@ extends RefCounted
 ## Each order lives in the same saved battle dictionary as wounds/ammunition.
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
+const Military54=preload("res://scripts/military_v54.gd")
 const KEY: String="individual_target_v60"
 const STATUS: String="individual_state_v60"
 const ARRIVAL: float=0.65
@@ -73,10 +74,10 @@ static func advance(man: Dictionary,fighter: Dictionary,
         man["moving"]=false
         return true
     var kind: String=String(fighter.get("kind","spearman"))
-    var speed: float=float(fighter.get("individual_speed_v60",0.0))
-    if speed<=0.0:
-        # Keep the source unit's actual speed, passed from individual_v56.
+    if not Military54.TROOPS.has(kind):
+        clear(man)
         return false
+    var speed: float=float(Military54.TROOPS[kind]["speed"])
     var distance: float=_pos(man).distance_to(_pos(target))
     if distance>ARRIVAL:
         Nav57.step(man,_pos(target),speed*maxf(dt,0.0),Nav57.ensure(battle),grid)
