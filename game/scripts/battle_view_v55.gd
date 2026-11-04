@@ -98,7 +98,7 @@ func _render_soldier_motion_v65(delta: float) -> void:
         # Smooth corrections after each deterministic simulation update.
         # Prevents the visible soldier from jumping backwards when the
         # previous frame used extrapolated movement.
-        var follow: float=1.0-exp(-frame*20.0)
+        var follow: float=1.0 if delta>=0.3 else 1.0-exp(-frame*20.0)
         node.position=node.position.lerp(destination,follow)
         node.rotation.y=lerp_angle(node.rotation.y,
             float(state["to_heading"]),follow)
