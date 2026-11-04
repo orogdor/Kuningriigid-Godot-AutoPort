@@ -50,6 +50,9 @@ const MIN_BATTLE_ZOOM: float=1.5
 const MAX_BATTLE_ZOOM: float=1050.0
 var pinch_points: Dictionary={}
 var pinch_distance: float=0.0
+var tap_start_v67: Vector2=Vector2.ZERO
+var tap_index_v67: int=-1
+var tap_cancelled_v67: bool=false
 var follow_actor_key: String=""
 var follow_origin: Vector3=Vector3.ZERO
 var follow_button: Button
@@ -218,6 +221,61 @@ func _chosen_man() -> Dictionary:
             person<0 or person>=man_indices.size():return {}
     return {"squad":id_list[squad],"index":man_indices[person]}
 
+## Use the actual projected source-GLB model positions. Do not run a battle
+## update when selecting: doing so would snap all interpolated men backward
+## even though the screen is rendering at 56+ FPS.
+func _select_soldier_at_v67(screen_pos: Vector2) -> bool:
+    if battle_camera==null or battle_canvas_container==null or \
+            viewport==null or actors_root==null or id_list.is_empty():
+        return false
+    if battle_canvas_container.size.x<=1.0 or \
+            battle_canvas_container.size.y<=1.0:return false
+    var point: Vector2=screen_pos*Vector2(
+        float(viewport.size.x)/battle_canvas_container.size.x,
+        float(viewport.size.y)/battle_canvas_container.size.y)
+    var distance_limit: float=pow(maxf(26.0,float(viewport.size.y)*0.04),2.0)
+    var winner: Node3D=null
+    for candidate in actors_root.get_children():
+        var actor: Node3D=candidate as Node3D
+        if actor==null or int(actor.get_meta("team_v67",-1))!=0:continue
+        var centre: Vector3=actor.global_position+Vector3(0.0,2.5,0.0)
+        if battle_camera.is_position_behind(centre):continue
+        var px: Vector2=battle_camera.unproject_position(centre)
+        var dist: float=px.distance_squared_to(point)
+        if dist>=distance_limit:continue
+        distance_limit=dist
+        winner=actor
+    if winner==null:return false
+    var squad: int=int(winner.get_meta("squad_v67",-1))
+    var person: int=int(winner.get_meta("person_v67",-1))
+    var selected_squad: int=id_list.find(squad)
+    if selected_squad<0:return false
+    _stop_following()
+    order_picker.select(selected_squad)
+    _refresh_individual_picker()
+    var selected_man: int=man_indices.find(person)
+    if selected_man<0:return false
+    individual_picker.select(selected_man)
+    _refresh_selection_markers_v67()
+    return true
+
+func _refresh_selection_markers_v67() -> void:
+    if actors_root==null:return
+    var selection: Dictionary=_chosen_man()
+    for candidate in actors_root.get_children():
+        var actor: Node3D=candidate as Node3D
+        if actor==null:continue
+        var marker: MeshInstance3D=actor.get_node_or_null("TeamMarker") as MeshInstance3D
+        if marker==null:continue
+        var mat: StandardMaterial3D=marker.material_override as StandardMaterial3D
+        if mat==null:continue
+        var team: int=int(actor.get_meta("team_v67",-1))
+        var chosen: bool=team==0 and not selection.is_empty() and \
+            int(actor.get_meta("squad_v67",-1))==int(selection["squad"]) and \
+            int(actor.get_meta("person_v67",-1))==int(selection["index"])
+        mat.albedo_color=Color("#ffe250") if chosen else \
+            (Color("#65caff") if team==0 else Color("#ed6b56"))
+
 func _refresh_individual_picker() -> void:
     if individual_picker==null or order_picker==null:return
     var previous: int=-1
@@ -320,13 +378,28 @@ func _battle_camera_input(event: InputEvent) -> bool:
         _zoom_pan(event.relative)
         return true
     if event is InputEventScreenTouch:
+        var choosing: bool=not move_mode_enabled and not individual_move_mode
         if event.pressed:
+            if choosing and pinch_points.is_empty():
+                tap_start_v67=event.position
+                tap_index_v67=event.index
+                tap_cancelled_v67=false
+            else:
+                tap_cancelled_v67=true # Any second finger is a pinch, not a tap.
             pinch_points[event.index]=event.position
         else:
+            var tapped: bool=choosing and not tap_cancelled_v67 and \
+                tap_index_v67==event.index and pinch_points.size()==1 and \
+                event.position.distance_to(tap_start_v67)<=18.0
             pinch_points.erase(event.index)
+            if tapped:_select_soldier_at_v67(event.position)
+            if event.index==tap_index_v67:tap_index_v67=-1
         pinch_distance=_pinch_length()
-        return not move_mode_enabled and not individual_move_mode
+        return choosing
     if event is InputEventScreenDrag:
+        if event.index==tap_index_v67 and \
+                event.position.distance_to(tap_start_v67)>18.0:
+            tap_cancelled_v67=true
         if pinch_points.has(event.index):
             pinch_points[event.index]=event.position
         if pinch_points.size()>=2:
@@ -342,8 +415,12 @@ func _battle_camera_input(event: InputEvent) -> bool:
 
 func _on_battle_canvas_input(event: InputEvent) -> void:
     if _battle_camera_input(event):return
-    if (not move_mode_enabled and not individual_move_mode) or \
-            id_list.is_empty() or int(current_battle.get("version",0))<59:return
+    if not move_mode_enabled and not individual_move_mode:
+        if event is InputEventMouseButton and event.pressed and \
+                event.button_index==MOUSE_BUTTON_LEFT:
+            _select_soldier_at_v67(event.position)
+        return
+    if id_list.is_empty() or int(current_battle.get("version",0))<59:return
     var pos: Vector2
     if event is InputEventMouseButton:
         if not event.pressed or event.button_index!=MOUSE_BUTTON_LEFT:return
@@ -416,6 +493,8 @@ func _reset_camera() -> void:
     _stop_following()
     pinch_points.clear()
     pinch_distance=0.0
+    tap_index_v67=-1
+    tap_cancelled_v67=false
     cam_size=175.0
     if battle_camera!=null:
         battle_camera.position=Vector3(0,670,520)
@@ -784,6 +863,9 @@ func set_battle(b: Dictionary) -> void:
                 mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
                 marker.material_override=mat
                 holder.add_child(marker)
+            holder.set_meta("team_v67",int(fighter["team"]))
+            holder.set_meta("squad_v67",int(fighter["id"]))
+            holder.set_meta("person_v67",int(man.get("index",0)))
             var team_marker: MeshInstance3D=holder.get_node_or_null("TeamMarker") as MeshInstance3D
             if team_marker!=null:
                 var base_material: StandardMaterial3D=team_marker.material_override as StandardMaterial3D
