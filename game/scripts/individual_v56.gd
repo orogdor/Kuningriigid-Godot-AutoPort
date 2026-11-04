@@ -203,8 +203,8 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float,
     var indexed: bool=int(b.get("version",56))>=64
     var opponent: Array=[]
     if indexed:
-        if (target_index.get(1-int(fighter["team"]),{}) as Dictionary).is_empty():
-            return
+        var enemy_grid: Dictionary=target_index.get(1-int(fighter["team"]),{})
+        if enemy_grid.is_empty():return
     else:
         for enemy in b["fighters"]:
             if int(enemy["team"])!=int(fighter["team"]) and not living(enemy).is_empty():
