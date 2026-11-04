@@ -137,7 +137,10 @@ func _run() -> void:
             var p1:=p0+Vector2(1.4,0.0)
             var p2:=p0+Vector2(0.8,0.0)
             if Nav.open_at(p0,arena) and Nav.open_at(p1,arena) and \
-                    Nav.open_at(p2,arena) and Stones.clear_line(p0,p1,arena):
+                    Nav.open_at(p2,arena) and \
+                    Nav.open_at(p0-Vector2(5.0,0.0),arena) and \
+                    Nav.clear_segment(p0-Vector2(5.0,0.0),p1,arena) and \
+                    Stones.clear_line(p0,p1,arena):
                 spot=p0
                 site_found=true
                 break
