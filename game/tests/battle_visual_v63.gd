@@ -82,8 +82,11 @@ func _run() -> void:
         fail("Locomotion pose was not animated between sim ticks")
         return
     view._process(0.4)
-    if chosen.position.distance_to(target)>0.005:
-        fail("Interpolated actor never reaches the saved target position")
+    # V65 carries forward a short, strictly visual extrapolation instead of
+    # freezing at the last snapshot. The exact target may be passed slightly
+    # while awaiting the next authoritative simulation update.
+    if chosen.position.distance_to(target)>selected_delta*0.55+0.02:
+        fail("Visual prediction wandered too far from the saved target")
         return
     var completed: Dictionary=chosen.get_meta("interpolation_v63")
     if float(completed["fraction"])<0.999:
