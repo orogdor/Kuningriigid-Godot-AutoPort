@@ -1,15 +1,13 @@
-KUNINGRIIGID GODOT — EXPLICIT ANDROID CONTENT VERSION LABEL HOTFIX
-Target: AutoPort 0.56 with new build number (after v0.56.741).
-Source: merged PR #8, commit 86b8230ea0ba19a3e1f702fc8ce64bc1832e8078.
-Reason: User confirmed 0.51-installed APK can receive newer content after force-stop/cache clear,
-but 3D map version caption stayed at APK project name 0.51 rather than the loaded PCK.
-Fix: both city and 3D map titles read res://data/generated/release.json stamped BEFORE
-Android PCK export. Content file is exported with Android preset; Windows gets separate pack.
-CI: pull request validation 41691860799 passed including content version V58,
-PCK updater recovery, full economy parity (1200 turns) and battle regression.
-Publish: fresh SHA256 verified Android Kuningriigid-Content.pck, Windows EXE
-launcher/manifest/engine and Windows-native content pack.
-Android: NO replacement APK unless the persistent signing secrets are present;
-existing v0.51 APK keeps its own installed app version and its saves intact.
-Release must pass isolated Android PCK mount and exact on-screen release version smoke test.
-This is one explicit hotfix release request, not a binary build on every source commit.
+KUNINGRIIGID GODOT AUTOPORT — 0.62 MOBILE BATTLE PERFORMANCE RELEASE
+Reason: Reported slow Android combat FPS and apparent soldier freeze after about 30 real seconds.
+Validated source: PR #14, merge commit 5d60a1932685cf0cc1ec699f0c0062267ca4e884.
+Required tests: GitHub Actions 41812858282 SUCCESS (battle_perf_v62, battle_demo_v61,
+battle_nav_v57, projectiles_v58, battle_orders_v59, individual_orders_v60,
+plus legacy economy and 3D/UI regressions).
+Changes: correct auto timer wall seconds, true Godot SubViewportContainer
+stretch_shrink mobile rendering, show FPS, eliminate repeated static obstacle
+re-creation, throttle automatic full-city saving, save immediately on pause,
+and display explicit victory/retreat/defeat status plus replay.
+Release request: publish verified Android Content.pck and Windows content/launcher
+only after the validated 0.62 code has merged. Do not replace or debug-sign an APK.
+No claim is made about a specific physical Android phone's FPS; that needs user testing.
