@@ -284,7 +284,8 @@ func _select_soldier_at_v67(screen_pos: Vector2) -> bool:
     var winner: Node3D=null
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
-        if actor==null or int(actor.get_meta("team_v67",-1))!=0:continue
+        if actor==null or actor.has_meta("fallen_since_v69") or \
+                int(actor.get_meta("team_v67",-1))!=0:continue
         var centre: Vector3=actor.global_position+Vector3(0.0,2.5,0.0)
         if battle_camera.is_position_behind(centre):continue
         var px: Vector2=battle_camera.unproject_position(centre)
@@ -334,7 +335,8 @@ func _select_enemy_at_v68(screen_pos: Vector2) -> bool:
     var winner: Node3D=null
     for candidate in actors_root.get_children():
         var actor: Node3D=candidate as Node3D
-        if actor==null or int(actor.get_meta("team_v67",-1))!=1:
+        if actor==null or actor.has_meta("fallen_since_v69") or \
+                int(actor.get_meta("team_v67",-1))!=1:
             continue
         var centre: Vector3=actor.global_position+Vector3(0,2.5,0)
         if battle_camera.is_position_behind(centre):continue
