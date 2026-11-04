@@ -1,16 +1,8 @@
-KUNINGRIIGID GODOT AUTOPORT — 0.65 SKELETAL ANIMATION AND CLOSE BATTLE CAMERA RELEASE
-Reason: Android reports ~56 FPS but soldiers visibly stutter, lack skeletal animation and cannot be zoomed into closely.
-Validated change: PR #17, merge commit 3052d9fdca6e381f20492fdf362df56af4906dd9.
-Required tests: GitHub Actions 41836847864 SUCCESS; includes battle_motion_v65,
-battle_targets_v64, battle_visual_v63, battle_perf_v62, battle_demo_v61 and all
-other historic Godot, source-parity, battlefield and economy regression tests.
-Source GLBs inspected directly: spearman, axeman and slinger each contain skins
-and real idle/walk/run/attack/hit/death glTF animations; import animation=true.
-Changes: start source AnimationPlayer clips rather than root-only posing,
-drive visual movement/pose every render frame, bridge short deterministic
-simulation-snapshot gaps without changing the authoritative campaign state,
-enable 10m close zoom, selected-soldier focus, wheel zoom, pinch and pan.
-Release requested: publish validated Android Content.pck and Windows content,
-launcher and engine assets from the merged 0.65 project only.
-Do not publish a debug-signed APK as an automatic Android update.
-Headless tests prove functionality; physical device frame rates remain to be tested.
+KUNINGRIIGID GODOT AUTOPORT — VALIDATED 0.70 BATTLE STRIKE/HIT SYNCHRONIZATION RELEASE
+Reason: 0.69 could not publish because Godot imported GLB scenes were not ready; 0.70 fixes the release import gate and synchronizes soldier skeletal attacks/hits to real combat events.
+Validated: PR #22 merged as 20a69f30fe54059bea3163622c00f13f6ea146dc.
+Required tests: GitHub Actions 41883935821 SUCCESS, including 216 original GLB soldier action clips and all historical Godot, 200-turn economy and source-parity regressions.
+Changes: event counters prevent per-frame restart of attack/hit actions; actual damage or projectile impact drives the hit reaction. Imported GLB clips remain non-looping and linked to combat duration.
+Release workflow: complete Godot glTF imports with --import, verify all web50 and web53 models before running tests and exporting platform-specific PCKs.
+Requested: create stable Android Kuningriigid-Content.pck and Windows content, launcher and engine packages; signed APK only if the existing permanent keystore is available.
+No debug-signed APK may be represented as a compatible Android update. Physical Android graphics and FPS remain device-validation items.
