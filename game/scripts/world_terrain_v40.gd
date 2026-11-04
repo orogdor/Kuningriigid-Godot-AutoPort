@@ -145,8 +145,10 @@ func _ready() -> void:
     hostile_actor_v56=Node3D.new()
     hostile_actor_v56.name="HostileRaiderV56"
     scene_root.add_child(hostile_actor_v56)
-    var enemy_model: Node3D=WebUnits53.instance("spearman",2.9,true)
-    if enemy_model!=null:hostile_actor_v56.add_child(enemy_model)
+    var enemy_model: Node3D=WebUnits53.instance("spearman",2.9,false,true)
+    if enemy_model!=null:
+        hostile_actor_v56.add_child(enemy_model)
+        WebUnits53.animate_world(enemy_model,false)
     var hostile_marker:=MeshInstance3D.new()
     hostile_marker.name="HostileMarker"
     var marker_mesh:=CylinderMesh.new()
@@ -330,7 +332,7 @@ func set_armies_v54(armies: Array) -> void:
         var r: int=int(army.get("r",-1))
         if not bool(World.cell(world,c,r).get("land",false)):continue
         var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,2.7,true)
+        var model: Node3D=WebUnits53.instance(kind,2.7,false,true)
         if model==null:continue
         var unit:=Node3D.new()
         unit.name="ArmyActorV54_"+str(int(army.get("id",shown)))
@@ -338,6 +340,7 @@ func set_armies_v54(armies: Array) -> void:
         army_root_v54.add_child(unit)
         model.name="OriginalStoneAge_"+kind
         unit.add_child(model)
+        WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
         unit.position=scout_point_for(army)
         var path: Array=army.get("path",[])
         if not path.is_empty():

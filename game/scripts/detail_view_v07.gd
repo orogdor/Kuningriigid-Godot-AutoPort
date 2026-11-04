@@ -1686,7 +1686,7 @@ func set_world_armies_v54(armies: Array) -> void:
         # receive duplicate props; switching tiles picks the same saved pose.
         if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:continue
         var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,3.1,true)
+        var model: Node3D=WebUnits53.instance(kind,3.1,false,true)
         if model==null:continue
         var group:=Node3D.new()
         group.name="DetailArmyV54_"+str(int(army.get("id",0)))
@@ -1694,6 +1694,7 @@ func set_world_armies_v54(armies: Array) -> void:
         army_detail_root_v54.add_child(group)
         model.name="OriginalWeb_"+kind
         group.add_child(model)
+        WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
         # Visual formation separation only; no impact on tactical movement.
         var offset: float=float(posmod(int(army.get("id",0)),5)-2)*2.0
         group.position=Vector3(x+offset,_elevation(x,z,0.0,can_build),z)
