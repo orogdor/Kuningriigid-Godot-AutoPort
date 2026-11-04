@@ -26,6 +26,26 @@ func _run() -> void:
     if view.actors_root.get_child_count()!=96 or not view.auto_play_enabled:
         fail("Real 96-person demo did not start")
         return
+    # Inspect the actual imported source GLBs. These assets contain real
+    # glTF bones and idle/walk/attack/hit/death animations. A fallback
+    # whole-body wobble is NOT enough for the user's requested animation.
+    var armed: int=0
+    var playback: int=0
+    for soldier in view.actors_root.get_children():
+        var source: Node3D=soldier.get_child(0) as Node3D
+        var clips: Dictionary=Animation65.available_clips(source)
+        for needed in ["idle","walk","attack","hit","death"]:
+            if not clips.has(needed):
+                fail("Original soldier GLB did not import "+needed+" animation")
+                return
+        armed+=1
+        var animator: Dictionary=source.get_meta("source_animator_v65",{})
+        var player: AnimationPlayer=animator.get("player",null)
+        if player!=null and player.is_playing():playback+=1
+    if armed!=96 or playback!=96:
+        fail("Original 96 skeletal source animations were not started")
+        return
+
     # Default full battlefield, mouse wheel, tenfold close zoom and limits.
     view._zoom(0.001)
     if absf(view.cam_size-10.0)>0.001 or \
@@ -147,6 +167,11 @@ func _run() -> void:
     if distinct<15 or pose_distinct<10:
         fail("Soldiers still move in 1-2 FPS steps or lack moving model poses")
         return
+    var live_animator: Dictionary=model.get_meta("source_animator_v65",{})
+    var live_player: AnimationPlayer=live_animator.get("player",null)
+    if live_player==null or not live_player.is_playing():
+        fail("Imported skeletal AnimationPlayer stops during soldier movement")
+        return
     view._process(0.22)
     if moved.position.distance_to(target)<0.01 or \
             moved.position.distance_to(target)>base.distance_to(target)*0.55+0.05:
@@ -161,5 +186,5 @@ func _run() -> void:
     if moved.position.distance_to(display["target"])>0.001:
         fail("Paused battle refuses to snap back to authoritative positions")
         return
-    print("BATTLE_MOTION_V65 SUCCESS: source GLBs animate every 56FPS frame, 3 distinct attacks + hit recoil, bounded smooth prediction, paused battle authoritative, 10m zoom, wheel, pinch and pan")
+    print("BATTLE_MOTION_V65 SUCCESS: 96 imported skeletal GLB animations run, 3 distinct attacks + hit recoil, bounded smooth prediction, paused battle authoritative, 10m zoom, wheel, pinch and pan")
     quit(0)
