@@ -48,9 +48,9 @@ func _run() -> void:
 
     # Default full battlefield, mouse wheel, tenfold close zoom and limits.
     view._zoom(0.001)
-    if absf(view.cam_size-10.0)>0.001 or \
-            absf(view.battle_camera.size-10.0)>0.001:
-        fail("Cannot zoom in to 10m around the source 5.2m soldier")
+    if absf(view.cam_size-1.5)>0.001 or \
+            absf(view.battle_camera.size-1.5)>0.001:
+        fail("Cannot zoom in to 1.5m around the source 5.2m soldier")
         return
     view._zoom(10000.0)
     if absf(view.cam_size-1050.0)>0.001:
