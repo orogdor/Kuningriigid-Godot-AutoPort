@@ -82,5 +82,7 @@ static func step(battle: Dictionary,seconds: float) -> void:
                         victim["hp"]=maxf(0.0,float(victim["hp"])-float(stone["damage"]))
                         if int(battle.get("version",58))>=61:
                             victim["hit_anim_v61"]=0.36
+                        if int(battle.get("version",58))>=70:
+                            victim["hit_seq_v70"]=int(victim.get("hit_seq_v70",0))+1
                     break
         stones.remove_at(i)
