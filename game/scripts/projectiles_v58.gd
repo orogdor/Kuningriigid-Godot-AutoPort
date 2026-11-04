@@ -80,5 +80,7 @@ static func step(battle: Dictionary,seconds: float) -> void:
                             bool(victim.get("escaped",false)):continue
                     if _pos(victim).distance_to(goal)<=HIT_RADIUS:
                         victim["hp"]=maxf(0.0,float(victim["hp"])-float(stone["damage"]))
+                        if int(battle.get("version",58))>=61:
+                            victim["hit_anim_v61"]=0.36
                     break
         stones.remove_at(i)

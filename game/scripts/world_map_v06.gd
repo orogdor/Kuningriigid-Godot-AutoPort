@@ -98,8 +98,11 @@ func _ready() -> void:
     battle_button.text="Proovilahing"
     battle_button.pressed.connect(func():
         var index: int=army_selector_v54.selected
-        if index>=0 and index<army_ids_v54.size():
-            battle_requested.emit(army_ids_v54[index]))
+        # A fresh player has no army yet. The button must still open
+        # the free 0.61 test battle instead of silently doing nothing.
+        var selected: int=army_ids_v54[index] if index>=0 and \
+            index<army_ids_v54.size() else -1
+        battle_requested.emit(selected))
     bar.add_child(battle_button)
     map_mode_button=Button.new()
     map_mode_button.text="2D vaade"

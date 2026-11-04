@@ -8,10 +8,12 @@ signal battle_tick_requested(seconds: float)
 signal battle_move_requested(id: int,x: float,z: float)
 signal battle_individual_move_requested(id: int,index: int,x: float,z: float)
 signal battle_individual_return_requested(id: int,index: int)
+signal battle_demo_retry_requested
 
 const Units=preload("res://scripts/web_units_v53.gd")
 const Battlefield=preload("res://scripts/battle_v55.gd")
 const Nav57=preload("res://scripts/battle_nav_v57.gd")
+const Animation61=preload("res://scripts/battle_animation_v61.gd")
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
@@ -26,11 +28,15 @@ var individual_picker: OptionButton
 var man_indices: Array[int]=[]
 var individual_move_toggle: Button
 var individual_move_mode: bool=false
+var auto_timer: Timer
+var auto_button: Button
+var demo_retry_button: Button
+var auto_play_enabled: bool=false
 var status_label: Label
 var order_picker: OptionButton
 var id_list: Array[int]=[]
 var current_battle: Dictionary={}
-var cam_size: float=560.0
+var cam_size: float=175.0
 
 func _box(parent: Node3D,name: String,size: Vector3,pos: Vector3,color: Color) -> void:
     var node:=MeshInstance3D.new()
@@ -175,6 +181,43 @@ func _on_battle_canvas_input(event: InputEvent) -> void:
     move_mode_enabled=false
     if move_toggle!=null:move_toggle.text="Liigu kaardil"
 
+func set_auto_battle(enable: bool) -> void:
+    auto_play_enabled=enable and \
+        String(current_battle.get("result",""))=="" and \
+        not current_battle.is_empty()
+    if auto_timer!=null:
+        if auto_play_enabled:
+            auto_timer.start()
+        else:
+            auto_timer.stop()
+    if auto_button!=null:
+        auto_button.text="⏸ Peata võitlus" if auto_play_enabled else "▶ Jätka võitlust"
+
+func _toggle_auto_battle() -> void:
+    set_auto_battle(not auto_play_enabled)
+
+func _automatic_battle_step() -> void:
+    if not auto_play_enabled or not visible or \
+            String(current_battle.get("result",""))!="":
+        set_auto_battle(false)
+        return
+    # The same command/simulation/save pipeline as manual +1 s.
+    # Repeated small advances keep strike/recoil animations visible.
+    battle_tick_requested.emit(1.0)
+
+func _restart_demo() -> void:
+    if not bool(current_battle.get("demo_v61",false)) or \
+            String(current_battle.get("result",""))=="":return
+    set_auto_battle(false)
+    battle_demo_retry_requested.emit()
+
+func _reset_camera() -> void:
+    cam_size=175.0
+    if battle_camera!=null:
+        battle_camera.position=Vector3(0,670,520)
+        battle_camera.look_at(Vector3.ZERO,Vector3.UP)
+        battle_camera.size=cam_size
+
 func _ready() -> void:
     var column:=VBoxContainer.new()
     column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -185,6 +228,12 @@ func _ready() -> void:
     bar.add_child(_button("+1 s",func():battle_tick_requested.emit(1.0)))
     bar.add_child(_button("+10 s",func():battle_tick_requested.emit(10.0)))
     bar.add_child(_button("+30 s",func():battle_tick_requested.emit(30.0)))
+    auto_button=_button("▶ Jätka võitlust",_toggle_auto_battle)
+    bar.add_child(auto_button)
+    demo_retry_button=_button("Proovilahing uuesti",_restart_demo)
+    demo_retry_button.disabled=true
+    bar.add_child(demo_retry_button)
+    bar.add_child(_button("Kogu lahing",_reset_camera))
     bar.add_child(_button("Suumi +",func():_zoom(0.75)))
     bar.add_child(_button("Suumi −",func():_zoom(1.33)))
     var tactical:=HFlowContainer.new()
@@ -212,6 +261,12 @@ func _ready() -> void:
         ["Tagane üle piiri","retreat"]
     ]:
         tactical.add_child(_button(option[0],_issue.bind(option[1])))
+    auto_timer=Timer.new()
+    auto_timer.name="DemoAutoTickV61"
+    auto_timer.wait_time=0.25
+    auto_timer.one_shot=false
+    auto_timer.timeout.connect(_automatic_battle_step)
+    add_child(auto_timer)
     status_label=Label.new()
     status_label.name="BattleStatusV55"
     status_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
@@ -397,6 +452,12 @@ func _zoom(factor: float) -> void:
 func set_battle(b: Dictionary) -> void:
     current_battle=b.duplicate(true)
     if status_label==null:return
+    if String(current_battle.get("result",""))!="":
+        set_auto_battle(false)
+    if demo_retry_button!=null:
+        demo_retry_button.disabled=not (
+            bool(current_battle.get("demo_v61",false)) and
+            String(current_battle.get("result",""))!="")
     _refresh_obstacles()
     _refresh_projectiles()
     _refresh_move_markers()
@@ -416,13 +477,18 @@ func set_battle(b: Dictionary) -> void:
         if id==existing_id:selected_index=id_list.size()-1
     if not id_list.is_empty():order_picker.select(selected_index)
     _refresh_individual_picker()
-    var label: String="Kampaanialahing • iga sõdur liigub ja võitleb eraldi." if \
-        bool(current_battle.get("campaign_v56",false)) else \
-        "Kiviaja proovilahing • 24 individuaalset sõdurit väesalgas, päris kaotused."
+    var label: String="Tasuta proovilahing • kolm sõbralikku väesalka, üks vastane; kaotused ei muuda kampaaniat." if \
+        bool(current_battle.get("demo_v61",false)) else \
+        ("Kampaanialahing • iga sõdur liigub ja võitleb eraldi." if \
+            bool(current_battle.get("campaign_v56",false)) else \
+            "Harjutuslahing päris sõduritega • kaotused on püsivad.")
     var lines: Array[String]=[label]
     lines.append("Lahinguaeg %.1f s • tulemus: %s" % [
         float(current_battle.get("elapsed",0)),
         "käimas" if current_battle.get("result","")=="" else String(current_battle["result"])])
+    if bool(current_battle.get("demo_v61",false)):
+        lines.append("▶ Automaatvõitlus" if auto_play_enabled else
+            "⏸ Paus — võid anda käsklusi või vajutada ▶")
     for fighter in current_battle.get("fighters",[]):
         lines.append("%s %s %.0f/%.0f HP • %s (%d sõdurit)" % [
             "Sinu" if int(fighter["team"])==0 else "Vastane",
@@ -487,12 +553,15 @@ func set_battle(b: Dictionary) -> void:
             # geometry objects, no new rig and no per-frame reimport.
             var model_node: Node3D=holder.get_child(0) as Node3D
             if model_node!=null:
-                var phase: float=float(man.get("anim_phase",0.0))
-                var walking: bool=bool(man.get("moving",false))
-                var attacking: float=float(man.get("attack_anim",0.0))
-                model_node.position.y=absf(sin(phase))*0.12 if walking else 0.0
-                model_node.rotation.x=-0.27*sin(attacking/0.36*PI) if attacking>0.0 else 0.0
-                model_node.rotation.z=0.065*sin(phase) if walking else 0.0
+                if int(current_battle.get("version",0))>=61:
+                    Animation61.apply(model_node,man,kind)
+                else:
+                    var phase: float=float(man.get("anim_phase",0.0))
+                    var walking: bool=bool(man.get("moving",false))
+                    var attacking: float=float(man.get("attack_anim",0.0))
+                    model_node.position.y=absf(sin(phase))*0.12 if walking else 0.0
+                    model_node.rotation.x=-0.27*sin(attacking/0.36*PI) if attacking>0.0 else 0.0
+                    model_node.rotation.z=0.065*sin(phase) if walking else 0.0
             used[key]=true
             total+=1
     for node in actors_root.get_children():

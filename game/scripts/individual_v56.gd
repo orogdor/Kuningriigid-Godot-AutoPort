@@ -228,6 +228,8 @@ static func _attack(b: Dictionary,fighter: Dictionary,dt: float) -> void:
             man["ammo"]=int(man["ammo"])-1
             if int(b.get("version",56))>=58 or not hits:continue
         victim["hp"]=maxf(0.0,float(victim["hp"])-power)
+        if int(b.get("version",56))>=61:
+            victim["hit_anim_v61"]=0.36
 
 static func _aggregate(fighter: Dictionary) -> void:
     var total: float=0.0
@@ -242,6 +244,11 @@ static func _aggregate(fighter: Dictionary) -> void:
 static func tick(b: Dictionary,dt: float) -> void:
     initialize(b)
     var fighters: Array=b["fighters"]
+    if int(b.get("version",56))>=61:
+        for fighter in fighters:
+            for man in fighter.get("men",[]):
+                man["hit_anim_v61"]=maxf(0.0,
+                    float(man.get("hit_anim_v61",0.0))-dt)
     # Both sides advance before damage; no entire squad teleports to a target.
     var grid: Dictionary={}
     if int(b.get("version",56))>=57:
