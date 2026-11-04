@@ -10,6 +10,7 @@ const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Orders59=preload("res://scripts/battle_orders_v59.gd")
 const Individuals60=preload("res://scripts/individual_orders_v60.gd")
 const Attack68=preload("res://scripts/individual_attack_v68.gd")
+const Squad71=preload("res://scripts/squad_attack_v71.gd")
 const Raider56=preload("res://scripts/raider_v56.gd")
 const KEY: String="skirmish_v55"
 const SCALE: float=0.5 # battle-pacing-v93.js
@@ -94,7 +95,7 @@ static func start(state: Dictionary,world: Dictionary,ids: Array) -> String:
         "max_hp":float(Mil.TROOPS["spearman"]["hp"]),
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":70,"seed":int(world["seed"]),
+    military[KEY]={"version":71,"seed":int(world["seed"]),
         "cell":{"c":tile.x,"r":tile.y},"fighters":soldiers,
         "source_ids":ids.duplicate(),"elapsed":0.0,"fraction":0.0,
         "result":"","resolved":false,"log":[],
@@ -130,7 +131,7 @@ static func start_demo(state: Dictionary,world: Dictionary) -> String:
         "hp":foe_hp,"max_hp":foe_hp,
         "x":34.0,"z":0.0,"mode":"attack","formation":"line",
         "cool":0.0,"shots":0,"ammo":-1})
-    military[KEY]={"version":70,"seed":int(world["seed"]),
+    military[KEY]={"version":71,"seed":int(world["seed"]),
         "demo_v61":true,"fighters":troops,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
         "log":[],"battlefield":{"columns":3,"rows":3,"ring":1,
@@ -167,7 +168,7 @@ static func start_large_demo(state: Dictionary,world: Dictionary) -> String:
                 "mode":"attack","formation":"line",
                 "cool":0.0,"shots":0,
                 "ammo":18 if kind=="slinger" else -1})
-    military[KEY]={"version":70,"seed":int(world["seed"]),
+    military[KEY]={"version":71,"seed":int(world["seed"]),
         "demo_v61":true,"large_demo_v64":true,
         "fighters":fighters,"source_ids":[],
         "elapsed":0.0,"fraction":0.0,"result":"","resolved":false,
@@ -236,6 +237,7 @@ static func command(state: Dictionary,world: Dictionary,id: int,kind: String) ->
         if String(fighter.get("mode",""))!="move":Orders59.cancel(fighter)
         if int(b.get("version",0))>=60:
             Individuals60.clear_squad(fighter)
+        if int(b.get("version",0))>=71:Squad71.cancel(fighter)
         _message(b,"%s: %s" % [String(fighter["kind"]),kind])
         return ""
     return "Väesalka ei leitud."
@@ -250,6 +252,7 @@ static func move(state: Dictionary,world: Dictionary,id: int,
         for fighter in battle["fighters"]:
             if int(fighter.get("id",-1))==id and int(fighter.get("team",-1))==0:
                 Individuals60.clear_squad(fighter)
+                if int(battle.get("version",0))>=71:Squad71.cancel(fighter)
                 break
         _message(battle,"Väesalk #%d liigub sihtpunkti." % id)
     return result
@@ -260,6 +263,9 @@ static func move_individual(state: Dictionary,world: Dictionary,
     if battle.is_empty():return "Aktiivset lahingut ei ole."
     var result: String=Individuals60.issue(battle,squad_id,index,destination)
     if result=="":
+        if int(battle.get("version",0))>=71:
+            var man: Dictionary=Individuals60.soldier(battle,squad_id,index)
+            if not man.is_empty():Squad71.override(man)
         _message(battle,"Sõdur #%d:%d liigub iseseisvalt." % [squad_id,index])
     return result
 
@@ -269,6 +275,9 @@ static func rejoin_individual(state: Dictionary,world: Dictionary,
     if battle.is_empty():return "Aktiivset lahingut ei ole."
     var result: String=Individuals60.rejoin(battle,squad_id,index)
     if result=="":
+        if int(battle.get("version",0))>=71:
+            var man: Dictionary=Individuals60.soldier(battle,squad_id,index)
+            if not man.is_empty():Squad71.rejoin(man)
         _message(battle,"Sõdur #%d:%d naaseb rivvi." % [squad_id,index])
     return result
 
@@ -281,8 +290,23 @@ static func attack_individual(state: Dictionary,world: Dictionary,
     var result: String=Attack68.issue(battle,squad_id,index,
         enemy_squad,enemy_index)
     if result=="":
+        if int(battle.get("version",0))>=71:
+            var man: Dictionary=Individuals60.soldier(battle,squad_id,index)
+            if not man.is_empty():Squad71.override(man)
         _message(battle,"Sõdur #%d:%d ründab vastast #%d:%d." % [
             squad_id,index,enemy_squad,enemy_index])
+    return result
+
+## One target selection for the entire 24-person squad; V71 distributes
+## actual individual enemy IDs while keeping full V57 navigation and damage.
+static func attack_squad(state: Dictionary,world: Dictionary,
+        squad_id: int,enemy_squad: int) -> String:
+    var battle: Dictionary=current(state,world)
+    if battle.is_empty():return "Aktiivset lahingut ei ole."
+    var result: String=Squad71.issue(battle,squad_id,enemy_squad)
+    if result=="":
+        _message(battle,"Väesalk #%d ründab vaenlase väesalka #%d." % [
+            squad_id,enemy_squad])
     return result
 
 static func _nearest(from: Dictionary,foes: Array) -> Dictionary:
