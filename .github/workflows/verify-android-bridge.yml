@@ -55,7 +55,7 @@ jobs:
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path android-bridge --export-pack "Android" "$PWD/dist/Kuningriigid-Content.pck"
           test "$(stat -c%s dist/Kuningriigid-Content.pck)" -lt 1048576
           ls -lh dist
-      - name: Verify original v0.51 APK PCK opens latest 0.76 game
+      - name: Verify original v0.51 APK PCK opens current stamped game
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +68,7 @@ jobs:
           LEGACY_ANDROID_PCK="/tmp/legacy/Kuningriigid-Content.pck" \
             BRIDGE_ANDROID_PCK="$PWD/dist/Kuningriigid-Content.pck" \
             FULL_ANDROID_PCK="$PWD/dist/Kuningriigid-Full-Content.pck" \
-            ANDROID_RELEASE_VERSION="0.76.999" AUTOPORT_BRIDGE_SMOKE=1 \
+            ANDROID_RELEASE_VERSION="$(python3 -c 'import json; print(json.load(open("game/data/generated/release.json"))["version"])')" AUTOPORT_BRIDGE_SMOKE=1 \
             timeout --signal=TERM --kill-after=5s 180s \
             /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
             --headless --path /tmp/bridge-test --script res://android_bridge_v76.gd
