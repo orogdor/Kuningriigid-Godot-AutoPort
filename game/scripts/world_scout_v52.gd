@@ -6,6 +6,7 @@ extends RefCounted
 ## Battles, fog of war and army recruitment are deliberately not claimed here.
 const World=preload("res://scripts/world_gen_v06.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
+const Auto79=preload("res://scripts/scout_auto_v79.gd")
 const DETAIL_TILE_X: float=225.0
 const DETAIL_TILE_Z: float=195.0
 const SCOUT_SPEED: float=4.3
@@ -42,6 +43,7 @@ static func ensure(state: Dictionary,world: Dictionary) -> Dictionary:
     if not entity is Dictionary or int(entity.get("seed",-1))!=int(world.get("seed",-2)) or \
             not Routes.passable(world,int(entity.get("c",-1)),int(entity.get("r",-1))):
         state[KEY]=_new(world)
+        Auto79.ensure(state[KEY])
         return state[KEY]
     # Old/corrupt save protection; never follow paths over sea or across rows.
     if not entity.get("path",null) is Array or entity["path"].size()>World.COLS*World.ROWS:
@@ -65,6 +67,7 @@ static func ensure(state: Dictionary,world: Dictionary) -> Dictionary:
     if entity["path"].is_empty():
         entity["travelClock"]=0.0
         entity["travelDuration"]=0.0
+    Auto79.ensure(entity)
     return entity
 
 static func order(state: Dictionary,world: Dictionary,destination: Vector2i) -> String:
@@ -74,25 +77,51 @@ static func order(state: Dictionary,world: Dictionary,destination: Vector2i) -> 
         return "Avastaja ei saa liikuda merre või läbimatusse mäestikku."
     var current:=Vector2i(int(scout["c"]),int(scout["r"]))
     if current==destination:
+        scout["auto_explore_v79"]=false
         scout["path"]=[]
         scout["travelClock"]=0.0
         scout["travelDuration"]=0.0
         return ""
     var planned: Array=Routes.build_path(world,current,destination)
     if planned.size()<2:return "Maismaateed sihtkohta ei leitud."
-    # A new order starts from the current strategic tile; no teleporting.
+    # A valid manual order takes precedence over automatic exploration.
+    scout["auto_explore_v79"]=false
     scout["path"]=planned.slice(1)
     scout["travelClock"]=0.0
     scout["travelDuration"]=segment_seconds(scout,scout["path"][0],float(scout["speed"]))
     return ""
 
+static func set_auto(state: Dictionary,world: Dictionary,enabled: bool) -> bool:
+    var scout: Dictionary=ensure(state,world)
+    if scout.is_empty():return false
+    scout["auto_explore_v79"]=enabled
+    # A currently moving scout completes its saved segment even when auto
+    # mode is disabled. No mid-tile teleports or lost travel clocks.
+    if enabled and scout.get("path",[]).is_empty():
+        _plan_auto(scout,world)
+    return enabled
+
+static func _plan_auto(scout: Dictionary,world: Dictionary) -> bool:
+    if not bool(scout.get("auto_explore_v79",false)) or \
+            not scout.get("path",[]).is_empty():return false
+    var route: Array=Auto79.route(world,scout)
+    if route.is_empty():return false
+    scout["path"]=route
+    scout["travelClock"]=0.0
+    scout["travelDuration"]=segment_seconds(scout,route[0],float(scout["speed"]))
+    return true
+
 static func tick(state: Dictionary,world: Dictionary,seconds: float) -> int:
     if world.is_empty() or seconds<=0.0:return 0
     var scout: Dictionary=ensure(state,world)
-    if scout.is_empty() or scout["path"].is_empty():return 0
+    if scout.is_empty():return 0
     var passed: int=0
     var remaining: float=seconds
-    while not scout["path"].is_empty() and remaining>=0.0:
+    var transitions: int=0
+    while remaining>0.0000001 and transitions<512:
+        transitions+=1
+        if scout["path"].is_empty():
+            if not _plan_auto(scout,world):break
         var next: Dictionary=scout["path"][0]
         var duration: float=segment_seconds(scout,next,float(scout["speed"]))
         if duration<=0.0 or not is_finite(duration):break
@@ -108,8 +137,8 @@ static func tick(state: Dictionary,world: Dictionary,seconds: float) -> int:
         scout["path"].pop_front()
         scout["travelClock"]=0.0
         scout["travelDuration"]=0.0
+        Auto79.visit(scout,int(scout["c"]),int(scout["r"]))
         passed+=1
-        if scout["path"].is_empty():break
     return passed
 
 static func sample(scout: Dictionary) -> Dictionary:
