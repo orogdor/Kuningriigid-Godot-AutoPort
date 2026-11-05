@@ -119,6 +119,7 @@ jobs:
           chmod +x /tmp/godot/Godot_v4.4.1-stable_linux.x86_64
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --import
           /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --quit-after 3
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path android-bridge --editor --quit
       - name: Check real GLB soldier pixels using Mesa renderer
         working-directory: port
         shell: bash
