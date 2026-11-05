@@ -42,6 +42,7 @@ const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const WebUnits53 = preload("res://scripts/web_units_v53.gd")
 const ArmyMotion78 = preload("res://scripts/strategic_army_motion_v78.gd")
+const Pose80 = preload("res://scripts/strategic_detail_pose_v80.gd")
 const WebV299=preload("res://scripts/web_models_v72.gd")
 const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
@@ -1647,6 +1648,19 @@ func _can_build(kind: String) -> bool:
         if not exists:return false
     return CityEconomy.can_afford(city_state["realms"][0]["resources"],d.get("cost",{}))
 
+## Uses the same authoritative fractional tile coordinate on the atlas,
+## single-tile 3D scene and the combined 160 m district mesh. The displayed
+## world tile is inferred from the current fractional pose, not the saved
+## route origin. This avoids double drawing at the exact shared boundary.
+func _world_ground_v80(pose: Dictionary,draw: Vector2) -> float:
+    if combined_city:
+        var owner: Vector2i=Pose80.owner(pose)
+        var inside: Vector2=Pose80.in_owner_local(pose,selected,true,draw)
+        # 160m city surfaces are generated from Terrain28, NOT the old
+        # 225x195 SeamTerrain42 elevations.
+        return Terrain28.height(world,owner,inside.x,inside.y)
+    return _elevation(draw.x,draw.y,0.0,can_build)
+
 func set_world_scout_v53(data: Dictionary) -> void:
     if world_scout_actor_v53==null or world.is_empty() or selected.x<0 or data.is_empty():
         if world_scout_actor_v53!=null:world_scout_actor_v53.visible=false
@@ -1655,18 +1669,14 @@ func set_world_scout_v53(data: Dictionary) -> void:
         world_scout_actor_v53.visible=false
         return
     var pose: Dictionary=Scout52.sample(data)
-    if pose.is_empty():
+    if pose.is_empty() or not Pose80.visible(
+            pose,selected,combined_city,shown_district_tiles):
         world_scout_actor_v53.visible=false
         return
-    var x: float=(float(pose["c"])-float(selected.x))*SURFACE_WIDTH
-    var z: float=(float(pose["r"])-float(selected.y))*SURFACE_DEPTH
-    # V240: the same world position is continuous in both atlas and detail.
-    # Keep the model on its actual tile, never duplicate it in two districts.
-    if absf(x)>SURFACE_WIDTH*0.5 or absf(z)>SURFACE_DEPTH*0.5:
-        world_scout_actor_v53.visible=false
-        return
+    var point: Vector2=Pose80.local(pose,selected,combined_city)
     world_scout_actor_v53.visible=true
-    world_scout_actor_v53.position=Vector3(x,_elevation(x,z,0.0,can_build),z)
+    world_scout_actor_v53.position=Vector3(point.x,
+        _world_ground_v80(pose,point),point.y)
     var path: Array=data.get("path",[])
     if not path.is_empty():
         var next: Dictionary=path[0]
@@ -1675,19 +1685,16 @@ func set_world_scout_v53(data: Dictionary) -> void:
 
 func set_world_armies_v54(armies: Array) -> void:
     if army_detail_root_v54==null:return
-    # Keep the same rigged GLB/animation across economy turns and 3D refreshes.
-    # The detail card is only a representation of the saved world army.
     var active: Dictionary={}
     var rendered: int=0
     if not world.is_empty() and selected.x>=0:
         for army in armies:
             if rendered>=18:break
-            var sample: Dictionary=Military54.sample(army)
-            if sample.is_empty():continue
-            var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
-            var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH
-            if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:
+            var pose: Dictionary=Military54.sample(army)
+            if pose.is_empty() or not Pose80.visible(
+                    pose,selected,combined_city,shown_district_tiles):
                 continue
+            var point: Vector2=Pose80.local(pose,selected,combined_city)
             var kind: String=String(army.get("kind",""))
             var id: int=int(army.get("id",0))
             var key: String="DetailArmyV54_"+str(id)
@@ -1709,15 +1716,14 @@ func set_world_armies_v54(armies: Array) -> void:
             if render_model!=null:
                 WebUnits53.animate_world(render_model,
                     not army.get("path",[]).is_empty())
-            # V75 rally area remains clear of the central hall. V78 chooses
-            # stable spots by ID, not iteration order (which could shuffle).
+            # Keep the saved-ID-based rally offsets from V78 so a resting
+            # soldier is not hidden inside the capital's hall. The *tile*
+            # ownership and base point are always computed before offset.
             var slot: int=posmod(id,25)
             var rally_x: float=24.0+float(slot%5)*4.0
             var rally_z: float=16.0+float(floori(float(slot)/5.0))*4.0
-            var draw_x: float=x+rally_x
-            var draw_z: float=z+rally_z
-            var target:=Vector3(draw_x,
-                _elevation(draw_x,draw_z,0.0,can_build),draw_z)
+            var draw:=Vector2(point.x+rally_x,point.y+rally_z)
+            var target:=Vector3(draw.x,_world_ground_v80(pose,draw),draw.y)
             var facing: float=group.rotation.y
             var route: Array=army.get("path",[])
             if not route.is_empty():
@@ -1728,8 +1734,7 @@ func set_world_armies_v54(armies: Array) -> void:
             active[key]=true
             rendered+=1
     for node in army_detail_root_v54.get_children():
-        if not active.has(String(node.name)):
-            node.free()
+        if not active.has(String(node.name)):node.free()
 
 func set_military_camp_v54(camp: Dictionary) -> void:
     if camp_detail_root_v54==null or world.is_empty() or selected.x<0:return
