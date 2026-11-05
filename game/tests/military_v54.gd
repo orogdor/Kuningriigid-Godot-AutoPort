@@ -6,6 +6,7 @@ const World=preload("res://scripts/world_gen_v06.gd")
 const Mil=preload("res://scripts/military_v54.gd")
 const Research=preload("res://scripts/research_v35.gd")
 const Routes=preload("res://scripts/world_trade_routes_v17.gd")
+const Motion78=preload("res://scripts/strategic_army_motion_v78.gd")
 
 func fail(message: String) -> void:
     printerr("MILITARY_V54 FAIL: "+message)
@@ -127,9 +128,21 @@ func _test() -> void:
     ui._sync_trade_map()
     var actual: Node3D=ui.world_view.terrain_3d.army_root_v54.get_node_or_null(
         "ArmyActorV54_"+str(first["id"])) as Node3D
-    if actual==null or actual.position.distance_to(
-            ui.world_view.terrain_3d.scout_point_for(first))>0.00001:
-        fail("halfway 3D soldier position diverged from the saved travel clock")
+    if actual==null:
+        fail("halfway 3D soldier actor disappeared from the world map")
+        return
+    # V78 keeps the exact simulation-derived travel clock as its authoritative
+    # visual GOAL, while the live GLB moves between frames without teleporting.
+    var expected: Vector3=ui.world_view.terrain_3d.scout_point_for(first)
+    var goal: Vector3=actual.get_meta("motion_goal_v78",Vector3.INF)
+    if goal.distance_to(expected)>0.00001:
+        fail("halfway strategic target diverged from the saved travel clock")
+        return
+    var before_blend: float=actual.position.distance_to(expected)
+    Motion78.advance(ui.world_view.terrain_3d.army_root_v54,0.10)
+    if before_blend>0.01 and (actual.position.distance_to(expected)>=before_blend or \
+            actual.position.distance_to(expected)<0.00001):
+        fail("halfway 3D soldier teleported rather than moving smoothly")
         return
     Mil.tick(ui.city,world,duration*0.5)
     if int(first["c"])!=target.x or int(first["r"])!=target.y or \

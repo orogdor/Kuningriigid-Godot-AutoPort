@@ -11,6 +11,7 @@ const WebArt50=preload("res://scripts/web_graphics_v50.gd")
 const WebWater51=preload("res://scripts/web_water_v51.gd")
 const Scout52=preload("res://scripts/world_scout_v52.gd")
 const WebUnits53=preload("res://scripts/web_units_v53.gd")
+const ArmyMotion78=preload("res://scripts/strategic_army_motion_v78.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -38,6 +39,9 @@ var moved: float=0.0
 var pinch_gesture: bool=false
 var last_tap_ms: int=-10000
 var last_tap_cell: Vector2i=Vector2i(-1,-1)
+
+func _process(delta: float) -> void:
+    if visible:ArmyMotion78.advance(army_root_v54,delta)
 
 func _ready() -> void:
     mouse_filter=Control.MOUSE_FILTER_STOP
@@ -321,46 +325,62 @@ func set_scout(data: Dictionary) -> void:
 
 func set_armies_v54(armies: Array) -> void:
     if army_root_v54==null:return
-    # Always derive the drawn position from saved path and duration; the atlas
-    # does not simulate a parallel army clock. Cap actors for mobile GPUs.
-    for node in army_root_v54.get_children():node.free()
-    if world.is_empty():return
+    # V78: Three.js uses stable army IDs. Reuse the original skinned GLB
+    # instance and its AnimationPlayer across every saved state refresh.
+    # Creating 36 rigs on each tick previously restarted all idle/walk clips.
+    var active: Dictionary={}
     var shown: int=0
-    for army in armies:
-        if shown>=36:break
-        var c: int=int(army.get("c",-1))
-        var r: int=int(army.get("r",-1))
-        if not bool(World.cell(world,c,r).get("land",false)):continue
-        var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,2.7,false,true)
-        if model==null:continue
-        var unit:=Node3D.new()
-        unit.name="ArmyActorV54_"+str(int(army.get("id",shown)))
-        unit.set_meta("army_id",int(army.get("id",shown)))
-        army_root_v54.add_child(unit)
-        model.name="OriginalStoneAge_"+kind
-        unit.add_child(model)
-        # Bright footprint distinguishes an army from forests at overview zoom.
-        var flag:=MeshInstance3D.new()
-        flag.name="ArmyFootprintV75"
-        var disc:=CylinderMesh.new()
-        disc.top_radius=3.9
-        disc.bottom_radius=3.9
-        disc.height=0.12
-        flag.mesh=disc
-        flag.position.y=0.10
-        var flag_color:=StandardMaterial3D.new()
-        flag_color.albedo_color=Color("#5af5ff")
-        flag_color.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-        flag.material_override=flag_color
-        unit.add_child(flag)
-        WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
-        unit.position=scout_point_for(army)
-        var path: Array=army.get("path",[])
-        if not path.is_empty():
-            var next: Dictionary=path[0]
-            unit.rotation.y=atan2(float(next["c"])-float(c),float(next["r"])-float(r))
-        shown+=1
+    if not world.is_empty():
+        for army in armies:
+            if shown>=36:break
+            var c: int=int(army.get("c",-1))
+            var r: int=int(army.get("r",-1))
+            if not bool(World.cell(world,c,r).get("land",false)):continue
+            var kind: String=String(army.get("kind",""))
+            var id: int=int(army.get("id",shown))
+            var key: String="ArmyActorV54_"+str(id)
+            var unit: Node3D=army_root_v54.get_node_or_null(key) as Node3D
+            if unit!=null and String(unit.get_meta("army_kind_v78",""))!=kind:
+                unit.free()
+                unit=null
+            if unit==null:
+                var model: Node3D=WebUnits53.instance(kind,2.7,false,true)
+                if model==null:continue
+                unit=Node3D.new()
+                unit.name=key
+                unit.set_meta("army_id",id)
+                unit.set_meta("army_kind_v78",kind)
+                army_root_v54.add_child(unit)
+                model.name="OriginalStoneAge_"+kind
+                unit.add_child(model)
+                var flag:=MeshInstance3D.new()
+                flag.name="ArmyFootprintV75"
+                var disc:=CylinderMesh.new()
+                disc.top_radius=3.9
+                disc.bottom_radius=3.9
+                disc.height=0.12
+                flag.mesh=disc
+                flag.position.y=0.10
+                var flag_color:=StandardMaterial3D.new()
+                flag_color.albedo_color=Color("#5af5ff")
+                flag_color.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+                flag.material_override=flag_color
+                unit.add_child(flag)
+            var render_model: Node3D=unit.get_child(0) as Node3D
+            if render_model!=null:
+                WebUnits53.animate_world(render_model,
+                    not army.get("path",[]).is_empty())
+            var facing: float=unit.rotation.y
+            var path: Array=army.get("path",[])
+            if not path.is_empty():
+                var next: Dictionary=path[0]
+                facing=atan2(float(next["c"])-float(c),float(next["r"])-float(r))
+            ArmyMotion78.retarget(unit,scout_point_for(army),facing,2.5)
+            active[key]=true
+            shown+=1
+    for node in army_root_v54.get_children():
+        if not active.has(String(node.name)):
+            node.free()
     _refresh_army_visibility_v75()
 
 func set_raider_v56(enemy: Dictionary) -> void:

@@ -41,6 +41,7 @@ const WebPalette50 = preload("res://scripts/web_biomes_v50.gd")
 const WebArt50 = preload("res://scripts/web_graphics_v50.gd")
 const WebWater51 = preload("res://scripts/web_water_v51.gd")
 const WebUnits53 = preload("res://scripts/web_units_v53.gd")
+const ArmyMotion78 = preload("res://scripts/strategic_army_motion_v78.gd")
 const WebV299=preload("res://scripts/web_models_v72.gd")
 const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
@@ -289,6 +290,7 @@ func _toggle_performance() -> void:
 
 func _process(delta: float) -> void:
     if not visible or view_port==null:return
+    ArmyMotion78.advance(army_detail_root_v54,delta)
     if not combined_city and controller!=null:
         seam_preview_refresh_clock+=delta
         if seam_preview_refresh_clock>=0.25:
@@ -1673,44 +1675,61 @@ func set_world_scout_v53(data: Dictionary) -> void:
 
 func set_world_armies_v54(armies: Array) -> void:
     if army_detail_root_v54==null:return
-    for node in army_detail_root_v54.get_children():node.free()
-    if world.is_empty() or selected.x<0:return
+    # Keep the same rigged GLB/animation across economy turns and 3D refreshes.
+    # The detail card is only a representation of the saved world army.
+    var active: Dictionary={}
     var rendered: int=0
-    for army in armies:
-        if rendered>=18:break
-        var sample: Dictionary=Military54.sample(army)
-        if sample.is_empty():continue
-        var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
-        var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH
-        # The active detail tile owns each actor. Neighbouring tiles never
-        # receive duplicate props; switching tiles picks the same saved pose.
-        if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:continue
-        var kind: String=String(army.get("kind",""))
-        var model: Node3D=WebUnits53.instance(kind,3.1,false,true)
-        if model==null:continue
-        var group:=Node3D.new()
-        group.name="DetailArmyV54_"+str(int(army.get("id",0)))
-        group.set_meta("army_id",int(army.get("id",0)))
-        army_detail_root_v54.add_child(group)
-        model.name="OriginalWeb_"+kind
-        group.add_child(model)
-        WebUnits53.animate_world(model,not army.get("path",[]).is_empty())
-        # V75: x=z=0 on capital tiles is occupied by the hall. Previous
-        # 0-4m offsets left the soldier INSIDE that opaque building.
-        # Use a visible rally area about 25m from the centre. This shifts
-        # only the detail prop, never the saved march path or combat position.
-        var rally_x: float=24.0+float(rendered%5)*4.0
-        var rally_z: float=16.0+float(rendered/5)*4.0
-        var draw_x: float=x+rally_x
-        var draw_z: float=z+rally_z
-        group.position=Vector3(draw_x,
-            _elevation(draw_x,draw_z,0.0,can_build),draw_z)
-        var route: Array=army.get("path",[])
-        if not route.is_empty():
-            var next: Dictionary=route[0]
-            group.rotation.y=atan2(float(next["c"])-float(army["c"]),
-                float(next["r"])-float(army["r"]))
-        rendered+=1
+    if not world.is_empty() and selected.x>=0:
+        for army in armies:
+            if rendered>=18:break
+            var sample: Dictionary=Military54.sample(army)
+            if sample.is_empty():continue
+            var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
+            var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH
+            if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:
+                continue
+            var kind: String=String(army.get("kind",""))
+            var id: int=int(army.get("id",0))
+            var key: String="DetailArmyV54_"+str(id)
+            var group: Node3D=army_detail_root_v54.get_node_or_null(key) as Node3D
+            if group!=null and String(group.get_meta("army_kind_v78",""))!=kind:
+                group.free()
+                group=null
+            if group==null:
+                var model: Node3D=WebUnits53.instance(kind,3.1,false,true)
+                if model==null:continue
+                group=Node3D.new()
+                group.name=key
+                group.set_meta("army_id",id)
+                group.set_meta("army_kind_v78",kind)
+                army_detail_root_v54.add_child(group)
+                model.name="OriginalWeb_"+kind
+                group.add_child(model)
+            var render_model: Node3D=group.get_child(0) as Node3D
+            if render_model!=null:
+                WebUnits53.animate_world(render_model,
+                    not army.get("path",[]).is_empty())
+            # V75 rally area remains clear of the central hall. V78 chooses
+            # stable spots by ID, not iteration order (which could shuffle).
+            var slot: int=posmod(id,25)
+            var rally_x: float=24.0+float(slot%5)*4.0
+            var rally_z: float=16.0+float(floori(float(slot)/5.0))*4.0
+            var draw_x: float=x+rally_x
+            var draw_z: float=z+rally_z
+            var target:=Vector3(draw_x,
+                _elevation(draw_x,draw_z,0.0,can_build),draw_z)
+            var facing: float=group.rotation.y
+            var route: Array=army.get("path",[])
+            if not route.is_empty():
+                var next: Dictionary=route[0]
+                facing=atan2(float(next["c"])-float(army["c"]),
+                    float(next["r"])-float(army["r"]))
+            ArmyMotion78.retarget(group,target,facing,90.0)
+            active[key]=true
+            rendered+=1
+    for node in army_detail_root_v54.get_children():
+        if not active.has(String(node.name)):
+            node.free()
 
 func set_military_camp_v54(camp: Dictionary) -> void:
     if camp_detail_root_v54==null or world.is_empty() or selected.x<0:return
