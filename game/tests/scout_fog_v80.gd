@@ -43,7 +43,9 @@ func _run() -> void:
             (surface[Mesh.ARRAY_TEX_UV] as PackedVector2Array).size()!=World.COLS*World.ROWS*6:
         fail("3D terrain is not sampling a per-cell GPU fog texture")
         return
-    var before_image: Image=canvas.fog_texture_v80.get_image()
+    # Headless Godot uses a dummy GPU texture server; validate image pixels
+    # from the source Image instead of reading back a nonexistent framebuffer.
+    var before_image: Image=Fog.atlas_image(scout,world)
     if before_image.get_pixel(far.x,far.y).a<0.7 or \
             before_image.get_pixel(int(scout["c"]),int(scout["r"])).a>0.02:
         fail("initial fog pixels do not distinguish hidden and visible cells")
@@ -85,12 +87,14 @@ func _run() -> void:
         return
     toggle.pressed.emit()
     if map.fog_enabled_v80 or canvas.fog_texture_v80!=null or \
-            terrain.fog_texture_v80.get_image().get_pixel(far.x,far.y).r<0.99:
+            terrain.fog_key_v80!="clear"+str(false) or \
+            Fog.terrain_image({},world).get_pixel(far.x,far.y).r<0.99:
         fail("fog-off must reveal the whole 2D and 3D atlas")
         return
     toggle.pressed.emit()
     if not map.fog_enabled_v80 or canvas.fog_texture_v80==null or \
-            terrain.fog_texture_v80.get_image().get_pixel(far.x,far.y).r>0.4:
+            terrain.fog_key_v80!=Fog.signature(moved,world)+str(true) or \
+            Fog.terrain_image(moved,world).get_pixel(far.x,far.y).r>0.4:
         fail("fog-on must restore unexplored territory")
         return
     var legacy: Dictionary=ui.city.duplicate(true)
