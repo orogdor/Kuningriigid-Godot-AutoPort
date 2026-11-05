@@ -57,7 +57,7 @@ func _process(_delta: float) -> void:
     if total>0:
         label.text="Laadin mängu: %.1f / %.1f MB (%.0f%%). Ära sulge rakendust." % [
             received,float(total)/1048576.0,
-            float(http.get_downloaded_bytes())*100.0/float(total)])
+            float(http.get_downloaded_bytes())*100.0/float(total)]
     else:
         label.text="Laadin mängu: %.1f MB. Ära sulge rakendust." % received
 
