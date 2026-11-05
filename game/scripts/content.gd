@@ -93,6 +93,7 @@ func _ready() -> void:
     world_view.open_detail_requested.connect(_show_detail)
     world_view.expand_requested.connect(_expand_district)
     world_view.scout_destination_requested.connect(_scout_order)
+    world_view.scout_auto_requested.connect(_toggle_scout_auto_v79)
     world_view.army_destination_requested.connect(_army_order)
     world_view.battle_requested.connect(_start_skirmish)
     world_view.army_rally_requested.connect(_army_rally)
@@ -185,6 +186,16 @@ func _scout_order(c: int,r: int) -> void:
     if world_view==null or world_view.world.is_empty():return
     var message: String=WorldScout52.order(city,world_view.world,Vector2i(c,r))
     event_message=message if message!="" else "Avastajale anti uus sihtkoht: %d × %d." % [c,r]
+    _sync_trade_map()
+    _save()
+    _refresh()
+
+func _toggle_scout_auto_v79() -> void:
+    if world_view==null or world_view.world.is_empty():return
+    var scout: Dictionary=WorldScout52.ensure(city,world_view.world)
+    var enabled: bool=WorldScout52.set_auto(city,world_view.world,
+        not bool(scout.get("auto_explore_v79",false)))
+    event_message="Avastaja automaatne uurimine: "+("sees" if enabled else "väljas")
     _sync_trade_map()
     _save()
     _refresh()
