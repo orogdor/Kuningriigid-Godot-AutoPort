@@ -138,7 +138,14 @@ func _run() -> void:
         return
     var warrior_pose: Dictionary=_pose(home,neighbour,0.55)
     var warrior_local: Vector2=Pose80.local(warrior_pose,home,true)
-    var drawn: Vector2=warrior_local+Vector2(24,16)
+    var drawn: Vector2=Pose80.rally(warrior_pose,home,true,Vector2(24,16))
+    var edge_before: Vector2=Pose80.rally(_pose(home,neighbour,0.499),
+        home,true,Vector2(24,16))
+    var edge_after: Vector2=Pose80.rally(_pose(home,neighbour,0.501),
+        home,true,Vector2(24,16))
+    if edge_before.distance_to(edge_after)>1.0:
+        fail("rally offset jumps across city-district boundary")
+        return
     var warrior_inside: Vector2=Pose80.in_owner_local(
         warrior_pose,home,true,drawn)
     if not _check_vec(after.get_meta("motion_goal_v78",Vector3.INF),

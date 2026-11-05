@@ -38,6 +38,21 @@ static func in_owner_local(pose: Dictionary,anchor: Vector2i,
     return draw_point-Vector2(float(tile.x-anchor.x)*step.x,
         float(tile.y-anchor.y)*step.y)
 
+static func rally(pose: Dictionary,anchor: Vector2i,
+        combined_city: bool,visual_offset: Vector2) -> Vector2:
+    var base: Vector2=local(pose,anchor,combined_city)
+    var local_tile: Vector2=in_owner_local(pose,anchor,combined_city,base)
+    var half: Vector2=span(combined_city)*0.5
+    # A stationary unit may stand in a clear courtyard instead of inside
+    # the central hall, but as it walks toward the district border this
+    # display-only offset fades to zero. No actor crosses an invisible
+    # 160m seam early or pops back by 24-40m after arriving.
+    var clearance_x: float=maxf(0.0,half.x-absf(local_tile.x))
+    var clearance_z: float=maxf(0.0,half.y-absf(local_tile.y))
+    var fade: float=clampf(minf(clearance_x/maxf(1.0,absf(visual_offset.x)),
+        clearance_z/maxf(1.0,absf(visual_offset.y))),0.0,1.0)
+    return base+visual_offset*fade
+
 static func sector(pose: Dictionary) -> Vector2i:
     # The scout uses the same 8x8 sub-cell indices at either camera scale.
     var c: float=float(pose.get("c",0.0))

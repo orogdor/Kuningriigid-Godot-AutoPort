@@ -1722,7 +1722,8 @@ func set_world_armies_v54(armies: Array) -> void:
             var slot: int=posmod(id,25)
             var rally_x: float=24.0+float(slot%5)*4.0
             var rally_z: float=16.0+float(floori(float(slot)/5.0))*4.0
-            var draw:=Vector2(point.x+rally_x,point.y+rally_z)
+            var draw: Vector2=Pose80.rally(pose,selected,combined_city,
+                Vector2(rally_x,rally_z))
             var target:=Vector3(draw.x,_world_ground_v80(pose,draw),draw.y)
             var facing: float=group.rotation.y
             var route: Array=army.get("path",[])
