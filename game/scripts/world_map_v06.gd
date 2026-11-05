@@ -4,6 +4,7 @@ signal open_city_requested
 signal open_detail_requested(c: int, r: int)
 signal expand_requested(c: int, r: int)
 signal scout_destination_requested(c: int, r: int)
+signal scout_auto_requested
 signal army_destination_requested(id: int,c: int,r: int)
 signal army_rally_requested(id: int)
 signal battle_requested(id: int)
@@ -25,6 +26,7 @@ var army_selector_v54: OptionButton
 var army_ids_v54: Array[int]=[]
 var army_state_v54: Array=[]
 var scout_status_label: Label
+var scout_auto_button_v79: Button
 var scout_state: Dictionary={}
 var info_label: Label
 var seed: int = 82026
@@ -73,6 +75,12 @@ func _ready() -> void:
     scout_order.pressed.connect(func():
         if selected_cell.x>=0:scout_destination_requested.emit(selected_cell.x,selected_cell.y))
     bar.add_child(scout_order)
+    scout_auto_button_v79=Button.new()
+    scout_auto_button_v79.name="ScoutAutoV79"
+    scout_auto_button_v79.text="Autoavastus: väljas"
+    scout_auto_button_v79.tooltip_text="Avastaja liigub ise külastamata maismaaruutudele"
+    scout_auto_button_v79.pressed.connect(func():scout_auto_requested.emit())
+    bar.add_child(scout_auto_button_v79)
     army_selector_v54=OptionButton.new()
     army_selector_v54.name="ArmySelectorV54"
     army_selector_v54.custom_minimum_size=Vector2(160,38)
@@ -236,6 +244,8 @@ func set_trade_route(route: Dictionary,caravans: Array) -> void:
 
 func set_scout(data: Dictionary) -> void:
     scout_state=data.duplicate(true)
+    if scout_auto_button_v79!=null:
+        scout_auto_button_v79.text="Autoavastus: sees" if bool(scout_state.get("auto_explore_v79",false)) else "Autoavastus: väljas"
     if map_canvas!=null:map_canvas.set_scout(scout_state)
     if terrain_3d!=null:terrain_3d.set_scout(scout_state)
     if scout_status_label!=null:
@@ -244,7 +254,8 @@ func set_scout(data: Dictionary) -> void:
         else:
             var path: Array=scout_state.get("path",[])
             var tile: String="%d × %d" % [int(scout_state.get("c",0)),int(scout_state.get("r",0))]
-            scout_status_label.text="Avastaja: %s • teel %d ruutu. Vali sihtkoht ja vajuta Saada avastaja." % [tile,path.size()]
+            scout_status_label.text="Avastaja: %s • teel %d ruutu • avastatud %d. %s" % [tile,path.size(),int(scout_state.get("visited_count_v79",1)),
+                "Autoavastus töötab." if bool(scout_state.get("auto_explore_v79",false)) else "Vali sihtkoht või lülita autoavastus sisse."]
 
 func set_armies_v54(armies: Array) -> void:
     army_state_v54=armies.duplicate(true)
