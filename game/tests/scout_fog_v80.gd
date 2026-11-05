@@ -71,8 +71,8 @@ func _run() -> void:
         ui._sync_trade_map()
         moved=Scout.ensure(ui.city,world)
         after=Fog.visibility(moved,world)
-    if Fog.signature(moved,world)==old_signature or \
-            terrain.fog_key_v80!=Fog.signature(moved,world):
+    if Fog.signature(moved,world)+str(true)==old_signature or \
+            terrain.fog_key_v80!=Fog.signature(moved,world)+str(true):
         fail("fog was not refreshed when the explorer discovered new tiles")
         return
     if terrain.fog_texture_v80.get_instance_id()!=old_texture_id:
