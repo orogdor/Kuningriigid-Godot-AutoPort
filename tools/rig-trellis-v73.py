@@ -412,9 +412,11 @@ def merge(kind,old_path,new_path,destination):
     verify_doc,_=load_glb(destination)
     if len(verify_doc["animations"]) != len(old_doc["animations"]):
         raise ValueError("Rig transfer lost original animation channels")
-    for p in verify_doc["meshes"][0]["primitives"]:
-        if not {"JOINTS_0","WEIGHTS_0","TEXCOORD_0"}.issubset(p["attributes"]):
-            raise ValueError("Rigged mesh has no bones, weights or source texture")
+    for i,p in enumerate(verify_doc["meshes"][0]["primitives"]):
+        required={"JOINTS_0","WEIGHTS_0"}
+        required.add("TEXCOORD_0" if i==0 else "COLOR_0")
+        if not required.issubset(p["attributes"]):
+            raise ValueError("Rigged mesh lacks bones or vertex colour/texture")
     return {"bytes":len(content),"sha256":hashlib.sha256(content).hexdigest(),
             "source_mesh_sha256":hashlib.sha256(Path(new_path).read_bytes()).hexdigest(),
             "rig_sha256":hashlib.sha256(Path(old_path).read_bytes()).hexdigest(),
