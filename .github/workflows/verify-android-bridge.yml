@@ -1,0 +1,74 @@
+name: Verify Android legacy APK migration
+
+on:
+  pull_request:
+    paths:
+      - 'android-bridge/**'
+      - 'game/game_content.tscn'
+      - 'game/tests/android_bridge_v76.gd'
+      - '.github/workflows/build-apps.yml'
+      - '.github/workflows/verify-android-bridge.yml'
+      - 'game/project.godot'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-android-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: orogdor/Kuningriigid
+          path: upstream
+      - name: Install Godot 4.4.1 export environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/godot /tmp/godot-templates
+          curl -fL --retry 3 -o /tmp/godot-editor.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q /tmp/godot-editor.zip -d /tmp/godot
+          chmod +x /tmp/godot/Godot_v4.4.1-stable_linux.x86_64
+          curl -fL --retry 3 -o /tmp/godot-templates.tpz \
+            https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          cp -a /tmp/godot-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+      - name: Import and export candidate bridge and full Android PCKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="$(git -C upstream rev-parse HEAD)"
+          python3 tools/import-web-v299.py --source upstream --out game/assets/web72 --commit "$UPSTREAM_SHA"
+          python3 tools/rig-trellis-v73.py --legacy game/assets/web53 --trellis game/assets/web72/unit --out game/assets/web73 --commit "$UPSTREAM_SHA"
+          python3 tools/stamp_release.py --project game/project.godot --preset game/export_presets.cfg --run-number 999
+          mkdir -p dist
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --import
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path game --export-pack "Android" "$PWD/dist/Kuningriigid-Full-Content.pck"
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path android-bridge --import
+          /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 --headless --path android-bridge --export-pack "Android" "$PWD/dist/Kuningriigid-Content.pck"
+          test "$(stat -c%s dist/Kuningriigid-Content.pck)" -lt 1048576
+          ls -lh dist
+      - name: Verify original v0.51 APK PCK opens latest 0.76 game
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bridge-test /tmp/legacy
+          cp game/tests/android_bridge_v76.gd /tmp/bridge-test/android_bridge_v76.gd
+          printf 'config_version=5\n[application]\nconfig/name="Bridge Smoke"\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n' > /tmp/bridge-test/project.godot
+          gh release download v0.51.738 \
+            --repo orogdor/Kuningriigid-Godot-AutoPort \
+            --pattern Kuningriigid-Content.pck --dir /tmp/legacy
+          LEGACY_ANDROID_PCK="/tmp/legacy/Kuningriigid-Content.pck" \
+            BRIDGE_ANDROID_PCK="$PWD/dist/Kuningriigid-Content.pck" \
+            FULL_ANDROID_PCK="$PWD/dist/Kuningriigid-Full-Content.pck" \
+            ANDROID_RELEASE_VERSION="0.76.999" AUTOPORT_BRIDGE_SMOKE=1 \
+            timeout --signal=TERM --kill-after=5s 180s \
+            /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 \
+            --headless --path /tmp/bridge-test --script res://android_bridge_v76.gd
