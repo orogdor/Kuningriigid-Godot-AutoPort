@@ -55,11 +55,11 @@ func _process(_delta: float) -> void:
     var received: float=float(http.get_downloaded_bytes())/1048576.0
     var total: int=http.get_body_size()
     if total>0:
-        _note("Laadin mängu: %.1f / %.1f MB (%.0f%%). Ära sulge rakendust." % [
+        label.text="Laadin mängu: %.1f / %.1f MB (%.0f%%). Ära sulge rakendust." % [
             received,float(total)/1048576.0,
             float(http.get_downloaded_bytes())*100.0/float(total)])
     else:
-        _note("Laadin mängu: %.1f MB. Ära sulge rakendust." % received)
+        label.text="Laadin mängu: %.1f MB. Ära sulge rakendust." % received
 
 func _note(value: String) -> void:
     if label!=null:label.text=value
