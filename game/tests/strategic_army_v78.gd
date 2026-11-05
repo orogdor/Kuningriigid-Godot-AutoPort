@@ -56,8 +56,9 @@ func _run() -> void:
     # Regression: simulation advances in small steps while rendering is late.
     # Retarget must not snap just because the visual actor trails its goal.
     var lag_start: Vector3=first.position
+    var lag_goal: Vector3=lag_start
     for step in range(12):
-        var lag_goal: Vector3=lag_start+Vector3(float(step+1)*0.4,0.0,0.0)
+        lag_goal=lag_start+Vector3(float(step+1)*0.4,0.0,0.0)
         Motion.retarget(first,lag_goal,0.7,2.5)
     if first.position.distance_to(lag_start)>0.01:
         fail("lagging render actor teleported during incremental retarget")
