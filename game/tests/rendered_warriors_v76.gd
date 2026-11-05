@@ -27,7 +27,7 @@ func _difference(a: Image,b: Image) -> int:
         for x in range(24,W-24,4):
             var first: Color=a.get_pixel(x,y)
             var second: Color=b.get_pixel(x,y)
-            if first.distance_to(second)>0.12:
+            if absf(first.r-second.r)+absf(first.g-second.g)+absf(first.b-second.b)>0.20:
                 count+=1
     return count
 
