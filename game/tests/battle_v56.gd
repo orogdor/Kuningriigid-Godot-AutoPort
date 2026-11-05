@@ -75,6 +75,11 @@ func _test() -> void:
     if Raider.current(copy,world).get("hp",0)!=enemy["hp"]:
         fail("marching created or destroyed enemy HP")
         return
+    # V80 correctly hides distant enemies when fog is enabled. This V56
+    # regression checks that actors still render when visibility permits.
+    # Turn fog off in memory, without modifying the player's saved settings.
+    ui.world_view.fog_enabled_v80=false
+    ui.world_view._apply_fog_v80()
     ui._sync_trade_map()
     if ui.world_view.map_canvas.raider_v56.is_empty() or \
             not ui.world_view.terrain_3d.hostile_actor_v56.visible:

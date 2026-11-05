@@ -12,6 +12,7 @@ const WebWater51=preload("res://scripts/web_water_v51.gd")
 const Scout52=preload("res://scripts/world_scout_v52.gd")
 const WebUnits53=preload("res://scripts/web_units_v53.gd")
 const ArmyMotion78=preload("res://scripts/strategic_army_motion_v78.gd")
+const Fog80=preload("res://scripts/scout_fog_v80.gd")
 const ZOOM_MIN: float=38.0
 const ZOOM_MAX: float=340.0
 var world: Dictionary={}
@@ -26,6 +27,11 @@ var trade_route_key: String=""
 var scout_actor: Node3D
 var army_root_v54: Node3D
 var hostile_actor_v56: Node3D
+var fog_texture_v80: ImageTexture
+var fog_enabled_v80: bool=true
+var fog_key_v80: String=""
+var scout_state_v80: Dictionary={}
+var raider_state_v80: Dictionary={}
 var marker: MeshInstance3D
 var camera: Camera3D
 var camera_target: Vector2=Vector2(110,82.5)
@@ -220,6 +226,9 @@ static func _corner(world_data: Dictionary,c: int,r: int) -> float:
 
 func set_world(data: Dictionary) -> void:
     world=data
+    fog_key_v80=""
+    scout_state_v80={}
+    raider_state_v80={}
     # New seed invalidates roads and wagons from the previous world.
     trade_route_key=""
     if scout_actor!=null:scout_actor.visible=false
@@ -234,6 +243,7 @@ func set_world(data: Dictionary) -> void:
     var vertices:=PackedVector3Array()
     var normals:=PackedVector3Array()
     var colors:=PackedColorArray()
+    var tex_coords:=PackedVector2Array()
     var shared_colors:=PackedColorArray()
     for rr in range(World.ROWS+1):
         for cc in range(World.COLS+1):
@@ -249,6 +259,10 @@ func set_world(data: Dictionary) -> void:
             var d:=Vector3(x,_corner(world,c,r+1),z+1)
             var e:=Vector3(x+1,_corner(world,c+1,r+1),z+1)
             # Four shared corners, six original triangle vertices.
+            # Each of this tile's triangles samples its OWN nearest
+            # texture pixel: no fog bleed across coastlines or tile edges.
+            var fog_uv:=Vector2((float(c)+0.5)/float(World.COLS),
+                (float(r)+0.5)/float(World.ROWS))
             var ca: Color=shared_colors[r*stride+c]
             var cb: Color=shared_colors[r*stride+c+1]
             var cd: Color=shared_colors[(r+1)*stride+c]
@@ -256,6 +270,7 @@ func set_world(data: Dictionary) -> void:
             for v in [a,d,b,b,d,e]:
                 vertices.append(v)
                 normals.append(Vector3.UP)
+                tex_coords.append(fog_uv)
             for tint in [ca,cd,cb,cb,cd,ce]:
                 colors.append(tint)
     var arrays: Array=[]
@@ -263,11 +278,16 @@ func set_world(data: Dictionary) -> void:
     arrays[Mesh.ARRAY_VERTEX]=vertices
     arrays[Mesh.ARRAY_NORMAL]=normals
     arrays[Mesh.ARRAY_COLOR]=colors
+    arrays[Mesh.ARRAY_TEX_UV]=tex_coords
     var mesh:=ArrayMesh.new()
     mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
     terrain_node.mesh=mesh
     var material:=StandardMaterial3D.new()
     material.vertex_color_use_as_albedo=true
+    fog_texture_v80=ImageTexture.create_from_image(
+        Fog80.terrain_image({},world))
+    material.albedo_texture=fog_texture_v80
+    material.texture_filter=BaseMaterial3D.TEXTURE_FILTER_NEAREST
     material.roughness=1.0
     material.cull_mode=BaseMaterial3D.CULL_DISABLED
     terrain_node.material_override=material
@@ -310,6 +330,9 @@ func scout_point_for(data: Dictionary) -> Vector3:
     return first.lerp(Trade3D.tile_point(world,end.x,end.y),float(sample["fraction"]))
 
 func set_scout(data: Dictionary) -> void:
+    scout_state_v80=data.duplicate(true)
+    _refresh_fog_v80()
+    if not raider_state_v80.is_empty():set_raider_v56(raider_state_v80)
     if scout_actor==null:return
     var valid: bool=not data.is_empty() and not world.is_empty() and \
         int(data.get("seed",-1))==int(world.get("seed",-2)) and \
@@ -322,6 +345,22 @@ func set_scout(data: Dictionary) -> void:
         var next: Dictionary=route[0]
         scout_actor.rotation.y=atan2(float(next["c"])-float(data["c"]),
             float(next["r"])-float(data["r"]))
+
+func set_fog_enabled_v80(enabled: bool) -> void:
+    if fog_enabled_v80==enabled:return
+    fog_enabled_v80=enabled
+    fog_key_v80=""
+    _refresh_fog_v80()
+    if not raider_state_v80.is_empty():set_raider_v56(raider_state_v80)
+
+func _refresh_fog_v80() -> void:
+    if world.is_empty() or fog_texture_v80==null:return
+    var next_key: String=(Fog80.signature(scout_state_v80,world)
+        if fog_enabled_v80 else "clear")+str(fog_enabled_v80)
+    if next_key==fog_key_v80:return
+    fog_texture_v80.update(Fog80.terrain_image(
+        scout_state_v80 if fog_enabled_v80 else {},world))
+    fog_key_v80=next_key
 
 func set_armies_v54(armies: Array) -> void:
     if army_root_v54==null:return
@@ -384,11 +423,15 @@ func set_armies_v54(armies: Array) -> void:
     _refresh_army_visibility_v75()
 
 func set_raider_v56(enemy: Dictionary) -> void:
+    raider_state_v80=enemy.duplicate(true)
     if hostile_actor_v56==null:return
     var valid: bool=not enemy.is_empty() and not world.is_empty() and \
         not bool(enemy.get("defeated",false)) and \
         int(enemy.get("seed",-1))==int(world.get("seed",-2)) and \
         not World.cell(world,int(enemy.get("c",-1)),int(enemy.get("r",-1))).is_empty()
+    if valid and fog_enabled_v80 and not Fog80.visible_at(scout_state_v80,
+            world,int(enemy["c"]),int(enemy["r"])):
+        valid=false
     hostile_actor_v56.visible=valid
     if not valid:return
     hostile_actor_v56.position=scout_point_for(enemy)
