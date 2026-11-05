@@ -3,6 +3,7 @@ extends SceneTree
 ## Previous tests counted imported MeshInstance3D nodes even when zero pixels
 ## of the soldier were ever drawn. Must run under xvfb-run and real OpenGL.
 const Units=preload("res://scripts/web_units_v53.gd")
+const Scene=preload("res://content.tscn")
 const W: int=512
 const H: int=512
 
@@ -90,5 +91,40 @@ func _run() -> void:
                 " changed_samples=",changed," mesh_count=",mesh_count)
             scene.remove_child(actor)
             actor.free()
-    print("RENDERED_WARRIORS_V76 SUCCESS: six actual GLB renders have visible non-background pixels")
+    # Render the *actual live tactical view*, not a detached demonstration GLB.
+    # This detects cameras missing the armies, hidden parents and terrain depth.
+    root.size=Vector2i(1080,760)
+    var ui: Control=Scene.instantiate()
+    root.add_child(ui)
+    await process_frame
+    await process_frame
+    ui._reset()
+    ui._start_large_demo_battle()
+    var battle: Control=ui.battle_view
+    battle.auto_timer.stop()
+    if battle.actors_root.get_child_count()!=216:
+        fail("actual tactical battle did not create 216 soldiers")
+        return
+    battle.viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+    battle.actors_root.hide()
+    var empty_battle: Image=await _grab(battle.viewport)
+    battle.actors_root.show()
+    var real_battle: Image=await _grab(battle.viewport)
+    var live_change: int=0
+    if empty_battle!=null and real_battle!=null and \
+            empty_battle.get_size()==real_battle.get_size():
+        for y in range(12,real_battle.get_height()-12,4):
+            for x in range(12,real_battle.get_width()-12,4):
+                var a: Color=empty_battle.get_pixel(x,y)
+                var b: Color=real_battle.get_pixel(x,y)
+                if absf(a.r-b.r)+absf(a.g-b.g)+absf(a.b-b.b)>0.20:
+                    live_change+=1
+    if screenshot_dir!="":
+        real_battle.save_png(screenshot_dir+"/actual_battle.png")
+    print("ACTUAL_BATTLE_V76 samples=",live_change,
+        " viewport=",real_battle.get_size()," camera_zoom=",battle.cam_size)
+    if live_change<70:
+        fail("216 actor nodes exist but soldiers are not actually drawn in real battle camera")
+        return
+    print("RENDERED_WARRIORS_V76 SUCCESS: six actual GLB renders and 216 soldiers produce screen pixels in live tactical camera")
     quit(0)
