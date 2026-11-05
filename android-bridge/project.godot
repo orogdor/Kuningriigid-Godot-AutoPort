@@ -1,0 +1,11 @@
+; Android v0.51 bridge project; SMALL exported PCK, no full-game assets.
+config_version=5
+
+[application]
+config/name="Kuningriigid Android Update Bridge"
+run/main_scene="res://content.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
