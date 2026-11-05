@@ -3,6 +3,7 @@ extends Control
 signal cell_selected(c: int, r: int)
 const World = preload("res://scripts/world_gen_v06.gd")
 const Scout = preload("res://scripts/world_scout_v52.gd")
+const Fog80 = preload("res://scripts/scout_fog_v80.gd")
 var world: Dictionary = {}
 var atlas: ImageTexture
 var zoom: float = 3.0
@@ -19,6 +20,9 @@ var city_district_tiles: Array=[]
 var city_district_links: Array=[]
 var city_agents: Array=[]
 var scout_state: Dictionary={}
+var fog_enabled_v80: bool=true
+var fog_texture_v80: ImageTexture
+var fog_key_v80: String=""
 var army_state_v54: Array=[]
 var raider_v56: Dictionary={}
 var capital_district_id: String=""
@@ -33,6 +37,8 @@ func _ready() -> void:
 
 func set_world(next: Dictionary) -> void:
     world=next
+    fog_texture_v80=null
+    fog_key_v80=""
     var cells: Array=world.get("cells",[])
     if cells.is_empty():return
     var image:=Image.create(World.COLS,World.ROWS,false,Image.FORMAT_RGBA8)
@@ -79,7 +85,27 @@ func set_city_agents(agents: Array, capital: String) -> void:
 
 func set_scout(data: Dictionary) -> void:
     scout_state=data.duplicate(true)
+    _refresh_fog_v80()
     queue_redraw()
+
+func set_fog_enabled_v80(enabled: bool) -> void:
+    if fog_enabled_v80==enabled:return
+    fog_enabled_v80=enabled
+    fog_key_v80=""
+    _refresh_fog_v80()
+    queue_redraw()
+
+func _refresh_fog_v80() -> void:
+    if world.is_empty():return
+    if not fog_enabled_v80:
+        fog_texture_v80=null
+        return
+    var next_key: String=Fog80.signature(scout_state,world)
+    if fog_texture_v80!=null and next_key==fog_key_v80:return
+    var image: Image=Fog80.atlas_image(scout_state,world)
+    if fog_texture_v80==null:fog_texture_v80=ImageTexture.create_from_image(image)
+    else:fog_texture_v80.update(image)
+    fog_key_v80=next_key
 
 func set_armies_v54(armies: Array) -> void:
     army_state_v54=armies.duplicate(true)
@@ -202,6 +228,10 @@ func _draw() -> void:
         var center: Vector2=point(float(site["c"])+0.5,float(site["r"])+0.5)
         draw_circle(center,maxf(5.0,zoom*1.2),colors[i%colors.size()])
         draw_arc(center,maxf(7.0,zoom*1.5),0.0,TAU,20,Color("#182533"),2.0,true)
+    # Overlay the terrain, river, road and other nations' city pins.
+    # Draw our own actors after the fog so movement remains readable.
+    if fog_enabled_v80 and fog_texture_v80!=null:
+        draw_texture_rect(fog_texture_v80,destination,false)
     # Strategic scout path and interpolated position are derived from the
     # same saved state used by the 3D map. Never invent separate 2D motion.
     if not scout_state.is_empty() and int(scout_state.get("seed",-1))==int(world.get("seed",-2)):
@@ -225,9 +255,11 @@ func _draw() -> void:
     if not raider_v56.is_empty() and not bool(raider_v56.get("defeated",false)) \
             and int(raider_v56.get("seed",-1))==int(world.get("seed",-2)):
         var enemy: Dictionary=Scout.sample(raider_v56)
-        var position: Vector2=point(float(enemy["c"])+0.5,float(enemy["r"])+0.5)
-        draw_circle(position,maxf(4.6,zoom*0.53),Color("#e6544d"))
-        draw_arc(position,maxf(6.4,zoom*0.75),0.0,TAU,16,Color("#57201f"),2.0,true)
+        if not fog_enabled_v80 or Fog80.visible_at(scout_state,world,
+                int(enemy["c"]),int(enemy["r"])):
+            var position: Vector2=point(float(enemy["c"])+0.5,float(enemy["r"])+0.5)
+            draw_circle(position,maxf(4.6,zoom*0.53),Color("#e6544d"))
+            draw_arc(position,maxf(6.4,zoom*0.75),0.0,TAU,16,Color("#57201f"),2.0,true)
     if chosen.x>=0:
         draw_rect(Rect2(point(chosen.x,chosen.y),Vector2.ONE*zoom),Color("#ffe989"),false,maxf(2.0,zoom*0.1))
 

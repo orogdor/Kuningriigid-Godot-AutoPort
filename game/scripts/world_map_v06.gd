@@ -27,6 +27,8 @@ var army_ids_v54: Array[int]=[]
 var army_state_v54: Array=[]
 var scout_status_label: Label
 var scout_auto_button_v79: Button
+var fog_button_v80: Button
+var fog_enabled_v80: bool=true
 var scout_state: Dictionary={}
 var info_label: Label
 var seed: int = 82026
@@ -81,6 +83,12 @@ func _ready() -> void:
     scout_auto_button_v79.tooltip_text="Avastaja liigub ise külastamata maismaaruutudele"
     scout_auto_button_v79.pressed.connect(func():scout_auto_requested.emit())
     bar.add_child(scout_auto_button_v79)
+    fog_button_v80=Button.new()
+    fog_button_v80.name="ScoutFogV80"
+    fog_button_v80.text="Uduloor: sees"
+    fog_button_v80.tooltip_text="Peida veel avastamata maailmakaardi ruudud"
+    fog_button_v80.pressed.connect(_toggle_fog_v80)
+    bar.add_child(fog_button_v80)
     army_selector_v54=OptionButton.new()
     army_selector_v54.name="ArmySelectorV54"
     army_selector_v54.custom_minimum_size=Vector2(160,38)
@@ -166,6 +174,7 @@ func _ready() -> void:
     info_label.clip_text=true
     top.add_child(info_label)
     _load_settings()
+    _apply_fog_v80()
     call_deferred("_generate")
 
 func _apply_map_mode() -> void:
@@ -177,6 +186,17 @@ func _apply_map_mode() -> void:
 func _switch_mode() -> void:
     map_3d_enabled=not map_3d_enabled
     _apply_map_mode()
+
+func _apply_fog_v80() -> void:
+    if fog_button_v80!=null:
+        fog_button_v80.text="Uduloor: sees" if fog_enabled_v80 else "Uduloor: väljas"
+    if map_canvas!=null:map_canvas.set_fog_enabled_v80(fog_enabled_v80)
+    if terrain_3d!=null:terrain_3d.set_fog_enabled_v80(fog_enabled_v80)
+
+func _toggle_fog_v80() -> void:
+    fog_enabled_v80=not fog_enabled_v80
+    _apply_fog_v80()
+    _save_settings()
 
 func focus_world_tile(c: int,r: int) -> void:
     if terrain_3d==null or World.cell(world,c,r).is_empty():return
@@ -197,19 +217,22 @@ func select_world_cell(c: int,r: int) -> void:
 func _load_settings() -> void:
     if not FileAccess.file_exists(SAVE_PATH):return
     var doc: Variant=JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-    if doc is Dictionary and int(doc.get("seed",0))>0:
-        seed=int(doc["seed"])
+    if doc is Dictionary:
+        if int(doc.get("seed",0))>0:seed=int(doc["seed"])
+        fog_enabled_v80=bool(doc.get("fog_enabled_v80",true))
 
 func _save_settings() -> void:
     var f:=FileAccess.open(SAVE_PATH,FileAccess.WRITE)
     if f==null:return
-    f.store_string(JSON.stringify({"seed":seed,"selected":{"c":selected_cell.x,"r":selected_cell.y}}))
+    f.store_string(JSON.stringify({"seed":seed,"fog_enabled_v80":fog_enabled_v80,
+        "selected":{"c":selected_cell.x,"r":selected_cell.y}}))
     f.close()
 
 func _generate() -> void:
     world=World.generate(seed,true)
     map_canvas.set_world(world)
     terrain_3d.set_world(world)
+    _apply_fog_v80()
     # Discard road overlay when generating a different world seed.
     map_canvas.set_trade_route({},[])
     terrain_3d.set_trade_route({},[])
