@@ -136,7 +136,13 @@ func _render_soldier_motion_v65(delta: float) -> void:
         # Prevents the visible soldier from jumping backwards when the
         # previous frame used extrapolated movement.
         var follow: float=1.0 if delta>=0.3 else 1.0-exp(-frame*20.0)
-        node.position=node.position.lerp(destination,follow)
+        # V77: even an unexpectedly large deterministic correction or a
+        # device stall must not teleport the visible actor during attacks.
+        # The battle simulation remains authoritative and unchanged.
+        const MAX_VISIBLE_SPEED_V77: float=24.0
+        var correction: float=node.position.distance_to(destination)*follow
+        node.position=node.position.move_toward(destination,
+            minf(correction,MAX_VISIBLE_SPEED_V77*frame))
         node.rotation.y=lerp_angle(node.rotation.y,
             float(state["to_heading"]),follow)
         state["fraction"]=fraction
@@ -1120,8 +1126,10 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                     previous["kind"]=kind
                     holder.set_meta("interpolation_v63",previous)
                 else:
-                    var smooth: bool=can_interpolate and not previous.is_empty() and \
-                        holder.position.distance_to(target_position)<12.0
+                    # V77: keep the same actor interpolation even for a >12 m
+                    # correction. Snapping to the target made a visible
+                    # teleport precisely when crowds engage in melee.
+                    var smooth: bool=can_interpolate and not previous.is_empty()
                     if not smooth:
                         holder.position=target_position
                         holder.rotation.y=target_heading

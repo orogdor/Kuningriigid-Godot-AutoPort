@@ -248,6 +248,59 @@ def skin_weights(vertices,old_doc,kind):
     return joints,weights,len(used)
 
 
+def read_accessor(doc, binary, accessor_id):
+    """Read a legacy GLB accessor including optional interleaved strides."""
+    accessor = doc["accessors"][accessor_id]
+    view = doc["bufferViews"][accessor["bufferView"]]
+    components = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4}[accessor["type"]]
+    fmt = {5121:"B",5123:"H",5125:"I",5126:"f"}[accessor["componentType"]]
+    item_format = "<"+fmt*components
+    item_size = struct.calcsize(item_format)
+    stride = view.get("byteStride",item_size)
+    offset = view.get("byteOffset",0)+accessor.get("byteOffset",0)
+    values = [struct.unpack_from(item_format,binary,offset+i*stride)
+              for i in range(accessor["count"])]
+    if components==1:
+        return [value[0] for value in values]
+    return values
+
+
+def copy_intact_v148_spear(doc, binary):
+    """Keep all shaft and tip triangles rigid on hand_R; no guessed skin weights.
+
+    The legacy V148 spear is authored as real, unbroken geometry on one bone,
+    whereas the V262 photogrammetry spear is only a rough fragment. Filtering
+    by 100% hand_R skin influence separates the original shaft and point from
+    the character's torso, clothing and animated limbs.
+    """
+    original = doc["meshes"][0]["primitives"][0]
+    attributes = original["attributes"]
+    positions = read_accessor(doc,binary,attributes["POSITION"])
+    joints = read_accessor(doc,binary,attributes["JOINTS_0"])
+    weights = read_accessor(doc,binary,attributes["WEIGHTS_0"])
+    indices = read_accessor(doc,binary,original["indices"])
+    hand_node = next((i for i,node in enumerate(doc["nodes"])
+                      if node.get("name")=="hand_R"),None)
+    if hand_node is None:
+        raise ValueError("V148 spear has no right-hand attachment bone")
+    hand = doc["skins"][0]["joints"].index(hand_node)
+    def rigid_on_hand(index):
+        influences = weights[index]
+        strongest = max(range(4),key=lambda k:influences[k])
+        return joints[index][strongest]==hand and influences[strongest]>=0.90
+    selected = []
+    for k in range(0,len(indices),3):
+        tri = indices[k:k+3]
+        if all(rigid_on_hand(index) for index in tri):
+            selected.extend(tri)
+    if len(selected)<450:
+        raise ValueError("Source spear tip or shaft is missing: too few triangles")
+    z = [positions[index][2] for index in selected]
+    if min(z)>-0.65 or max(z)<1.25:
+        raise ValueError("Source spear must include complete butt, shaft and tip")
+    return original, selected
+
+
 def append_view(doc,binary,payload):
     binary.extend(b"\0"*((-len(binary))%4))
     offset=len(binary)
@@ -332,11 +385,29 @@ def merge(kind,old_path,new_path,destination):
         p["attributes"]["WEIGHTS_0"]=weight_accessor
         if "material" in p:p["material"]+=material_shift
         primitives.append(p)
+    intact_spear_triangles=0
+    if kind=="spearman":
+        # The old V148 spear is rigid on right-hand bone 9. Reuse its intact
+        # shaft and tip as a second skinned surface; never stretch a spear
+        # point between torso/forearm/hand bones via nearest-bone guesses.
+        original,selected=copy_intact_v148_spear(old_doc,old_binary)
+        index_view=append_view(result,binary,
+            struct.pack("<"+"H"*len(selected),*selected))
+        index_accessor=len(result["accessors"])
+        result["accessors"].append({
+            "bufferView":index_view, "byteOffset":0,
+            "componentType":5123, "count":len(selected), "type":"SCALAR",
+            "min":[min(selected)],"max":[max(selected)]})
+        intact_primitive=copy.deepcopy(original)
+        intact_primitive["indices"]=index_accessor
+        primitives.append(intact_primitive)
+        intact_spear_triangles=len(selected)//3
     result["meshes"][0]["primitives"]=primitives
-    result["meshes"][0]["name"]=kind+"_V262_TRELLIS_RIGGED_V73"
+    result["meshes"][0]["name"]=kind+"_V262_TRELLIS_RIGGED_V77"
     result.setdefault("extras",{})["autoportV73"]={
         "geometry":"models-trellis-v262", "skeleton":"models-v148/glb",
-        "unit":kind, "weightedBones":used}
+        "unit":kind, "weightedBones":used,
+        "intactSpearTrianglesV77":intact_spear_triangles}
     content=save_glb(destination,result,binary)
     verify_doc,_=load_glb(destination)
     if len(verify_doc["animations"]) != len(old_doc["animations"]):
@@ -348,7 +419,8 @@ def merge(kind,old_path,new_path,destination):
             "source_mesh_sha256":hashlib.sha256(Path(new_path).read_bytes()).hexdigest(),
             "rig_sha256":hashlib.sha256(Path(old_path).read_bytes()).hexdigest(),
             "vertices":vertex_count,"animations":[a.get("name","") for a in old_doc["animations"]],
-            "weighted_bones":used,"skins":1}
+            "weighted_bones":used,"skins":1,
+            "intact_spear_triangles_v77":intact_spear_triangles}
 
 
 def main():
