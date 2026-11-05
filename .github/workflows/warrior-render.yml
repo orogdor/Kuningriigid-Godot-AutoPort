@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libgl1-mesa-glx
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libgl1
           mkdir -p /tmp/godot
           curl -fLsS --retry 3 -o /tmp/godot.zip \
             https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
