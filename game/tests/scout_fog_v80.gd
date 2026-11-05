@@ -4,6 +4,7 @@ const Game=preload("res://content.tscn")
 const Fog=preload("res://scripts/scout_fog_v80.gd")
 const Scout=preload("res://scripts/world_scout_v52.gd")
 const World=preload("res://scripts/world_gen_v06.gd")
+const Routes=preload("res://scripts/world_trade_routes_v17.gd")
 
 func fail(message: String) -> void:
     printerr("SCOUT_FOG_V80 FAIL: "+message)
@@ -56,9 +57,9 @@ func _run() -> void:
         # Auto mode starts disabled, so issue an actual deterministic step.
         var options: Array=[]
         for delta in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
-            var dest:=Vector2i(int(moved["c"]),int(moved["r"]))+delta
+            var dest: Vector2i=Vector2i(int(moved["c"]),int(moved["r"]))+delta
             if dest.x>=0 and dest.x<World.COLS and dest.y>=0 and dest.y<World.ROWS and \
-                    bool(world["cells"][dest.y*World.COLS+dest.x].get("land",false)):
+                    Routes.passable(world,dest.x,dest.y):
                 options.append(dest)
         if options.is_empty():
             fail("no adjacent terrain to test fog reveal")
