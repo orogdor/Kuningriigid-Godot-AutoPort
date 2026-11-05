@@ -23,6 +23,7 @@ const releasesAPI = "https://api.github.com/repos/orogdor/Kuningriigid-Godot-Aut
 const sourceRoot = "https://raw.githubusercontent.com/orogdor/Kuningriigid-Godot-AutoPort/"
 const engineAsset = "Kuningriigid-Engine.exe"
 const manifestAsset = "Windows-files.json"
+const contentAsset = "Kuningriigid-Windows-Content.pck"
 
 var hexHash = regexp.MustCompile("^[a-f0-9]{64}$")
 var commitHash = regexp.MustCompile("^[a-f0-9]{40}$")
@@ -62,6 +63,7 @@ type manifest struct {
 type installed struct {
  Commit string `json:"commit"`
  EngineSHA string `json:"engine_sha256"`
+ PackSHA string `json:"pack_sha256,omitempty"`
 }
 func fetch(url string) ([]byte,error) {
  ctx,cancel:=context.WithTimeout(context.Background(),45*time.Second)
@@ -190,6 +192,32 @@ func installRuntime(home string,a asset) (string,string,error) {
  }
  return path,sha,nil
 }
+// Dynamically generated web73 soldiers exist in exported PCK, not source Git.
+func contentPackPath(home,commit string) string {
+ return filepath.Join(home,"versions",commit,contentAsset)
+}
+func installContentPack(home,commit string,a asset)(string,error){
+ sha:=strings.TrimPrefix(a.Digest,"sha256:")
+ if !hexHash.MatchString(sha){return "",errors.New("Windows content pack has no verified SHA-256")}
+ path:=contentPackPath(home,commit)
+ if matching(path,sha){return sha,nil}
+ reportProgress(99,"UPDATE: laadin 3D-mängupaketti ja sõdurite mudeleid")
+ if err:=download(a.URL,path,sha,func(bytes,total int64){
+  if total>0 {reportProgress(99,fmt.Sprintf("UPDATE: 3D-mudelid %.0f%%",100*float64(bytes)/float64(total)))}
+ });err!=nil{return "",err}
+ return sha,nil
+}
+func gameArgs(home string,state installed)([]string,error){
+ if state.PackSHA=="" {
+  // Legacy offline fallback until the updated launcher downloads a PCK.
+  return []string{"--path",filepath.Join(home,"versions",state.Commit,"game")},nil
+ }
+ pack:=contentPackPath(home,state.Commit)
+ if !matching(pack,state.PackSHA){
+  return nil,errors.New("verified Windows 3D content PCK missing or damaged")
+ }
+ return []string{"--main-pack",pack},nil
+}
 func installGame(home string,m manifest,prior installed)error {
  final:=filepath.Join(home,"versions",m.Commit)
  if old,err:=readManifest(home,m.Commit);err==nil && validGame(home,old) && identical(old,m){
@@ -254,6 +282,7 @@ func upgrade(home string,prior installed)(installed,error){
  reportProgress(4,"UPDATE: uusim väljalase "+r.Tag)
  mAsset,ok:=findAsset(r.Assets,manifestAsset);if !ok{return prior,errors.New("release has no Windows file manifest")}
  eAsset,ok:=findAsset(r.Assets,engineAsset);if !ok{return prior,errors.New("release has no Godot runtime")}
+ pAsset,ok:=findAsset(r.Assets,contentAsset);if !ok{return prior,errors.New("release has no Windows PCK containing 3D soldiers")}
  body,err:=fetch(mAsset.URL);if err!=nil{return prior,err}
  reportProgress(7,"UPDATE: võrdlen mängufaile")
  digest:=strings.TrimPrefix(mAsset.Digest,"sha256:")
@@ -270,7 +299,8 @@ func upgrade(home string,prior installed)(installed,error){
  _,engineSha,err:=installRuntime(home,eAsset);if err!=nil{return prior,err}
  reportProgress(80,"UPDATE: mängufailid")
  if err=installGame(home,m,prior);err!=nil{return prior,err}
- next:=installed{Commit:m.Commit,EngineSHA:engineSha}
+ packSha,err:=installContentPack(home,m.Commit,pAsset);if err!=nil{return prior,err}
+ next:=installed{Commit:m.Commit,EngineSHA:engineSha,PackSHA:packSha}
  state,_:=json.MarshalIndent(next,"","  ")
  if err:=atomicWrite(filepath.Join(home,"active.json"),state);err!=nil{return prior,err}
  reportProgress(100,"UPDATE valmis: "+r.Tag)
@@ -282,7 +312,8 @@ func start(home string,state installed)error{
  if !validGame(home,m){return errors.New("cached game files are damaged")}
  engine:=currentRuntime(home,state);if engine==""{return errors.New("Godot runtime is missing or damaged")}
  game:=filepath.Join(home,"versions",state.Commit,"game")
- command:=exec.Command(engine,"--path",game)
+ args,err:=gameArgs(home,state);if err!=nil{return err}
+ command:=exec.Command(engine,args...)
  command.Dir=game
  if err=command.Start();err!=nil{return err}
  return command.Process.Release()
@@ -314,7 +345,7 @@ func run()error{
   if !commitHash.MatchString(updated.Commit) {return fmt.Errorf("no downloaded files available: %v",updateErr)}
   m,err:=readManifest(base,updated.Commit)
   if err!=nil{return err}
-  if !validGame(base,m) || currentRuntime(base,updated)=="" {
+  if !validGame(base,m) || currentRuntime(base,updated)=="" || (updated.PackSHA!="" && !matching(contentPackPath(base,updated.Commit),updated.PackSHA)) {
    return errors.New("cached Godot files failed Windows verification")
   }
   return nil
