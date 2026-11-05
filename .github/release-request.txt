@@ -1,5 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — 0.75 SOLDIER VISIBILITY HOTFIX RELEASE
-Reason: Users see no legible soldiers in the 0.74 Windows application. Release the tested view correction with 90m tactical camera, non-wrapping command bars, full-resolution Windows battles, larger high-contrast atlas army visuals, town rally positions outside the opaque main hall, and safe fallback when a soldier GLB resource is unavailable.
-Fix: PR #27 merged as 385e10704e756b6235904dd8426e447033058e31.
-Rendered checks: actual Godot 4.4.1 Mesa offscreen screenshots and nonzero screen-pixel differences for 96-fighter tactical battle, world atlas, and city detail plus 3 original V148 and 3 V262 TRELLIS meshes, raw and rigged, succeeded in GitHub Actions 41923422749.
-Release gate: build-apps workflow must load both exported Android Content.pck and Windows Content.pck in an empty project and check that axeman/spearman/slinger GLBs are loadable and skinned with Skeleton3D. Do not publish if the exported PCK is missing those resources.
+KUNINGRIIGID GODOT AUTOPORT — V0.80 STRATEGIC FOG-OF-WAR RELEASE
+Reason: Publish the validated v0.80 port from PR #34, merging V79 scout discovery into both Godot strategic map renderers.
+Merged source: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/0e7775fe6bb5cfbe6bdfc547bcec9f74c827a64b
+Validation: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42091324887 (full GDScript, Three.js parity, soldier GLB and regression checks passed).
+Android legacy bridge: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42091324736 (success).
+Changes: GPU-cached 220x165 fog textures on 2D and 3D maps; scouting reveals territory, distant enemy warbands stay concealed until visible; fog toggle persists; migration from V79 saves.
+Release policy: Publish tested Windows and PCK assets; produce APK only with the configured permanent Android signing key. Never claim a debug-signed APK is an installable update.
