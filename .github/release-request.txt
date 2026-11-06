@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.80 STRATEGIC FOG-OF-WAR RELEASE
-Reason: Publish the validated v0.80 port from PR #34, merging V79 scout discovery into both Godot strategic map renderers.
-Merged source: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/0e7775fe6bb5cfbe6bdfc547bcec9f74c827a64b
-Validation: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42091324887 (full GDScript, Three.js parity, soldier GLB and regression checks passed).
-Android legacy bridge: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42091324736 (success).
-Changes: GPU-cached 220x165 fog textures on 2D and 3D maps; scouting reveals territory, distant enemy warbands stay concealed until visible; fog toggle persists; migration from V79 saves.
-Release policy: Publish tested Windows and PCK assets; produce APK only with the configured permanent Android signing key. Never claim a debug-signed APK is an installable update.
+KUNINGRIIGID GODOT AUTOPORT — V0.81 DETAIL DISCOVERY VISIBILITY RELEASE
+Reason: Publish validated v0.81 detail-map fog and hostile actor visibility from PR #36.
+Merged source: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/7cec31ab080fd58a070867adac972d1af6318c59
+Validation: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42163410032 (full Godot tests, new V81 and older combat/world/economy regressions SUCCESS).
+Android bridge: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42163410021 (legacy APK compatibility SUCCESS).
+Changes: concealed unexplored detail tiles and neighbor terrain; friendly GLBs remain visible, hostile units appear only inside current scout sight; inherits strategic fog toggle without changing simulation saves.
+Release policy: Publish verified Windows EXE and PCK contents; publish APK only when the stable Android signing key is present. Do not claim a freshly debug-signed APK can update the existing install.
