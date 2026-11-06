@@ -731,17 +731,37 @@ func _apply_selected_fog_v81() -> void:
             Continuous.TILE_SPAN if combined_city else SURFACE_DEPTH)
     _refresh_info()
 
+## V84: changing scout position often changes the atlas bitmap but not
+## the visibility of the selected detail tile or its eight neighbors.
+## Cache the *local* dirty region, not the global world map state.
+func _fog_local_signature_v84() -> String:
+    if selected.x<0 or world.is_empty():return ""
+    var parts:=PackedStringArray()
+    parts.append(str(_fog_state_v81(selected)))
+    for dr in range(-1,2):
+        for dc in range(-1,2):
+            if dc==0 and dr==0:continue
+            parts.append(str(_fog_state_v81(selected+Vector2i(dc,dr))))
+    return "".join(parts)
+
 func set_visibility_v81(scout: Dictionary,enabled: bool) -> void:
     var next_sig: String=(Fog80.signature(scout,world) if enabled else "off")
     # The same cached map drives both the main tile and all eight previews.
     if next_sig==fog_signature_v81 and enabled==fog_enabled_v81:return
+    var old_local: String=_fog_local_signature_v84()
+    var old_selected: int=_fog_state_v81(selected) if selected.x>=0 else 2
     fog_enabled_v81=enabled
     fog_scout_v81=scout.duplicate(true)
     fog_signature_v81=next_sig
     fog_mask_v81=Fog80.visibility(scout,world) if enabled else PackedByteArray()
     if selected.x<0 or world.is_empty():return
-    _apply_selected_fog_v81()
-    _render_seam_previews()
+    var new_selected: int=_fog_state_v81(selected)
+    if old_selected!=new_selected:
+        _apply_selected_fog_v81()
+    if old_local!=_fog_local_signature_v84():
+        _render_seam_previews()
+    # Army visibility can change inside a tile even when surrounding
+    # terrain stays exactly as it was; always re-evaluate hostile actors.
     if not active_armies_v81.is_empty():set_world_armies_v54(active_armies_v81)
 
 func _render_seam_previews() -> void:
