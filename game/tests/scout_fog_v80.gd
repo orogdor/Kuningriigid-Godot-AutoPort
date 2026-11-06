@@ -20,6 +20,11 @@ func _run() -> void:
     await process_frame
     await process_frame
     ui._reset()
+    # The release job runs legacy mesh/LOD tests in separate Godot processes.
+    # Their user:// fog preference may persist, so never assume the default.
+    ui.world_view.fog_enabled_v80=true
+    ui.world_view._apply_fog_v80()
+    ui.world_view.set_scout(Scout.ensure(ui.city,ui.world_view.world))
     var map=ui.world_view
     var world: Dictionary=map.world
     var scout: Dictionary=Scout.ensure(ui.city,world)
