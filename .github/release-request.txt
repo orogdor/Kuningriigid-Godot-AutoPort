@@ -1,6 +1,6 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.82 VISIBILITY PARITY & RELEASE FIX
-Reason: Official v0.81 export was blocked by legacy seam_terrain_v42 assumptions despite successful PR checks. AutoPort 0.82 fixes the release gate and ports one shared hostile/friendly army visibility rule across 2D/3D strategic and detail views.
-Merged: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/949a2b8a71bc8909ac23df44c81d0ba88df2ca58
-Validated main source in pull request: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42199323043 (success; V80, V81, V82 and historic regressions)
-Android legacy APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42199323106 (success)
-Release requirements: stamp installed content as 0.82.<run>; produce Windows EXE and full/bridge/update PCK files only after all export regressions succeed; produce installable APK only if persistent Android release signing key is configured, never substitute a debug APK with a new signing identity.
+KUNINGRIIGID GODOT AUTOPORT — V0.83 FOG INTELLIGENCE RELEASE
+Reason: AutoPort 0.83 stops hiding only the enemy model while disclosing the enemy position and hitpoints in map labels; unexplored terrain tiles also no longer disclose biome and height.
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/135e53e14f02daf8524cf93808e7bc4d2aef551a
+Validated PR #38: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42270326759 (success; V83, V82, earlier regressions)
+Android legacy APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42270327015 (success)
+Release requirements: stamp installed content 0.83.<run>, publish Windows EXE and PCK content only after release test gates pass. Produce installable Android APK only with stable persistent Android release signing credentials; never replace existing application using a debug signing key.
