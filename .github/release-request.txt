@@ -1,6 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.83 FOG INTELLIGENCE RELEASE
-Reason: AutoPort 0.83 stops hiding only the enemy model while disclosing the enemy position and hitpoints in map labels; unexplored terrain tiles also no longer disclose biome and height.
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/135e53e14f02daf8524cf93808e7bc4d2aef551a
-Validated PR #38: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42270326759 (success; V83, V82, earlier regressions)
-Android legacy APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42270327015 (success)
-Release requirements: stamp installed content 0.83.<run>, publish Windows EXE and PCK content only after release test gates pass. Produce installable Android APK only with stable persistent Android release signing credentials; never replace existing application using a debug signing key.
+KUNINGRIIGID GODOT AUTOPORT — V0.84 DETAIL FOG UPDATE OPTIMIZATION
+Reason: Do not rebuild 3D detail neighbor meshes and static fog cover when a moving scout changes the global fog state but the selected 3x3 region is unchanged. Keep hostile army sight recalculation active.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/39
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/42753391dc262dafb5378887ea195345a2c868ce
+Validated CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42280960017 (success)
+Legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42280959856 (success)
+Release requirements: version 0.84.<run>. Publish tested Windows EXE and PCK bridge/full/update contents after release gates succeed. Only publish installable APK when stable persistent Android release signing key matches previous installs; never substitute debug signed APK.
