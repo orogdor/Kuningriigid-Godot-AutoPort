@@ -19,6 +19,9 @@ func _run() -> void:
     await process_frame
     await process_frame
     ui._reset()
+    # Integration tests must not inherit fog settings saved by earlier scenes.
+    ui.world_view.fog_enabled_v80=true
+    ui.world_view._apply_fog_v80()
     var map=ui.world_view
     var world: Dictionary=map.world
     var scout: Dictionary=Scout.ensure(ui.city,world)

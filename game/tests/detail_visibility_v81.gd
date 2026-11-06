@@ -20,6 +20,9 @@ func _run() -> void:
     await process_frame
     await process_frame
     ui._reset()
+    # Integration tests must not inherit fog settings saved by earlier scenes.
+    ui.world_view.fog_enabled_v80=true
+    ui.world_view._apply_fog_v80()
     var world: Dictionary=ui.world_view.world
     var scout: Dictionary=Scout.ensure(ui.city,world)
     var far:=Vector2i((int(scout["c"])+World.COLS/2)%World.COLS,
@@ -90,5 +93,9 @@ func _run() -> void:
             int(migrated.get("visited_count_v79",0))!=1:
         fail("legacy save fog migration broke")
         return
+    # Restore the default for following standalone test processes.
+    ui.world_view.fog_enabled_v80=true
+    ui.world_view._apply_fog_v80()
+    ui.world_view._save_settings()
     print("DETAIL_VISIBILITY_V81 SUCCESS: unknown detail/neighbor concealment, own soldiers, enemy scouting, visited memory, world toggle, legacy saves")
     quit(0)
