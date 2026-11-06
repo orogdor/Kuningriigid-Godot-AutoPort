@@ -90,3 +90,17 @@ static func terrain_image(scout: Dictionary,world: Dictionary) -> Image:
             elif state==2:shade=Color.WHITE
             image.set_pixel(c,r,shade)
     return image
+
+## V83: UI tile inspection uses the saved V79 bitset without generating
+## a 36K-cell image for each click.
+static func visibility_at_v83(scout: Dictionary,world: Dictionary,c: int,r: int) -> int:
+    if not _valid(scout,world):return 2
+    if c<0 or c>=World.COLS or r<0 or r>=World.ROWS:return 0
+    if visible_at(scout,world,c,r):return 2
+    var index: int=r*World.COLS+c
+    var visited: PackedByteArray=Marshalls.base64_to_raw(
+        String(scout.get("explored_bits_v79","")))
+    if visited.size()==int(ceili(float(World.COLS*World.ROWS)/8.0)) and \
+            (int(visited[int(index/8)]) & (1<<(index%8)))!=0:
+        return 1
+    return 0
