@@ -10,6 +10,7 @@ signal army_rally_requested(id: int)
 signal battle_requested(id: int)
 signal world_generated
 const World = preload("res://scripts/world_gen_v06.gd")
+const Fog83 = preload("res://scripts/scout_fog_v80.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
 const Terrain3D = preload("res://scripts/world_terrain_v40.gd")
 const Districts = preload("res://scripts/world_districts_v25.gd")
@@ -29,6 +30,7 @@ var scout_status_label: Label
 var scout_auto_button_v79: Button
 var fog_button_v80: Button
 var fog_enabled_v80: bool=true
+var raider_state_v83: Dictionary={}
 var scout_state: Dictionary={}
 var info_label: Label
 var seed: int = 82026
@@ -192,6 +194,7 @@ func _apply_fog_v80() -> void:
         fog_button_v80.text="Uduloor: sees" if fog_enabled_v80 else "Uduloor: väljas"
     if map_canvas!=null:map_canvas.set_fog_enabled_v80(fog_enabled_v80)
     if terrain_3d!=null:terrain_3d.set_fog_enabled_v80(fog_enabled_v80)
+    _refresh_intelligence_v83()
 
 func _toggle_fog_v80() -> void:
     fog_enabled_v80=not fog_enabled_v80
@@ -248,6 +251,7 @@ func _generate() -> void:
     scout_state={}
     map_canvas.set_scout({})
     terrain_3d.set_scout({})
+    raider_state_v83={}
     set_armies_v54([])
     world_generated.emit()
 
@@ -271,6 +275,7 @@ func set_scout(data: Dictionary) -> void:
         scout_auto_button_v79.text="Autoavastus: sees" if bool(scout_state.get("auto_explore_v79",false)) else "Autoavastus: väljas"
     if map_canvas!=null:map_canvas.set_scout(scout_state)
     if terrain_3d!=null:terrain_3d.set_scout(scout_state)
+    _refresh_intelligence_v83()
     if scout_status_label!=null:
         if scout_state.is_empty():
             scout_status_label.text="Avastajat ei ole."
@@ -298,17 +303,29 @@ func set_armies_v54(armies: Array) -> void:
         army_selector_v54.add_item("#%d %s" % [id,String(army.get("kind",""))])
         if id==previous_id:choice=army_ids_v54.size()-1
     if not army_ids_v54.is_empty():army_selector_v54.select(choice)
-    army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, seejärel saada liikuma, koonda väesalgad või ava proovilahing." % army_ids_v54.size()
+    _refresh_intelligence_v83()
+
+func _refresh_intelligence_v83() -> void:
+    if army_status_v54!=null:
+        army_status_v54.text="Väesalgad: %d. Vali üksus ja sihtruut, seejärel saada liikuma, koonda väesalgad või ava proovilahing." % army_ids_v54.size()
+        if not raider_state_v83.is_empty():
+            if bool(raider_state_v83.get("defeated",false)):
+                army_status_v54.text+=" | Vastase väesalk on võidetud."
+            elif not fog_enabled_v80 or Fog83.unit_visible_v82(scout_state,world,raider_state_v83):
+                army_status_v54.text+=" | Vaenlane (%d,%d) %.0f HP" % [
+                    int(raider_state_v83.get("c",-1)),
+                    int(raider_state_v83.get("r",-1)),
+                    float(raider_state_v83.get("hp",0.0))]
+            else:
+                army_status_v54.text+=" | Vaenlase asukoht teadmata"
+    if selected_cell.x>=0 and selected_cell.y>=0 and not world.is_empty():
+        _refresh_selected_info_v83()
 
 func set_raider_v56(enemy: Dictionary) -> void:
+    raider_state_v83=enemy.duplicate(true)
     if map_canvas!=null:map_canvas.set_raider_v56(enemy)
     if terrain_3d!=null:terrain_3d.set_raider_v56(enemy)
-    if army_status_v54!=null and not enemy.is_empty():
-        if bool(enemy.get("defeated",false)):
-            army_status_v54.text+=" | Vastase väesalk on võidetud."
-        else:
-            army_status_v54.text+=" | Vaenlane (%d,%d) %.0f HP" % [
-                int(enemy["c"]),int(enemy["r"]),float(enemy["hp"])]
+    _refresh_intelligence_v83()
 
 func set_city_districts(city: Dictionary) -> void:
     district_city=city
@@ -327,8 +344,18 @@ func _on_selected(c: int,r: int) -> void:
         map_canvas.select_cell(c,r)
     if terrain_3d!=null and terrain_3d.selected!=selected_cell:
         terrain_3d.select_cell(c,r,false)
+    _refresh_selected_info_v83()
+    _save_settings()
+
+func _refresh_selected_info_v83() -> void:
+    if info_label==null:return
+    var c: int=selected_cell.x
+    var r: int=selected_cell.y
     var cell: Dictionary=World.cell(world,c,r)
     if cell.is_empty():return
+    if fog_enabled_v80 and Fog83.visibility_at_v83(scout_state,world,c,r)==0:
+        info_label.text="Ruut %d × %d • Avastamata ala\nSaada avastaja piirkonda, et näha maastikku ja kõrgust." % [c,r]
+        return
     var biome: String=String(cell.get("biome","sea"))
     var name: String={"sea":"Meri","plains":"Tasandik","forest":"Mets","hills":"Mäestik"}.get(biome,biome)
     var note: String=""
@@ -344,7 +371,6 @@ func _on_selected(c: int,r: int) -> void:
             home=" • Riigi %d algus" % (i+1)
     info_label.text="Ruut %d × %d • %s • kõrgus %.1f%s%s\nTopeltpuuduta 3D kaardil või vajuta Ava 3D detailkaart." % [
         c,r,name,float(cell.get("h",0)),note,home]
-    _save_settings()
 
 func open_selected_detail() -> void:
     if selected_cell.x < 0 or selected_cell.y < 0 or world.is_empty():
