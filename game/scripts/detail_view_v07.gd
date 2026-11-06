@@ -47,6 +47,7 @@ const BuildInfo58 = preload("res://scripts/build_info_v58.gd")
 const CampVisual54 = preload("res://scripts/military_visual_v54.gd")
 const Military54 = preload("res://scripts/military_v54.gd")
 const Scout52 = preload("res://scripts/world_scout_v52.gd")
+const Fog80 = preload("res://scripts/scout_fog_v80.gd")
 const Districts44 = preload("res://scripts/world_districts_v25.gd")
 const NeighborBuildings45 = preload("res://scripts/detail_neighbor_buildings_v45.gd")
 const Hybrid46 = preload("res://scripts/detail_hybrid_v46.gd")
@@ -92,6 +93,13 @@ var district_id: String=""
 var city_state: Dictionary = {}
 var scene_root: Node3D
 var world_scout_actor_v53: Node3D
+var fog_root_v81: Node3D
+var fog_scout_v81: Dictionary={}
+var fog_mask_v81: PackedByteArray=PackedByteArray()
+var fog_enabled_v81: bool=false
+var fog_signature_v81: String=""
+var fog_last_state_v81: int=2
+var active_armies_v81: Array=[]
 var army_detail_root_v54: Node3D
 var camp_detail_root_v54: Node3D
 var construction_root: Node3D
@@ -262,6 +270,9 @@ func _ready() -> void:
     seam_preview_root=Node3D.new()
     seam_preview_root.name="SurroundingDetailTiles"
     scene_root.add_child(seam_preview_root)
+    fog_root_v81=Node3D.new()
+    fog_root_v81.name="DetailFogOverlayV81"
+    scene_root.add_child(fog_root_v81)
     # Fixed-height, horizontally scrollable toolbar. Priority buttons no
     # longer wrap to 10+ rows or cover the 3D view as the town grows.
     # The enclosing plain Control holds an exact one-row height. The
@@ -668,6 +679,71 @@ func _render_neighbors() -> void:
                 "ContinuousStreet_"+str(i))
         street_cache_signature=current_signature
 
+
+## V81: detail tiles share the SAME V79/V80 saved visibility bitmap as
+## the world atlas. Keep its 36K-byte decoded mask cached between turns.
+func _fog_state_v81(tile: Vector2i) -> int:
+    if not fog_enabled_v81 or fog_mask_v81.size()!=World.COLS*World.ROWS:
+        return 2
+    if tile.x<0 or tile.y<0 or tile.x>=World.COLS or tile.y>=World.ROWS:
+        return 0
+    if tile==selected and can_build:return 2
+    if combined_city and shown_district_tiles.has(tile):return 2
+    return int(fog_mask_v81[tile.y*World.COLS+tile.x])
+
+func _fog_plane_v81(parent: Node3D,width: float,depth: float) -> void:
+    var plate:=MeshInstance3D.new()
+    plate.name="UnexploredTerrainV81"
+    var mesh:=BoxMesh.new()
+    mesh.size=Vector3(width,0.12,depth)
+    plate.mesh=mesh
+    plate.position.y=0.04
+    var mat:=StandardMaterial3D.new()
+    mat.albedo_color=Color("#182332")
+    mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+    plate.material_override=mat
+    parent.add_child(plate)
+
+func _apply_selected_fog_v81() -> void:
+    if scene_root==null or fog_root_v81==null or selected.x<0:return
+    var state: int=_fog_state_v81(selected)
+    fog_last_state_v81=state
+    for old in fog_root_v81.get_children():old.free()
+    # Conceal the real ground/trees and economy props on an unknown tile;
+    # the scene data still exists for replay/save and is never mutated.
+    for child in scene_root.get_children():
+        if child==fog_root_v81 or child==seam_preview_root or \
+                child==world_scout_actor_v53 or child==army_detail_root_v54 or \
+                child is Camera3D or child is WorldEnvironment or \
+                child is DirectionalLight3D:
+            continue
+        if state==0:
+            if not child.has_meta("v81_old_visibility"):
+                child.set_meta("v81_old_visibility",child.visible)
+            child.visible=false
+        elif child.has_meta("v81_old_visibility"):
+            child.visible=bool(child.get_meta("v81_old_visibility"))
+            child.remove_meta("v81_old_visibility")
+    if state==0:
+        _fog_plane_v81(fog_root_v81,
+            Continuous.TILE_SPAN if combined_city else SURFACE_WIDTH,
+            Continuous.TILE_SPAN if combined_city else SURFACE_DEPTH)
+    _refresh_info()
+
+func set_visibility_v81(scout: Dictionary,enabled: bool) -> void:
+    var next_sig: String=(Fog80.signature(scout,world) if enabled else "off")
+    # The same cached map drives both the main tile and all eight previews.
+    if next_sig==fog_signature_v81 and enabled==fog_enabled_v81:return
+    fog_enabled_v81=enabled
+    fog_scout_v81=scout.duplicate(true)
+    fog_signature_v81=next_sig
+    fog_mask_v81=Fog80.visibility(scout,world) if enabled else PackedByteArray()
+    if selected.x<0 or world.is_empty():return
+    _apply_selected_fog_v81()
+    _render_seam_previews()
+    if not active_armies_v81.is_empty():set_world_armies_v54(active_armies_v81)
+
 func _render_seam_previews() -> void:
     if seam_preview_root==null:return
     for old in seam_preview_root.get_children():old.free()
@@ -686,6 +762,10 @@ func _render_seam_previews() -> void:
             var depth: float=Continuous.TILE_SPAN if combined_city else SURFACE_DEPTH
             part.position=Vector3(float(dc)*width,0,float(dr)*depth)
             seam_preview_root.add_child(part)
+            if _fog_state_v81(tile)==0:
+                part.set_meta("detail_unknown_v81",true)
+                _fog_plane_v81(part,width,depth)
+                continue
             if combined_city:
                 # Same 160m continuous-terrain renderer as neighboring
                 # developed districts, but without inventing buildings or roads.
@@ -727,6 +807,7 @@ func _refresh_seam_neighbor_buildings() -> void:
     var capital: Dictionary=capital_preview_state_v47 if not capital_preview_state_v47.is_empty() else city_state
     for part in seam_preview_root.get_children():
         if not part is Node3D or not part.has_meta("world_tile"):continue
+        if bool(part.get_meta("detail_unknown_v81",false)):continue
         var tile: Vector2i=part.get_meta("world_tile")
         var ownership: Dictionary=SecondCity47.source(world,tile,capital,
             satellite_preview_state_v47,satellite_preview_tile_v47)
@@ -1477,6 +1558,10 @@ func _recommend_placement() -> void:
 
 func _refresh_info() -> void:
     if info==null:return
+    if _fog_state_v81(selected)==0:
+        info.text="Avastamata ala • Detailruut %d × %d • avastaja peab selle ala uurima" % [selected.x,selected.y]
+        info.tooltip_text=info.text
+        return
     var shown: Vector2i=active_tile if combined_city else selected
     var terrain_size: String="160 × 160 m / ruut" if combined_city else "225 × 195 m"
     var text_line: String="%s • Detailruut %d × %d • %s • %s" % [
@@ -1674,6 +1759,7 @@ func set_world_scout_v53(data: Dictionary) -> void:
             float(next["r"])-float(data["r"]))
 
 func set_world_armies_v54(armies: Array) -> void:
+    active_armies_v81=armies.duplicate(true)
     if army_detail_root_v54==null:return
     # Keep the same rigged GLB/animation across economy turns and 3D refreshes.
     # The detail card is only a representation of the saved world army.
@@ -1684,6 +1770,12 @@ func set_world_armies_v54(armies: Array) -> void:
             if rendered>=18:break
             var sample: Dictionary=Military54.sample(army)
             if sample.is_empty():continue
+            # Hostile actors do not give information about unexplored
+            # terrain. Friendly armies stay visible even outside scout sight.
+            if fog_enabled_v81 and int(army.get("team",0))!=0 and \
+                    not Fog80.visible_at(fog_scout_v81,world,
+                        int(army.get("c",-1)),int(army.get("r",-1))):
+                continue
             var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
             var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH
             if absf(x)>=SURFACE_WIDTH*0.5 or absf(z)>=SURFACE_DEPTH*0.5:
@@ -1801,7 +1893,7 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     _clear_buildings()
     # Keep lighting and camera, discard old procedural terrain and natural props.
     for child in scene_root.get_children():
-        if child==world_scout_actor_v53 or child==army_detail_root_v54 or child==camp_detail_root_v54 or child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
+        if child==world_scout_actor_v53 or child==army_detail_root_v54 or child==camp_detail_root_v54 or child==construction_root or child==resource_root or child==worker_root or child==freight_root or child==plot_root or child==roads_root or child==bridge_root or child==combined_root or child==seam_preview_root or child==fog_root_v81 or child is WorldEnvironment or child is DirectionalLight3D or child is Camera3D:
             continue
         # A queued mesh still has the DetailTerrain name this frame.
         # Replace it now so the terrain and color cannot be shadowed by
@@ -1813,3 +1905,4 @@ func open_tile(next_world: Dictionary, c: int, r: int, city: Dictionary, capital
     seam_preview_refresh_clock=0.0
     _render_seam_previews()
     refresh_buildings()
+    _apply_selected_fog_v81()
