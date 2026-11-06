@@ -20,6 +20,9 @@ func _test() -> void:
     await process_frame
     await process_frame
     ui._reset()
+    # Test mesh/LOD geometry independently from the V81 exploration mask.
+    ui.world_view.fog_enabled_v80=false
+    ui.world_view._apply_fog_v80()
     var world: Dictionary=ui.world_view.world
     var home: Vector2i=Districts.origin(world)
     var east: Vector2i=home+Vector2i(1,0)

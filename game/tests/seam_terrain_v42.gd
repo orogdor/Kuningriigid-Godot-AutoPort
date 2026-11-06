@@ -21,6 +21,9 @@ func _test() -> void:
     await process_frame
     await process_frame
     screen._reset()
+    # Test mesh/LOD geometry independently from the V81 exploration mask.
+    screen.world_view.fog_enabled_v80=false
+    screen.world_view._apply_fog_v80()
     var world: Dictionary=screen.world_view.world
     var home: Vector2i=Districts.origin(world)
     # All adjacent terrain pieces must meet at the very same world height,

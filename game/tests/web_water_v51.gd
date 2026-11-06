@@ -19,6 +19,9 @@ func _run() -> void:
     root.add_child(ui)
     await process_frame
     await process_frame
+    # Geometry tests run with fog off; V81/V82 test concealment separately.
+    ui.world_view.fog_enabled_v80=false
+    ui.world_view._apply_fog_v80()
     var world: Dictionary=ui.world_view.world
     var atlas=ui.world_view.terrain_3d
     if atlas.river_root==null:
