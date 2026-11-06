@@ -332,6 +332,7 @@ func scout_point_for(data: Dictionary) -> Vector3:
 func set_scout(data: Dictionary) -> void:
     scout_state_v80=data.duplicate(true)
     _refresh_fog_v80()
+    _refresh_army_fog_v82()
     if not raider_state_v80.is_empty():set_raider_v56(raider_state_v80)
     if scout_actor==null:return
     var valid: bool=not data.is_empty() and not world.is_empty() and \
@@ -351,6 +352,7 @@ func set_fog_enabled_v80(enabled: bool) -> void:
     fog_enabled_v80=enabled
     fog_key_v80=""
     _refresh_fog_v80()
+    _refresh_army_fog_v82()
     if not raider_state_v80.is_empty():set_raider_v56(raider_state_v80)
 
 func _refresh_fog_v80() -> void:
@@ -361,6 +363,16 @@ func _refresh_fog_v80() -> void:
     fog_texture_v80.update(Fog80.terrain_image(
         scout_state_v80 if fog_enabled_v80 else {},world))
     fog_key_v80=next_key
+
+func _refresh_army_fog_v82() -> void:
+    if army_root_v54==null:return
+    for item in army_root_v54.get_children():
+        var actor: Node3D=item as Node3D
+        if actor==null:continue
+        var tile: Vector2i=actor.get_meta("army_tile_v82",Vector2i(-1,-1))
+        var team: int=int(actor.get_meta("army_team_v82",0))
+        actor.visible=not fog_enabled_v80 or team==0 or \
+            Fog80.visible_at(scout_state_v80,world,tile.x,tile.y)
 
 func set_armies_v54(armies: Array) -> void:
     if army_root_v54==null:return
@@ -405,6 +417,8 @@ func set_armies_v54(armies: Array) -> void:
                 flag_color.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
                 flag.material_override=flag_color
                 unit.add_child(flag)
+            unit.set_meta("army_tile_v82",Vector2i(c,r))
+            unit.set_meta("army_team_v82",int(army.get("team",0)))
             var render_model: Node3D=unit.get_child(0) as Node3D
             if render_model!=null:
                 WebUnits53.animate_world(render_model,
@@ -421,6 +435,7 @@ func set_armies_v54(armies: Array) -> void:
         if not active.has(String(node.name)):
             node.free()
     _refresh_army_visibility_v75()
+    _refresh_army_fog_v82()
 
 func set_raider_v56(enemy: Dictionary) -> void:
     raider_state_v80=enemy.duplicate(true)

@@ -1772,9 +1772,7 @@ func set_world_armies_v54(armies: Array) -> void:
             if sample.is_empty():continue
             # Hostile actors do not give information about unexplored
             # terrain. Friendly armies stay visible even outside scout sight.
-            if fog_enabled_v81 and int(army.get("team",0))!=0 and \
-                    not Fog80.visible_at(fog_scout_v81,world,
-                        int(army.get("c",-1)),int(army.get("r",-1))):
+            if fog_enabled_v81 and not Fog80.unit_visible_v82(fog_scout_v81,world,army):
                 continue
             var x: float=(float(sample["c"])-float(selected.x))*SURFACE_WIDTH
             var z: float=(float(sample["r"])-float(selected.y))*SURFACE_DEPTH

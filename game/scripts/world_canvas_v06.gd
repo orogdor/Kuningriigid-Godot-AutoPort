@@ -107,6 +107,9 @@ func _refresh_fog_v80() -> void:
     else:fog_texture_v80.update(image)
     fog_key_v80=next_key
 
+func army_visible_v82(army: Dictionary) -> bool:
+    return not fog_enabled_v80 or Fog80.unit_visible_v82(scout_state,world,army)
+
 func set_armies_v54(armies: Array) -> void:
     army_state_v54=armies.duplicate(true)
     queue_redraw()
@@ -239,6 +242,10 @@ func _draw() -> void:
         var position: Vector2=point(float(pose["c"])+0.5,float(pose["r"])+0.5)
         var previous: Vector2=position
         for next in scout_state.get("path",[]):
+            # Do not reveal unexplored terrain via a planned scout path.
+            if fog_enabled_v80 and not Fog80.visible_at(scout_state,world,
+                    int(next["c"]),int(next["r"])):
+                break
             var scout_waypoint: Vector2=point(float(next["c"])+0.5,float(next["r"])+0.5)
             draw_line(previous,scout_waypoint,Color("#ffe5a5"),maxf(1.6,zoom*0.16),true)
             previous=scout_waypoint
@@ -246,12 +253,15 @@ func _draw() -> void:
         draw_arc(position,maxf(5.8,zoom*0.69),0.0,TAU,18,Color("#42301f"),1.5,true)
     # The same saved V258 tile interpolation as the 3D atlas.
     for army in army_state_v54:
-        if int(army.get("id",-1))<0:continue
+        if not army_visible_v82(army):continue
         var current: Dictionary=Scout.sample(army)
         if current.is_empty():continue
         var centre: Vector2=point(float(current["c"])+0.5,float(current["r"])+0.5)
-        draw_circle(centre,maxf(3.7,zoom*0.40),Color("#ffbb64"))
-        draw_arc(centre,maxf(4.9,zoom*0.53),0.0,TAU,16,Color("#643e1b"),1.5,true)
+        var hostile: bool=int(army.get("team",0))!=0
+        draw_circle(centre,maxf(3.7,zoom*0.40),
+            Color("#e6544d") if hostile else Color("#ffbb64"))
+        draw_arc(centre,maxf(4.9,zoom*0.53),0.0,TAU,16,
+            Color("#57201f") if hostile else Color("#643e1b"),1.5,true)
     if not raider_v56.is_empty() and not bool(raider_v56.get("defeated",false)) \
             and int(raider_v56.get("seed",-1))==int(world.get("seed",-2)):
         var enemy: Dictionary=Scout.sample(raider_v56)

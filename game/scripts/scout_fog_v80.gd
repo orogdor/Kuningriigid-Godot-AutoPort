@@ -61,6 +61,12 @@ static func visible_at(scout: Dictionary,world: Dictionary,c: int,r: int) -> boo
         if dx*dx+dy*dy<=CAPITAL_RADIUS*CAPITAL_RADIUS:return true
     return false
 
+## V82 shared visibility policy: friendly units never vanish, enemies reveal only in sight.
+static func unit_visible_v82(scout: Dictionary,world: Dictionary,army: Dictionary) -> bool:
+    if int(army.get("team",0))==0:return true
+    if bool(army.get("defeated",false)):return false
+    return visible_at(scout,world,int(army.get("c",-1)),int(army.get("r",-1)))
+
 static func atlas_image(scout: Dictionary,world: Dictionary) -> Image:
     var mask: PackedByteArray=visibility(scout,world)
     var image:=Image.create(World.COLS,World.ROWS,false,Image.FORMAT_RGBA8)

@@ -23,6 +23,9 @@ func _test() -> void:
     await process_frame
     await process_frame
     ui._reset()
+    # Test mesh/LOD geometry independently from the V81 exploration mask.
+    ui.world_view.fog_enabled_v80=false
+    ui.world_view._apply_fog_v80()
     ui._found_trade_city()
     var location: Dictionary=ui._satellite_tile()
     var world: Dictionary=ui.world_view.world
