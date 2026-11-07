@@ -84,9 +84,15 @@ func _run() -> void:
     var other: Node3D=allies[1].get_parent() as Node3D
     var unchanged: Vector3=other.position
     parent.position+=Vector3(0.25,0,0)
-    if other.position!=unchanged or \
-            (allies[0].mesh as CylinderMesh).top_radius!=0.39:
-        fail("shared team geometry coupled soldier positions or dimensions")
+    if other.position.distance_to(unchanged)>0.00001:
+        fail("moving one soldier unexpectedly moved another soldier")
+        return
+    # Mesh resource dimensions are float32 in Godot. Exact equality with
+    # the GDScript float64 literal 0.39 falsely fails despite identical
+    # resource geometry. Test within physically negligible tolerance.
+    var radius: float=(allies[0].mesh as CylinderMesh).top_radius
+    if absf(radius-0.39)>0.00001:
+        fail("shared team disc radius was unexpectedly modified: "+str(radius))
         return
     view.set_auto_battle(false)
     print("BATTLE_TEAM_MESH_V96 SUCCESS: 216 source GLBs, one mesh, 216 individual materials, selection, snapshot and save isolation")
