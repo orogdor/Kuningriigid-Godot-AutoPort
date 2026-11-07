@@ -17,7 +17,7 @@
     "AI decisions"
   ],
   "source_branch": "main",
-  "source_commit": "cb433624cf60fee05a5b22131ff99f3492f7bb49",
+  "source_commit": "f6efe1dd66104ea6d315bfaa098462ea03164e6b",
   "source_repository": "https://github.com/orogdor/Kuningriigid",
   "tables": {
     "bronze_fortify_pop": {
