@@ -191,6 +191,8 @@ func _ready() -> void:
     quality_state["level"]=1 if OS.has_feature("mobile") else 2
     viewport.size=Perf31.viewport_size(int(quality_state["level"]))
     viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+    visibility_changed.connect(_sync_viewport_visibility_v88)
+    _sync_viewport_visibility_v88()
     viewport.transparent_bg=false
     viewport.handle_input_locally=true
     controller.add_child(viewport)
@@ -301,8 +303,16 @@ func _toggle_performance() -> void:
     performance_enabled=not performance_enabled
     if performance_label!=null:performance_label.visible=performance_enabled
 
+## V88: spare an entire 3D renderer when detail is not on screen.
+## CanvasItem emits visibility_changed for inherited parent visibility too.
+func _sync_viewport_visibility_v88() -> void:
+    if view_port==null:return
+    view_port.render_target_update_mode=(
+        SubViewport.UPDATE_ALWAYS if is_visible_in_tree()
+        else SubViewport.UPDATE_DISABLED)
+
 func _process(delta: float) -> void:
-    if not visible or view_port==null:return
+    if not is_visible_in_tree() or view_port==null:return
     ArmyMotion78.advance(army_detail_root_v54,delta)
     if not combined_city and controller!=null:
         seam_preview_refresh_clock+=delta
