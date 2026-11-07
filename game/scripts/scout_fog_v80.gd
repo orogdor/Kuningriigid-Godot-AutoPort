@@ -11,12 +11,26 @@ static func _valid(scout: Dictionary,world: Dictionary) -> bool:
         int(scout.get("c",-1))>=0 and int(scout.get("r",-1))>=0 and \
         int(scout.get("c",-1))<World.COLS and int(scout.get("r",-1))<World.ROWS
 
+## V85: an actually founded satellite settlement supplies stationary sight.
+## This is derived at runtime, never written into the V52 scout save.
+static func _outpost_v85(scout: Dictionary,world: Dictionary) -> Vector2i:
+    var data: Variant=scout.get("vision_outpost_v85",{})
+    if not data is Dictionary or world.is_empty():return Vector2i(-1,-1)
+    if int(data.get("seed",-1))!=int(world.get("seed",-2)):
+        return Vector2i(-1,-1)
+    var c: int=int(data.get("c",-1))
+    var r: int=int(data.get("r",-1))
+    if c<0 or c>=World.COLS or r<0 or r>=World.ROWS:
+        return Vector2i(-1,-1)
+    return Vector2i(c,r)
+
 static func signature(scout: Dictionary,world: Dictionary) -> String:
     if not _valid(scout,world):return "clear"
-    # Include the actual bitmap so reloaded / rolled-back saves with the
-    # same visit count never incorrectly reuse an older GPU fog texture.
-    return "%d:%d:%d:%s" % [int(world.get("seed",-1)),
-        int(scout["c"]),int(scout["r"]),
+    # Include bitmap AND additional friendly vision sources so founding
+    # an outpost invalidates both existing 2D and 3D GPU fog caches.
+    var outpost: Vector2i=_outpost_v85(scout,world)
+    return "%d:%d:%d:%d:%d:%s" % [int(world.get("seed",-1)),
+        int(scout["c"]),int(scout["r"]),outpost.x,outpost.y,
         String(scout.get("explored_bits_v79",""))]
 
 static func _reveal(mask: PackedByteArray,c: int,r: int,radius: int) -> void:
@@ -45,6 +59,9 @@ static func visibility(scout: Dictionary,world: Dictionary) -> PackedByteArray:
     if not starts.is_empty():
         var home: Dictionary=starts[0]
         _reveal(mask,int(home["c"]),int(home["r"]),CAPITAL_RADIUS)
+    var outpost: Vector2i=_outpost_v85(scout,world)
+    if outpost.x>=0:
+        _reveal(mask,outpost.x,outpost.y,CAPITAL_RADIUS)
     _reveal(mask,int(scout["c"]),int(scout["r"]),VIEW_RADIUS)
     return mask
 
@@ -58,6 +75,11 @@ static func visible_at(scout: Dictionary,world: Dictionary,c: int,r: int) -> boo
     if not starts.is_empty():
         dx=c-int(starts[0]["c"])
         dy=r-int(starts[0]["r"])
+        if dx*dx+dy*dy<=CAPITAL_RADIUS*CAPITAL_RADIUS:return true
+    var outpost: Vector2i=_outpost_v85(scout,world)
+    if outpost.x>=0:
+        dx=c-outpost.x
+        dy=r-outpost.y
         if dx*dx+dy*dy<=CAPITAL_RADIUS*CAPITAL_RADIUS:return true
     return false
 

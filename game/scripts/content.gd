@@ -156,14 +156,29 @@ func _satellite_tile() -> Dictionary:
     if not Routes.configure(city,world,home,chosen):return {}
     return chosen
 
+## V85: keep the saved scout entity untouched. A founded second city
+## reveals nearby land and enemies, just like the existing home capital.
+func _vision_scout_v85(scout: Dictionary) -> Dictionary:
+    var observers: Dictionary=scout.duplicate(true)
+    if world_view==null or world_view.world.is_empty() or not Trade.has_outpost(city):
+        return observers
+    var site: Dictionary=_satellite_tile()
+    var tile: Vector2i=SecondCity47.satellite_position(site,world_view.world)
+    if tile.x>=0 and tile.x<WorldGen.COLS and tile.y>=0 and tile.y<WorldGen.ROWS:
+        observers["vision_outpost_v85"]={
+            "seed":int(world_view.world.get("seed",-1)),
+            "c":tile.x,"r":tile.y}
+    return observers
+
 func _sync_trade_map() -> void:
     if world_view==null or world_view.world.is_empty():return
     world_view.set_city_districts(city)
     Transit.configure(city,world_view.world)
     var scout: Dictionary=WorldScout52.ensure(city,world_view.world)
-    world_view.set_scout(scout)
+    var observers: Dictionary=_vision_scout_v85(scout)
+    world_view.set_scout(observers)
     if detail_view!=null:
-        detail_view.set_visibility_v81(scout,world_view.fog_enabled_v80)
+        detail_view.set_visibility_v81(observers,world_view.fog_enabled_v80)
     var military: Dictionary=Military54.ensure(city,world_view.world)
     world_view.set_armies_v54(military.get("armies",[]))
     var raider: Dictionary=Raider56.ensure(city,world_view.world)
@@ -464,7 +479,7 @@ func _show_detail(c: int, r: int) -> void:
     detail_view.configure_town_sources_v47(city,second_town,second_tile)
     detail_view.open_tile(world_view.world,c,r,active,owned or satellite,district_key)
     var scout: Dictionary=WorldScout52.ensure(city,world_view.world)
-    detail_view.set_visibility_v81(scout,world_view.fog_enabled_v80)
+    detail_view.set_visibility_v81(_vision_scout_v85(scout),world_view.fog_enabled_v80)
     detail_view.set_world_scout_v53(scout)
     var military: Dictionary=Military54.ensure(city,world_view.world)
     var detail_armies: Array=military.get("armies",[]).duplicate()
