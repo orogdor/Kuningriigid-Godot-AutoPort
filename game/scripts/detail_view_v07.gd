@@ -66,7 +66,9 @@ var seam_preview_root: Node3D
 var capital_preview_state_v47: Dictionary={}
 var satellite_preview_state_v47: Dictionary={}
 var satellite_preview_tile_v47: Vector2i=Vector2i(-1,-1)
+const SEAM_PREVIEW_INTERVAL_V87: float=0.50
 var seam_preview_refresh_clock: float=0.0
+var seam_preview_definitions_v87: Dictionary={}
 var combined_bounds: Dictionary={}
 var shown_district_tiles: Array[Vector2i]=[]
 var terrain_mesh_builds: int=0
@@ -304,7 +306,7 @@ func _process(delta: float) -> void:
     ArmyMotion78.advance(army_detail_root_v54,delta)
     if not combined_city and controller!=null:
         seam_preview_refresh_clock+=delta
-        if seam_preview_refresh_clock>=0.25:
+        if seam_preview_refresh_clock>=SEAM_PREVIEW_INTERVAL_V87:
             seam_preview_refresh_clock=0.0
             _refresh_seam_neighbor_buildings()
     if combined_city and controller!=null and not shown_district_tiles.is_empty():
@@ -823,7 +825,11 @@ func _refresh_seam_neighbor_buildings() -> void:
     # The full geometry is reused from the *same* _building() /
     # _construction_site() functions as the active 3D city.
     if seam_preview_root==null or combined_city or controller==null:return
-    var definitions: Dictionary=CityRecipes.read_table("city_buildings").get("buildings",{})
+    # Building definitions do not change during play; parsing the full JSON
+    # on each 3D camera poll is wasted CPU, especially on Android.
+    if seam_preview_definitions_v87.is_empty():
+        seam_preview_definitions_v87=CityRecipes.read_table("city_buildings").get("buildings",{})
+    var definitions: Dictionary=seam_preview_definitions_v87
     var capital: Dictionary=capital_preview_state_v47 if not capital_preview_state_v47.is_empty() else city_state
     for part in seam_preview_root.get_children():
         if not part is Node3D or not part.has_meta("world_tile"):continue
