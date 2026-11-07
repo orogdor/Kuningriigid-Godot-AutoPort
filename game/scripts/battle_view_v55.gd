@@ -29,6 +29,9 @@ var scene_root: Node3D
 var actors_root: Node3D
 var obstacles_root: Node3D
 var projectiles_root: Node3D
+# V94: identical stone projectiles share GPU geometry and material.
+var projectile_mesh_v94: SphereMesh
+var projectile_material_v94: StandardMaterial3D
 var move_markers_root: Node3D
 var battle_canvas_container: SubViewportContainer
 var move_toggle: Button
@@ -923,16 +926,18 @@ func _refresh_projectiles() -> void:
         if marker==null:
             marker=MeshInstance3D.new()
             marker.name=label
-            var mesh:=SphereMesh.new()
-            mesh.radius=0.18
-            mesh.height=0.36
-            mesh.radial_segments=8
-            mesh.rings=4
-            marker.mesh=mesh
-            var mat:=StandardMaterial3D.new()
-            mat.albedo_color=Color("#68645b")
-            mat.roughness=0.95
-            marker.material_override=mat
+            if projectile_mesh_v94==null:
+                projectile_mesh_v94=SphereMesh.new()
+                projectile_mesh_v94.radius=0.18
+                projectile_mesh_v94.height=0.36
+                projectile_mesh_v94.radial_segments=8
+                projectile_mesh_v94.rings=4
+            if projectile_material_v94==null:
+                projectile_material_v94=StandardMaterial3D.new()
+                projectile_material_v94.albedo_color=Color("#68645b")
+                projectile_material_v94.roughness=0.95
+            marker.mesh=projectile_mesh_v94
+            marker.material_override=projectile_material_v94
             projectiles_root.add_child(marker)
         marker.position=Vector3(float(stone["x"]),
             float(stone.get("height",1.1)),float(stone["z"]))
