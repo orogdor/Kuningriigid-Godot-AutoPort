@@ -33,6 +33,12 @@ var projectiles_root: Node3D
 var projectile_mesh_v94: SphereMesh
 var projectile_material_v94: StandardMaterial3D
 var move_markers_root: Node3D
+# V95: separate reusable visual resources for squad and individual targets.
+# Every waypoint retains its own node, ID and independent position.
+var squad_waypoint_mesh_v95: CylinderMesh
+var squad_waypoint_material_v95: StandardMaterial3D
+var personal_waypoint_mesh_v95: CylinderMesh
+var personal_waypoint_material_v95: StandardMaterial3D
 var battle_canvas_container: SubViewportContainer
 var move_toggle: Button
 var move_mode_enabled: bool=false
@@ -959,15 +965,17 @@ func _refresh_move_markers() -> void:
         if marker==null:
             marker=MeshInstance3D.new()
             marker.name=key
-            var mesh:=CylinderMesh.new()
-            mesh.top_radius=1.5
-            mesh.bottom_radius=1.5
-            mesh.height=0.12
-            marker.mesh=mesh
-            var mat:=StandardMaterial3D.new()
-            mat.albedo_color=Color("#f1d24d")
-            mat.roughness=1.0
-            marker.material_override=mat
+            if squad_waypoint_mesh_v95==null:
+                squad_waypoint_mesh_v95=CylinderMesh.new()
+                squad_waypoint_mesh_v95.top_radius=1.5
+                squad_waypoint_mesh_v95.bottom_radius=1.5
+                squad_waypoint_mesh_v95.height=0.12
+            if squad_waypoint_material_v95==null:
+                squad_waypoint_material_v95=StandardMaterial3D.new()
+                squad_waypoint_material_v95.albedo_color=Color("#f1d24d")
+                squad_waypoint_material_v95.roughness=1.0
+            marker.mesh=squad_waypoint_mesh_v95
+            marker.material_override=squad_waypoint_material_v95
             move_markers_root.add_child(marker)
         marker.position=Vector3(float(target["x"]),0.12,float(target["z"]))
     # Independent soldier orders use a smaller warm-coloured target marker.
@@ -984,15 +992,17 @@ func _refresh_move_markers() -> void:
             if point==null:
                 point=MeshInstance3D.new()
                 point.name=key
-                var mesh:=CylinderMesh.new()
-                mesh.top_radius=0.7
-                mesh.bottom_radius=0.7
-                mesh.height=0.18
-                point.mesh=mesh
-                var mat:=StandardMaterial3D.new()
-                mat.albedo_color=Color("#f5ab46")
-                mat.roughness=0.9
-                point.material_override=mat
+                if personal_waypoint_mesh_v95==null:
+                    personal_waypoint_mesh_v95=CylinderMesh.new()
+                    personal_waypoint_mesh_v95.top_radius=0.7
+                    personal_waypoint_mesh_v95.bottom_radius=0.7
+                    personal_waypoint_mesh_v95.height=0.18
+                if personal_waypoint_material_v95==null:
+                    personal_waypoint_material_v95=StandardMaterial3D.new()
+                    personal_waypoint_material_v95.albedo_color=Color("#f5ab46")
+                    personal_waypoint_material_v95.roughness=0.9
+                point.mesh=personal_waypoint_mesh_v95
+                point.material_override=personal_waypoint_material_v95
                 move_markers_root.add_child(point)
             point.position=Vector3(float(personal["x"]),0.2,float(personal["z"]))
     for node in move_markers_root.get_children():
