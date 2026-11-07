@@ -117,6 +117,17 @@ func _render_soldier_motion_v65(delta: float) -> void:
         if not node.has_meta("interpolation_v63"):continue
         var state: Dictionary=node.get_meta("interpolation_v63")
         if state.is_empty():continue
+        # V92: once the actor reaches a completely idle pose, let the source
+        # AnimationPlayer loop the GLB's idle clip without rebuilding poses
+        # and allocating a transient person Dictionary every render frame.
+        # New snapshots or combat events always invalidate this cache.
+        if bool(state.get("idle_pose_ready_v92",false)) and \
+                not bool(state.get("move_active",false)) and \
+                float(state.get("attack_clock",0.0))<=0.0 and \
+                float(state.get("hit_clock",0.0))<=0.0 and \
+                node.position.distance_squared_to(state["target"])<0.000004 and \
+                absf(wrapf(node.rotation.y-float(state["to_heading"]),-PI,PI))<0.002:
+            continue
         var duration: float=maxf(float(state.get("duration",0.4)),0.01)
         var fraction: float=clampf(float(state.get("fraction",0.0))+\
             frame/duration,0.0,1.50)
@@ -159,12 +170,19 @@ func _render_soldier_motion_v65(delta: float) -> void:
         # both the 0.25s timer and 0.2s deterministic simulation step.
         var model: Node3D=node.get_child(0) as Node3D
         if model!=null:
-            var person: Dictionary=state["person"].duplicate()
+            # V92: "person" was already deep-copied from the authoritative
+            # battle at set_battle(). Its render-only fields can be updated
+            # in place; this does not modify the saved simulation state.
+            var person: Dictionary=state["person"]
             person["moving"]=moving and (auto_play_enabled or fraction<1.0)
             person["anim_phase"]=phase
             person["attack_anim"]=attack_clock
             person["hit_anim_v61"]=hit_clock
             Animation65.apply(model,person,String(state["kind"]))
+        state["idle_pose_ready_v92"]=model!=null and not moving and \
+            fraction>=1.0 and attack_clock<=0.0 and hit_clock<=0.0 and \
+            node.position.distance_squared_to(target)<0.000004 and \
+            absf(wrapf(node.rotation.y-float(state["to_heading"]),-PI,PI))<0.002
         node.set_meta("interpolation_v63",state)
 
 ## The original GLB Skeleton3D has a death clip, but earlier view logic
@@ -1124,6 +1142,7 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                 if keep_visual and not previous.is_empty():
                     previous["person"]=man.duplicate(true)
                     previous["kind"]=kind
+                    previous["idle_pose_ready_v92"]=false
                     holder.set_meta("interpolation_v63",previous)
                 else:
                     # V77: keep the same actor interpolation even for a >12 m
