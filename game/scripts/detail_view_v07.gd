@@ -304,7 +304,9 @@ func _process(delta: float) -> void:
     ArmyMotion78.advance(army_detail_root_v54,delta)
     if not combined_city and controller!=null:
         seam_preview_refresh_clock+=delta
-        if seam_preview_refresh_clock>=0.25:
+        # V85: neighbor meshes already have signature/LOD caches. Polling
+        # twice instead of four times per second reduces 8-tile CPU scans.
+        if seam_preview_refresh_clock>=0.50:
             seam_preview_refresh_clock=0.0
             _refresh_seam_neighbor_buildings()
     if combined_city and controller!=null and not shown_district_tiles.is_empty():

@@ -2,7 +2,7 @@ extends RefCounted
 ## Version of the ACTUALLY MOUNTED game content, not the old Android APK.
 ## Embedded in each release PCK by tools/stamp_release.py before export.
 const FILE: String="res://data/generated/release.json"
-const SOURCE_FALLBACK: String="0.84"
+const SOURCE_FALLBACK: String="0.85"
 
 static func release_version() -> String:
     if not FileAccess.file_exists(FILE):
