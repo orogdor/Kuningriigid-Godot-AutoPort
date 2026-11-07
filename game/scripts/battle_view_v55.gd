@@ -39,6 +39,9 @@ var squad_waypoint_mesh_v95: CylinderMesh
 var squad_waypoint_material_v95: StandardMaterial3D
 var personal_waypoint_mesh_v95: CylinderMesh
 var personal_waypoint_material_v95: StandardMaterial3D
+# V96: team discs share identical geometry across all 216 soldiers.
+# Materials remain unique per soldier for selection, team and hit styling.
+var team_marker_mesh_v96: CylinderMesh
 var battle_canvas_container: SubViewportContainer
 var move_toggle: Button
 var move_mode_enabled: bool=false
@@ -1124,13 +1127,14 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                 holder.set_meta("source_id",int(fighter["source_id"]))
                 actors_root.add_child(holder)
                 holder.add_child(model)
-                var foot:=CylinderMesh.new()
-                foot.top_radius=0.39
-                foot.bottom_radius=0.39
-                foot.height=0.10
+                if team_marker_mesh_v96==null:
+                    team_marker_mesh_v96=CylinderMesh.new()
+                    team_marker_mesh_v96.top_radius=0.39
+                    team_marker_mesh_v96.bottom_radius=0.39
+                    team_marker_mesh_v96.height=0.10
                 var marker:=MeshInstance3D.new()
                 marker.name="TeamMarker"
-                marker.mesh=foot
+                marker.mesh=team_marker_mesh_v96
                 marker.position.y=0.04
                 var mat:=StandardMaterial3D.new()
                 mat.albedo_color=Color("#65caff") if int(fighter["team"])==0 else Color("#ed6b56")
