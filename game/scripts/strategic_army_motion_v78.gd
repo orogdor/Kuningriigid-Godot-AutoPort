@@ -7,10 +7,14 @@ const FOLLOW_RATE: float=14.0
 static func retarget(actor: Node3D,point: Vector3,heading: float,
         snap_distance: float) -> void:
     if actor==null:return
-    # First spawn, world rebuild and genuinely discontinuous teleports need
-    # exact saved positions, never a long visual journey across the map.
-    if not actor.has_meta("motion_goal_v78") or \
-            actor.position.distance_to(point)>snap_distance:
+    # V90: the visual actor can trail the simulation under low FPS.
+    # Compare TWO AUTHORITATIVE GOALS, never the lagging rendered pose:
+    # otherwise a sequence of ordinary small moves becomes a teleport.
+    var previous_goal: Vector3=actor.get_meta("motion_goal_v78",point)
+    var discontinuity: bool=previous_goal.distance_squared_to(point)>\
+        snap_distance*snap_distance
+    if not actor.has_meta("motion_goal_v78") or discontinuity:
+        # First spawn and real world reload/teleport remain instantaneous.
         actor.position=point
         actor.rotation.y=heading
     actor.set_meta("motion_goal_v78",point)
