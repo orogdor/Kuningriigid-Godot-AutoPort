@@ -32,5 +32,12 @@ static func advance(root: Node3D,delta: float) -> void:
         actor.rotation.y=lerp_angle(actor.rotation.y,yaw,blend)
         if absf(wrapf(actor.rotation.y-yaw,-PI,PI))<0.002:
             actor.rotation.y=yaw
-        if actor.position==goal and actor.rotation.y==yaw:
+        # Node3D rotation uses engine precision; literal float equality may
+        # never hold even immediately after setting the target heading.
+        # Measure settling in the same tolerances used for snapping.
+        var reached_position: bool=actor.position.distance_squared_to(goal)<0.000004
+        var reached_heading: bool=absf(wrapf(actor.rotation.y-yaw,-PI,PI))<0.002
+        if reached_position and reached_heading:
+            actor.position=goal
+            actor.rotation.y=yaw
             actor.set_meta("motion_active_v85",false)
