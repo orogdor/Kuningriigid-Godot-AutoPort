@@ -36,7 +36,7 @@ func _run() -> void:
     if actor.position!=target or \
             not is_equal_approx(actor.rotation.y,PI/2.0) or \
             bool(actor.get_meta("motion_active_v85",true)):
-        fail("actor failed to settle and sleep")
+        fail("actor failed to settle and sleep: pos="+str(actor.position)+" target="+str(target)+" yaw="+str(actor.rotation.y)+" active="+str(actor.get_meta("motion_active_v85",null)))
         return
     Motion.retarget(actor,target,PI/2.0,2.5)
     if bool(actor.get_meta("motion_active_v85",true)):
