@@ -20,6 +20,9 @@ const Nav57=preload("res://scripts/battle_nav_v57.gd")
 const Animation61=preload("res://scripts/battle_animation_v61.gd")
 const Animation65=preload("res://scripts/battle_animation_v65.gd")
 const DEATH_VISUAL_SECONDS_V69: float=1.8
+# V93: track only corpses that still need render-time cleanup; weak refs
+# cannot keep despawned 3D actors alive across battle reloads.
+var fallen_actors_v93: Dictionary={}
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
@@ -205,6 +208,7 @@ func _start_fallen_v69(actor: Node3D) -> void:
     if actor.has_meta("fallen_since_v69"):return
     actor.set_meta("fallen_since_v69",0.0)
     actor.remove_meta("interpolation_v63")
+    fallen_actors_v93[actor.get_instance_id()]=weakref(actor)
     var marker: Node3D=actor.get_node_or_null("TeamMarker") as Node3D
     if marker!=null:marker.hide()
     if actor.get_child_count()==0:return
@@ -213,13 +217,20 @@ func _start_fallen_v69(actor: Node3D) -> void:
         actor.set_meta("death_clip_v69",Animation65.play_death(model))
 
 func _render_fallen_v69(delta: float) -> void:
-    if actors_root==null:return
-    for child in actors_root.get_children():
-        var actor: Node3D=child as Node3D
-        if actor==null or not actor.has_meta("fallen_since_v69"):continue
+    if actors_root==null or fallen_actors_v93.is_empty():return
+    # V93: no per-frame scan of hundreds of living GLB soldiers.
+    # The stable list also handles newly revived IDs and freed old actors.
+    for actor_id in fallen_actors_v93.keys():
+        var ref: WeakRef=fallen_actors_v93[actor_id] as WeakRef
+        var actor: Node3D=ref.get_ref() as Node3D if ref!=null else null
+        if actor==null or actor.get_parent()!=actors_root or \
+                not actor.has_meta("fallen_since_v69"):
+            fallen_actors_v93.erase(actor_id)
+            continue
         var elapsed: float=float(actor.get_meta("fallen_since_v69",0.0))+\
             maxf(0.0,delta)
         if elapsed>=DEATH_VISUAL_SECONDS_V69:
+            fallen_actors_v93.erase(actor_id)
             actors_root.remove_child(actor)
             actor.free()
             continue
