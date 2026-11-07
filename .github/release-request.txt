@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.87 DETAIL PREVIEW CPU OPTIMIZATION
-Reason: Reduce repeated neighboring 3D building/traffic preview scans from four to two per second and cache immutable building recipes instead of reparsing their JSON on each camera poll. Existing construction redraws, settlements, save state and gameplay rules unchanged.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/43
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/146e7795bd846fbb7e72a0a9062ff9e7e51ccb21
-Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42383006637 (success)
-Validated legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42383006607 (success)
-Release requirements: version 0.87.<run>. Publish verified Windows EXE, PCK bridge/full and update manifests after release gates pass. Android APK only with signing keys matching existing installs. Preserve all user saves and verified changed-files update behavior.
+KUNINGRIIGID GODOT AUTOPORT — V0.88 HIDDEN 3D RENDERERS SLEEP
+Reason: Both 3D Godot SubViewports stop continuous GPU redraw when the player is in a different scene, such as the economy screen, tactical battle, other map, or 2D atlas. Restoring the relevant view resumes rendering without recreating meshes, soldier rigs, map state or save data. Hidden views no longer perform per-frame render motion work.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/44
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/0c1370edca886c4cc0c19a19e6a03e562c6c5a13
+Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42386343835 (success)
+Validated Android legacy APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42386343701 (success)
+Release requirements: version 0.88.<run>. Publish verified Windows EXE and PCK bridge/full/update bundles with SHA256 checks. Android APK only when persistently signed with previously compatible release key. Keep old saves and Windows changed-files update support.
