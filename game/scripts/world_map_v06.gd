@@ -10,6 +10,7 @@ signal army_rally_requested(id: int)
 signal battle_requested(id: int)
 signal world_generated
 const World = preload("res://scripts/world_gen_v06.gd")
+const WorldCache89 = preload("res://scripts/world_cache_v89.gd")
 const Fog83 = preload("res://scripts/scout_fog_v80.gd")
 const Canvas = preload("res://scripts/world_canvas_v06.gd")
 const Terrain3D = preload("res://scripts/world_terrain_v40.gd")
@@ -35,6 +36,7 @@ var scout_state: Dictionary={}
 var info_label: Label
 var seed: int = 82026
 var selected_cell: Vector2i=Vector2i(-1,-1)
+var world_loaded_from_cache_v89: bool=false
 
 func _ready() -> void:
     mouse_filter=Control.MOUSE_FILTER_STOP
@@ -231,8 +233,14 @@ func _save_settings() -> void:
         "selected":{"c":selected_cell.x,"r":selected_cell.y}}))
     f.close()
 
-func _generate() -> void:
-    world=World.generate(seed,true)
+func _generate(force_fresh: bool=false) -> void:
+    # Only explicitly generating a new game requires a new terrain pass.
+    # A seeded save loads its entire river graph and native map data directly.
+    world=WorldCache89.load_world(seed) if not force_fresh else {}
+    world_loaded_from_cache_v89=not world.is_empty()
+    if world.is_empty():
+        world=World.generate(seed,true)
+        WorldCache89.save_world(world,seed)
     map_canvas.set_world(world)
     terrain_3d.set_world(world)
     _apply_fog_v80()
@@ -259,7 +267,7 @@ func regenerate() -> void:
     seed+=7919
     if seed>=2147483647:seed=82026
     status_label.text="Uue maailma genereerimine..."
-    call_deferred("_generate")
+    call_deferred("_generate",true)
 
 func set_trade_route(route: Dictionary,caravans: Array) -> void:
     # The fallback atlas and default 3D map share exactly the same data.
