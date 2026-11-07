@@ -46,8 +46,16 @@ var pinch_gesture: bool=false
 var last_tap_ms: int=-10000
 var last_tap_cell: Vector2i=Vector2i(-1,-1)
 
+## V88: the atlas 3D pass must not consume GPU time while the city,
+## battle, detail view or 2D fallback is on screen.
+func _sync_viewport_visibility_v88() -> void:
+    if viewport==null:return
+    viewport.render_target_update_mode=(
+        SubViewport.UPDATE_ALWAYS if is_visible_in_tree()
+        else SubViewport.UPDATE_DISABLED)
+
 func _process(delta: float) -> void:
-    if visible:ArmyMotion78.advance(army_root_v54,delta)
+    if is_visible_in_tree():ArmyMotion78.advance(army_root_v54,delta)
 
 func _ready() -> void:
     mouse_filter=Control.MOUSE_FILTER_STOP
@@ -63,6 +71,8 @@ func _ready() -> void:
     viewport.size=Vector2i(900,550)
     viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS
     viewport.handle_input_locally=true
+    visibility_changed.connect(_sync_viewport_visibility_v88)
+    _sync_viewport_visibility_v88()
     add_child(viewport)
     scene_root=Node3D.new()
     scene_root.name="ReliefWorld"
