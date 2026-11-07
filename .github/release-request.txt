@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.84 DETAIL FOG UPDATE OPTIMIZATION
-Reason: Do not rebuild 3D detail neighbor meshes and static fog cover when a moving scout changes the global fog state but the selected 3x3 region is unchanged. Keep hostile army sight recalculation active.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/39
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/42753391dc262dafb5378887ea195345a2c868ce
-Validated CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42280960017 (success)
-Legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42280959856 (success)
-Release requirements: version 0.84.<run>. Publish tested Windows EXE and PCK bridge/full/update contents after release gates succeed. Only publish installable APK when stable persistent Android release signing key matches previous installs; never substitute debug signed APK.
+KUNINGRIIGID GODOT AUTOPORT — V0.85 STRATEGIC ARMY MOTION SLEEP
+Reason: Stop per-frame position and yaw updates for settled strategic and detail-map army GLB actors. Wake on position/heading changes. Preserve teleport snap, army state and AnimationPlayer instances. Fix Node3D float-precision convergence and add motion regression tests.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/42
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/2423ddeb3f4af4e3420fc08693a3fa8994221d6b
+Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42351845763 (success)
+Validated legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42351845790 (success)
+Release requirements: version 0.85.<run>. Publish verified Windows EXE and Android PCK bridge/full/update contents after release gates succeed. Publish installable Android APK only with a stable persisted matching signing key; never distribute a debug-signed incompatible APK. Maintain existing saves and changed-files-only Windows updater.
