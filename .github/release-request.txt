@@ -1,7 +1,8 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.89 PERSISTENT WORLD CACHE
-Reason: On startup reuse the saved complete 220x165 deterministic world, including native Vector2 continent/island geometry and PackedInt32Array river drainage. Avoid regenerating terrain on every launch; invalidate when world seed or generator schema changes. Do not change the canonical city/scout saves or battle simulation.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/45
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/536f17a7a242f0ec91606469011ee29104e5e32e
-Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42387664054 (success)
-Validated legacy Android migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42387663966 (success)
-Release requirements: version 0.89.<run>. Publish validated Windows EXE and PCK bridge/full/update payloads with SHA256 and diff-only update behavior. Android APK only with signing credentials matching previous installs. Preserve saved games.
+KUNINGRIIGID GODOT AUTOPORT — V0.91 ACTIVE STRATEGIC ARMY MOTION
+Release requested: 2026-11-07
+Reason: V91 uses an active weak-reference actor registry so stationary strategic units are not scanned every render frame. Preserve V90 valid incremental moves versus true teleport detection and preserve world/detail animation rigs, gameplay, saves, and Android migration compatibility.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/47
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/6d73b91a9c7781cf3388250eab61377bb229f7fa
+Validated PR Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42394448407 (success)
+Validated PR Android migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42394448382 (success)
+Release requirements: version 0.91.<run>. Run all release gate regressions including army_active_set_v91 and army_retarget_lag_v90. Publish Windows launcher, engine and PCK bridge/full/update payloads with SHA256 and diff-only updates; Android APK only with persistent matching signing key. Do not alter saved games.
