@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.88 HIDDEN 3D RENDERERS SLEEP
-Reason: Both 3D Godot SubViewports stop continuous GPU redraw when the player is in a different scene, such as the economy screen, tactical battle, other map, or 2D atlas. Restoring the relevant view resumes rendering without recreating meshes, soldier rigs, map state or save data. Hidden views no longer perform per-frame render motion work.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/44
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/0c1370edca886c4cc0c19a19e6a03e562c6c5a13
-Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42386343835 (success)
-Validated Android legacy APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42386343701 (success)
-Release requirements: version 0.88.<run>. Publish verified Windows EXE and PCK bridge/full/update bundles with SHA256 checks. Android APK only when persistently signed with previously compatible release key. Keep old saves and Windows changed-files update support.
+KUNINGRIIGID GODOT AUTOPORT — V0.89 PERSISTENT WORLD CACHE
+Reason: On startup reuse the saved complete 220x165 deterministic world, including native Vector2 continent/island geometry and PackedInt32Array river drainage. Avoid regenerating terrain on every launch; invalidate when world seed or generator schema changes. Do not change the canonical city/scout saves or battle simulation.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/45
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/536f17a7a242f0ec91606469011ee29104e5e32e
+Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42387664054 (success)
+Validated legacy Android migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42387663966 (success)
+Release requirements: version 0.89.<run>. Publish validated Windows EXE and PCK bridge/full/update payloads with SHA256 and diff-only update behavior. Android APK only with signing credentials matching previous installs. Preserve saved games.
