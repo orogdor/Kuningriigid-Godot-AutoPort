@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.86 SECOND CITY FOG VISIBILITY
-Reason: A founded second settlement now provides permanent friendly sight around its location in the 2D atlas, 3D world and detail map, including approaching hostiles. GPU fog caches invalidate on founding or removal and old-world coordinates cannot leak sight. Existing scout save and game economy remain unchanged.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/40
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/f89bb90cccfa1406dd869df814a7064ed59360b3
-Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42377953056 (success)
-Validated Android v0.51 migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42377953143 (success)
-Release requirements: version 0.86.<run>. Publish tested Windows EXE and PCK bridge/full/update content only after release gates pass. Android APK must only be published when stable release signing credentials match previous installs. Preserve saves and the existing verified changed-files updater.
+KUNINGRIIGID GODOT AUTOPORT — V0.87 DETAIL PREVIEW CPU OPTIMIZATION
+Reason: Reduce repeated neighboring 3D building/traffic preview scans from four to two per second and cache immutable building recipes instead of reparsing their JSON on each camera poll. Existing construction redraws, settlements, save state and gameplay rules unchanged.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/43
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/146e7795bd846fbb7e72a0a9062ff9e7e51ccb21
+Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42383006637 (success)
+Validated legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42383006607 (success)
+Release requirements: version 0.87.<run>. Publish verified Windows EXE, PCK bridge/full and update manifests after release gates pass. Android APK only with signing keys matching existing installs. Preserve all user saves and verified changed-files update behavior.
