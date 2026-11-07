@@ -23,6 +23,9 @@ const DEATH_VISUAL_SECONDS_V69: float=1.8
 # V93: track only corpses that still need render-time cleanup; weak refs
 # cannot keep despawned 3D actors alive across battle reloads.
 var fallen_actors_v93: Dictionary={}
+# V97: only awake 3D actors are iterated every rendered frame.
+# Weak references do not keep removed models alive.
+var active_battle_actors_v97: Dictionary={}
 var viewport: SubViewport
 var battle_camera: Camera3D
 var scene_root: Node3D
@@ -124,14 +127,39 @@ func _refresh_skeletal_status() -> void:
     # Useful for diagnosing missing animations on a particular Android GPU.
     skeletal_status_label.text="Animatsioon: %d/%d" % [animated,total]
 
+func _wake_battle_actor_v97(actor: Node3D) -> void:
+    if actor==null:return
+    var actor_id: int=actor.get_instance_id()
+    if actor.has_meta("fallen_since_v69") or \
+            not actor.has_meta("interpolation_v63"):
+        active_battle_actors_v97.erase(actor_id)
+        return
+    # Retargeting existing actors replaces their entry without duplicates.
+    active_battle_actors_v97[actor_id]=weakref(actor)
+
+func active_battle_render_count_v97() -> int:
+    # Diagnostic helper for deterministic frame-work regressions.
+    for actor_id in active_battle_actors_v97.keys():
+        var ref: WeakRef=active_battle_actors_v97[actor_id] as WeakRef
+        if ref==null or ref.get_ref()==null:
+            active_battle_actors_v97.erase(actor_id)
+    return active_battle_actors_v97.size()
+
 func _render_soldier_motion_v65(delta: float) -> void:
-    if actors_root==null:return
+    if actors_root==null or active_battle_actors_v97.is_empty():return
     var frame: float=clampf(delta,0.0,0.5)
-    for node in actors_root.get_children():
-        if node.has_meta("fallen_since_v69"):continue
-        if not node.has_meta("interpolation_v63"):continue
+    for actor_id in active_battle_actors_v97.keys():
+        var ref: WeakRef=active_battle_actors_v97[actor_id] as WeakRef
+        var node: Node3D=ref.get_ref() as Node3D if ref!=null else null
+        if node==null or node.get_parent()!=actors_root or \
+                node.has_meta("fallen_since_v69") or \
+                not node.has_meta("interpolation_v63"):
+            active_battle_actors_v97.erase(actor_id)
+            continue
         var state: Dictionary=node.get_meta("interpolation_v63")
-        if state.is_empty():continue
+        if state.is_empty():
+            active_battle_actors_v97.erase(actor_id)
+            continue
         # V92: once the actor reaches a completely idle pose, let the source
         # AnimationPlayer loop the GLB's idle clip without rebuilding poses
         # and allocating a transient person Dictionary every render frame.
@@ -142,6 +170,7 @@ func _render_soldier_motion_v65(delta: float) -> void:
                 float(state.get("hit_clock",0.0))<=0.0 and \
                 node.position.distance_squared_to(state["target"])<0.000004 and \
                 absf(wrapf(node.rotation.y-float(state["to_heading"]),-PI,PI))<0.002:
+            active_battle_actors_v97.erase(actor_id)
             continue
         var duration: float=maxf(float(state.get("duration",0.4)),0.01)
         var fraction: float=clampf(float(state.get("fraction",0.0))+\
@@ -199,6 +228,8 @@ func _render_soldier_motion_v65(delta: float) -> void:
             node.position.distance_squared_to(target)<0.000004 and \
             absf(wrapf(node.rotation.y-float(state["to_heading"]),-PI,PI))<0.002
         node.set_meta("interpolation_v63",state)
+        if bool(state["idle_pose_ready_v92"]):
+            active_battle_actors_v97.erase(actor_id)
 
 ## The original GLB Skeleton3D has a death clip, but earlier view logic
 ## removed the model on the same snapshot in which HP reached zero.
@@ -220,6 +251,7 @@ func _start_fallen_v69(actor: Node3D) -> void:
     if actor.has_meta("fallen_since_v69"):return
     actor.set_meta("fallen_since_v69",0.0)
     actor.remove_meta("interpolation_v63")
+    active_battle_actors_v97.erase(actor.get_instance_id())
     fallen_actors_v93[actor.get_instance_id()]=weakref(actor)
     var marker: Node3D=actor.get_node_or_null("TeamMarker") as Node3D
     if marker!=null:marker.hide()
@@ -1215,6 +1247,9 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                     model_node.position.y=absf(sin(phase))*0.12 if walking else 0.0
                     model_node.rotation.x=-0.27*sin(attacking/0.36*PI) if attacking>0.0 else 0.0
                     model_node.rotation.z=0.065*sin(phase) if walking else 0.0
+            # Snapshot updates are the only source of newly awake soldiers.
+            # Historical (pre-V61) actors have no interpolated render state.
+            _wake_battle_actor_v97(holder)
             used[key]=true
             total+=1
     _refresh_selection_markers_v67()
@@ -1227,5 +1262,6 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
         if animate_fallen and _fallen_in_battle_v69(node):
             _start_fallen_v69(node)
             continue
+        active_battle_actors_v97.erase(node.get_instance_id())
         actors_root.remove_child(node)
         node.free()
