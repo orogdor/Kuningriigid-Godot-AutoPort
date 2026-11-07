@@ -1,7 +1,7 @@
-KUNINGRIIGID GODOT AUTOPORT — V0.85 STRATEGIC ARMY MOTION SLEEP
-Reason: Stop per-frame position and yaw updates for settled strategic and detail-map army GLB actors. Wake on position/heading changes. Preserve teleport snap, army state and AnimationPlayer instances. Fix Node3D float-precision convergence and add motion regression tests.
-Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/42
-Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/2423ddeb3f4af4e3420fc08693a3fa8994221d6b
-Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42351845763 (success)
-Validated legacy Android APK migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42351845790 (success)
-Release requirements: version 0.85.<run>. Publish verified Windows EXE and Android PCK bridge/full/update contents after release gates succeed. Publish installable Android APK only with a stable persisted matching signing key; never distribute a debug-signed incompatible APK. Maintain existing saves and changed-files-only Windows updater.
+KUNINGRIIGID GODOT AUTOPORT — V0.86 SECOND CITY FOG VISIBILITY
+Reason: A founded second settlement now provides permanent friendly sight around its location in the 2D atlas, 3D world and detail map, including approaching hostiles. GPU fog caches invalidate on founding or removal and old-world coordinates cannot leak sight. Existing scout save and game economy remain unchanged.
+Merged PR: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/pull/40
+Merged commit: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/commit/f89bb90cccfa1406dd869df814a7064ed59360b3
+Validated Godot CI: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42377953056 (success)
+Validated Android v0.51 migration: https://github.com/orogdor/Kuningriigid-Godot-AutoPort/actions/runs/42377953143 (success)
+Release requirements: version 0.86.<run>. Publish tested Windows EXE and PCK bridge/full/update content only after release gates pass. Android APK must only be published when stable release signing credentials match previous installs. Preserve saves and the existing verified changed-files updater.
