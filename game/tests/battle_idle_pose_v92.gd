@@ -33,6 +33,7 @@ func _run() -> void:
             "move_active":false,"phase":0.0,
             "attack_clock":0.0,"hit_clock":0.0,
             "person":saved_person.duplicate(true),"kind":"spearman"})
+        view._wake_battle_actor_v97(soldier)
         army.append(soldier)
     # The first frame applies the model's idle pose once.
     view._render_soldier_motion_v65(1.0/60.0)
@@ -67,6 +68,7 @@ func _run() -> void:
     moving["move_active"]=true
     moving["idle_pose_ready_v92"]=false
     walker.set_meta("interpolation_v63",moving)
+    view._wake_battle_actor_v97(walker)
     var old_phase: float=float(moving["phase"])
     var prev: Vector3=walker.position
     for frame in range(15):
@@ -88,6 +90,7 @@ func _run() -> void:
     hit_state["hit_clock"]=0.36
     hit_state["idle_pose_ready_v92"]=false
     defender.set_meta("interpolation_v63",hit_state)
+    view._wake_battle_actor_v97(defender)
     view._render_soldier_motion_v65(1.0/60.0)
     var changed: Dictionary=defender.get_meta("interpolation_v63")
     if float(changed["hit_clock"])>=0.36 or \
@@ -107,6 +110,7 @@ func _run() -> void:
     refresh["person"]=saved_person.duplicate(true)
     refresh["phase"]=5.0
     retired.set_meta("interpolation_v63",refresh)
+    view._wake_battle_actor_v97(retired)
     view._render_soldier_motion_v65(1.0/60.0)
     var resumed: Dictionary=retired.get_meta("interpolation_v63")
     if not bool(resumed.get("idle_pose_ready_v92",false)) or \
