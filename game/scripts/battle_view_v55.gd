@@ -70,6 +70,11 @@ var fast_graphics: bool=false
 var obstacle_signature: String="__uninitialized__"
 var order_picker: OptionButton
 var id_list: Array[int]=[]
+# V99: memoize option labels, avoiding full PopupMenu rebuilds every tick.
+var squad_labels_v99: Array[String]=[]
+var individual_labels_v99: Array[String]=[]
+var squad_picker_rebuilds_v99: int=0
+var individual_picker_rebuilds_v99: int=0
 var current_battle: Dictionary={}
 const DEFAULT_CAMERA_SIZE_V75: float=90.0
 var cam_size: float=DEFAULT_CAMERA_SIZE_V75
@@ -512,31 +517,78 @@ func _refresh_selection_markers_v67() -> void:
 
 func _refresh_individual_picker() -> void:
     if individual_picker==null or order_picker==null:return
-    var previous: int=-1
+    var prior_index: int=-1
     var selected: int=individual_picker.selected
     if selected>=0 and selected<man_indices.size():
-        previous=man_indices[selected]
-    man_indices.clear()
-    individual_picker.clear()
+        prior_index=man_indices[selected]
+    var candidate_indices: Array[int]=[]
+    var candidate_labels: Array[String]=[]
     var squad_pos: int=order_picker.selected
-    if squad_pos<0 or squad_pos>=id_list.size():return
-    var current_id: int=id_list[squad_pos]
-    var selected_position: int=0
-    for fighter in current_battle.get("fighters",[]):
-        if int(fighter.get("id",-1))!=current_id or \
-                int(fighter.get("team",-1))!=0:continue
-        for man in fighter.get("men",[]):
-            if float(man.get("hp",0))<=0 or bool(man.get("escaped",false)):
-                continue
-            var index: int=int(man.get("index",-1))
-            if index<0:continue
-            if index==previous:selected_position=man_indices.size()
-            man_indices.append(index)
-            individual_picker.add_item("#%d • %.1f HP" % [
-                index+1,float(man.get("hp",0.0))])
-        break
+    if squad_pos>=0 and squad_pos<id_list.size():
+        var current_id: int=id_list[squad_pos]
+        for fighter in current_battle.get("fighters",[]):
+            if int(fighter.get("id",-1))!=current_id or \
+                    int(fighter.get("team",-1))!=0:continue
+            for man in fighter.get("men",[]):
+                if float(man.get("hp",0))<=0 or bool(man.get("escaped",false)):
+                    continue
+                var index: int=int(man.get("index",-1))
+                if index<0:continue
+                candidate_indices.append(index)
+                candidate_labels.append("#%d • %.1f HP" % [
+                    index+1,float(man.get("hp",0.0))])
+            break
+    var same_ids: bool=candidate_indices==man_indices and \
+        individual_picker.item_count==candidate_indices.size()
+    if same_ids:
+        # Most simulation steps only move units. Keep the exact popup,
+        # selected individual, focus and any open dropdown undisturbed.
+        if candidate_labels==individual_labels_v99:return
+        for i in range(candidate_labels.size()):
+            if individual_labels_v99.size()<=i or \
+                    candidate_labels[i]!=individual_labels_v99[i]:
+                individual_picker.set_item_text(i,candidate_labels[i])
+        individual_labels_v99=candidate_labels
+        return
+    individual_picker_rebuilds_v99+=1
+    individual_picker.clear()
+    man_indices=candidate_indices
+    individual_labels_v99=candidate_labels
+    for label in candidate_labels:individual_picker.add_item(label)
     if not man_indices.is_empty():
-        individual_picker.select(selected_position)
+        individual_picker.select(maxi(0,man_indices.find(prior_index)))
+
+func _refresh_squad_picker_v99() -> void:
+    if order_picker==null:return
+    var prior_id: int=-1
+    if order_picker.selected>=0 and order_picker.selected<id_list.size():
+        prior_id=id_list[order_picker.selected]
+    var candidate_ids: Array[int]=[]
+    var candidate_labels: Array[String]=[]
+    for fighter in current_battle.get("fighters",[]):
+        if int(fighter.get("team",-1))!=0:continue
+        var id: int=int(fighter.get("id",-1))
+        if id<0:continue
+        candidate_ids.append(id)
+        candidate_labels.append("#%d %s • %.0f HP" % [
+            id,String(fighter["kind"]),float(fighter["hp"])])
+    var same_ids: bool=candidate_ids==id_list and \
+        order_picker.item_count==candidate_ids.size()
+    if same_ids:
+        if candidate_labels==squad_labels_v99:return
+        for i in range(candidate_labels.size()):
+            if squad_labels_v99.size()<=i or \
+                    candidate_labels[i]!=squad_labels_v99[i]:
+                order_picker.set_item_text(i,candidate_labels[i])
+        squad_labels_v99=candidate_labels
+        return
+    squad_picker_rebuilds_v99+=1
+    order_picker.clear()
+    id_list=candidate_ids
+    squad_labels_v99=candidate_labels
+    for label in candidate_labels:order_picker.add_item(label)
+    if not id_list.is_empty():
+        order_picker.select(maxi(0,id_list.find(prior_id)))
 
 func _on_person_changed(_index: int) -> void:
     squad_attack_mode_v71=false
@@ -1049,6 +1101,33 @@ func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,MIN_BATTLE_ZOOM,MAX_BATTLE_ZOOM)
     if battle_camera!=null:battle_camera.size=cam_size
 
+# V98: keep a fully settled GLB idle pose through an unchanged simulation
+# snapshot. V97 already skips sleeping actors per render frame; the snapshot
+# must also avoid waking all 216 just to repeat the exact same pose.
+func _same_sleeping_snapshot_v98(actor: Node3D, prior: Dictionary,
+        man: Dictionary, kind: String, target: Vector3, heading: float) -> bool:
+    if prior.is_empty() or not bool(prior.get("idle_pose_ready_v92",false)):
+        return false
+    if bool(prior.get("move_active",false)) or \
+            float(prior.get("attack_clock",0.0))>0.0 or \
+            float(prior.get("hit_clock",0.0))>0.0 or \
+            bool(man.get("moving",false)) or \
+            float(man.get("attack_anim",0.0))>0.0 or \
+            float(man.get("hit_anim_v61",0.0))>0.0:
+        return false
+    if String(prior.get("kind",""))!=kind or \
+            target.distance_squared_to(prior.get("target",target))>0.000004 or \
+            actor.position.distance_squared_to(target)>0.000004 or \
+            absf(wrapf(actor.rotation.y-heading,-PI,PI))>=0.002 or \
+            absf(wrapf(float(prior.get("to_heading",heading))-heading,-PI,PI))>=0.002:
+        return false
+    # A new source action sequence must wake the skeletal GLB animation,
+    # even if its legacy transient animation clock is already zero.
+    var before: Dictionary=prior.get("person",{})
+    return not before.is_empty() and \
+        int(before.get("strike_seq_v70",0))==int(man.get("strike_seq_v70",0)) and \
+        int(before.get("hit_seq_v70",0))==int(man.get("hit_seq_v70",0))
+
 func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
     var earlier_elapsed: float=float(current_battle.get("elapsed",-1.0))
     var later_elapsed: float=float(b.get("elapsed",-1.0))
@@ -1086,21 +1165,7 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
     _refresh_obstacles()
     _refresh_projectiles()
     _refresh_move_markers()
-    var existing_id: int=-1
-    if order_picker.selected>=0 and order_picker.selected<id_list.size():
-        existing_id=id_list[order_picker.selected]
-    id_list.clear()
-    order_picker.clear()
-    var selected_index: int=0
-    for fighter in current_battle.get("fighters",[]):
-        if int(fighter.get("team",-1))!=0:continue
-        var id: int=int(fighter.get("id",-1))
-        if id<0:continue
-        id_list.append(id)
-        order_picker.add_item("#%d %s • %.0f HP" % [
-            id,String(fighter["kind"]),float(fighter["hp"])])
-        if id==existing_id:selected_index=id_list.size()-1
-    if not id_list.is_empty():order_picker.select(selected_index)
+    _refresh_squad_picker_v99()
     _refresh_individual_picker()
     var label: String="Suur tasuta proovilahing • 5 oma ja 4 vastase väesalka, kokku 216 sõdurit." if \
         bool(current_battle.get("large_demo_v64",false)) else \
@@ -1201,6 +1266,15 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                     Animation65.apply(model_node,man,kind)
             if int(current_battle.get("version",0))>=61:
                 var previous: Dictionary=holder.get_meta("interpolation_v63",{})
+                if (can_interpolate or keep_visual) and \
+                        _same_sleeping_snapshot_v98(holder,previous,
+                            man,kind,target_position,target_heading):
+                    # Selection colors have already been refreshed above.
+                    # Skip deep-copying the person, re-applying its idle rig
+                    # and adding the actor back into V97's active registry.
+                    used[key]=true
+                    total+=1
+                    continue
                 if keep_visual and not previous.is_empty():
                     previous["person"]=man.duplicate(true)
                     previous["kind"]=kind
