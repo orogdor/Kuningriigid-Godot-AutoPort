@@ -1049,6 +1049,33 @@ func _zoom(factor: float) -> void:
     cam_size=clampf(cam_size*factor,MIN_BATTLE_ZOOM,MAX_BATTLE_ZOOM)
     if battle_camera!=null:battle_camera.size=cam_size
 
+# V98: keep a fully settled GLB idle pose through an unchanged simulation
+# snapshot. V97 already skips sleeping actors per render frame; the snapshot
+# must also avoid waking all 216 just to repeat the exact same pose.
+func _same_sleeping_snapshot_v98(actor: Node3D, prior: Dictionary,
+        man: Dictionary, kind: String, target: Vector3, heading: float) -> bool:
+    if prior.is_empty() or not bool(prior.get("idle_pose_ready_v92",false)):
+        return false
+    if bool(prior.get("move_active",false)) or \
+            float(prior.get("attack_clock",0.0))>0.0 or \
+            float(prior.get("hit_clock",0.0))>0.0 or \
+            bool(man.get("moving",false)) or \
+            float(man.get("attack_anim",0.0))>0.0 or \
+            float(man.get("hit_anim_v61",0.0))>0.0:
+        return false
+    if String(prior.get("kind",""))!=kind or \
+            target.distance_squared_to(prior.get("target",target))>0.000004 or \
+            actor.position.distance_squared_to(target)>0.000004 or \
+            absf(wrapf(actor.rotation.y-heading,-PI,PI))>=0.002 or \
+            absf(wrapf(float(prior.get("to_heading",heading))-heading,-PI,PI))>=0.002:
+        return false
+    # A new source action sequence must wake the skeletal GLB animation,
+    # even if its legacy transient animation clock is already zero.
+    var before: Dictionary=prior.get("person",{})
+    return not before.is_empty() and \
+        int(before.get("strike_seq_v70",0))==int(man.get("strike_seq_v70",0)) and \
+        int(before.get("hit_seq_v70",0))==int(man.get("hit_seq_v70",0))
+
 func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
     var earlier_elapsed: float=float(current_battle.get("elapsed",-1.0))
     var later_elapsed: float=float(b.get("elapsed",-1.0))
@@ -1201,6 +1228,15 @@ func set_battle(b: Dictionary,preserve_motion: bool=false) -> void:
                     Animation65.apply(model_node,man,kind)
             if int(current_battle.get("version",0))>=61:
                 var previous: Dictionary=holder.get_meta("interpolation_v63",{})
+                if (can_interpolate or keep_visual) and \
+                        _same_sleeping_snapshot_v98(holder,previous,
+                            man,kind,target_position,target_heading):
+                    # Selection colors have already been refreshed above.
+                    # Skip deep-copying the person, re-applying its idle rig
+                    # and adding the actor back into V97's active registry.
+                    used[key]=true
+                    total+=1
+                    continue
                 if keep_visual and not previous.is_empty():
                     previous["person"]=man.duplicate(true)
                     previous["kind"]=kind
